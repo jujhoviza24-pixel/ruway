@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Ruway</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#5C6B4A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ruway">
+<link rel="icon" href="./iconos/icono-192.png">
+<link rel="apple-touch-icon" href="./iconos/icono-192.png">
+<!--
+  =====================================================================
+  Lanzador de la app de Ruway.
+
+  ESTE ARCHIVO NO GUARDA NINGUNA CLAVE. Es público, cualquiera puede
+  leerlo, y por eso el enlace privado NO está escrito acá: se pide una
+  sola vez en el celular y se queda guardado solo en ese celular.
+
+  Nunca escribas tu enlace con ?k=... dentro de este archivo.
+  =====================================================================
+-->
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:#FFFBF4;overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}
+  iframe{border:0;width:100%;height:100%;display:block}
+
+  #carga{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:16px;background:#FFFBF4;z-index:5;transition:opacity .4s}
+  #carga img{width:112px;height:112px;border-radius:28px;animation:latir 1.6s ease-in-out infinite}
+  #carga p{color:#8A9280;font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+  @keyframes latir{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+  #carga.fuera{opacity:0;pointer-events:none}
+
+  #pedir{position:fixed;inset:0;z-index:8;background:#FFFBF4;display:none;
+    flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center}
+  #pedir.on{display:flex}
+  #pedir img{width:88px;height:88px;border-radius:24px;margin-bottom:22px}
+  #pedir h1{font-size:20px;color:#5C6B4A;margin-bottom:8px}
+  #pedir p{font-size:13.5px;color:#8A9280;line-height:1.6;max-width:360px}
+  #pedir .caja{width:100%;max-width:400px;margin-top:22px}
+  #pedir input{width:100%;padding:15px;font-size:15px;border:1.5px solid rgba(92,107,74,.18);
+    border-radius:15px;background:#fff;color:#23291E;font-family:inherit}
+  #pedir input:focus{outline:0;border-color:#7C9A5E;box-shadow:0 0 0 4px rgba(124,154,94,.16)}
+  #pedir button{width:100%;margin-top:12px;padding:16px;font-size:15px;font-weight:800;color:#fff;
+    border:0;border-radius:17px;font-family:inherit;
+    background:linear-gradient(135deg,#7C9A5E,#5C6B4A);box-shadow:0 10px 24px rgba(92,107,74,.3)}
+  #pedir .mal{color:#C2705F;font-size:12.5px;margin-top:10px;min-height:16px}
+  #pedir .nota{font-size:11.5px;color:#A8AE9C;margin-top:18px;line-height:1.55;max-width:360px}
+
+  #cambiar{position:fixed;right:10px;bottom:10px;z-index:6;width:34px;height:34px;
+    border-radius:50%;border:0;background:rgba(92,107,74,.08);color:#8A9280;font-size:14px;
+    display:none}
+  #cambiar.on{display:block}
+</style>
+</head>
+<body>
+
+<div id="pedir">
+  <img src="./iconos/icono-192.png" alt="Ruway">
+  <h1>Conecta tu app</h1>
+  <p>Pega tu <b>enlace privado</b>, el que termina en <b>?k=</b> y sacaste con
+     MOSTRAR_MI_ENLACE en Apps Script.</p>
+  <div class="caja">
+    <input type="url" id="url" inputmode="url" autocomplete="off" spellcheck="false"
+           placeholder="https://script.google.com/macros/s/.../exec?k=...">
+    <button onclick="conectar()">Conectar</button>
+    <div class="mal" id="mal"></div>
+  </div>
+  <p class="nota">Se guarda solo en este celular. Esta página es pública y no lleva
+     ninguna clave escrita: por eso te la pide a ti.</p>
+</div>
+
+<div id="carga">
+  <img src="./iconos/icono-192.png" alt="Ruway">
+  <p>Abriendo Ruway</p>
+</div>
+
+<iframe id="app" title="Ruway" allow="clipboard-write"></iframe>
+<button id="cambiar" onclick="olvidar()" title="Cambiar de enlace">⚙</button>
+
+<script>
+var LLAVE = 'ruway_enlace';
+
+function guardado() {
+  try { return localStorage.getItem(LLAVE) || ''; } catch (e) { return ''; }
+}
+
+function valido(u) {
+  return /^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec\?.*\bk=.+/.test(u.trim());
+}
+
+function abrir(u) {
+  document.getElementById('pedir').classList.remove('on');
+  document.getElementById('cambiar').classList.add('on');
+  var f = document.getElementById('app');
+  f.addEventListener('load', function () {
+    setTimeout(function () { document.getElementById('carga').classList.add('fuera'); }, 350);
+  });
+  f.src = u;
+}
+
+function conectar() {
+  var u = document.getElementById('url').value.trim();
+  if (!valido(u)) {
+    document.getElementById('mal').textContent =
+      'Ese no parece tu enlace privado. Tiene que terminar en /exec?k=…';
+    return;
+  }
+  try { localStorage.setItem(LLAVE, u); } catch (e) {}
+  abrir(u);
+}
+
+function olvidar() {
+  if (!confirm('¿Desconectar este celular de tu app?')) return;
+  try { localStorage.removeItem(LLAVE); } catch (e) {}
+  location.reload();
+}
+
+(function () {
+  var u = guardado();
+  if (u) { abrir(u); return; }
+  document.getElementById('carga').classList.add('fuera');
+  document.getElementById('pedir').classList.add('on');
+})();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  });
+}
+</script>
+</body>
+</html>
