@@ -49,10 +49,22 @@ var API = "https://script.google.com/macros/s/AKfycbym_HuTN7HjpEy3IkKwvdamuJtExL
 
 (function () {
   var q = new URLSearchParams(location.search);
+
+  /* Los QR llegan acá con nombres cortos (c, para, de...). Hacia Apps Script
+     hay que renombrarlos con la "r" delante: Google se reserva varios
+     parámetros cortos en sus propias direcciones y se los queda antes de que
+     el script se ejecute, y la página sale como un error gris de Drive.
+     Acá, en GitHub, los nombres cortos no molestan, así que los QR que ya
+     estén impresos siguen valiendo. */
+  var mapa = { c: 'rcod', cod: 'rcod', rcod: 'rcod', para: 'rpara',
+               msg: 'rmsg', de: 'rde', tit: 'rtit' };
+
   var partes = ['vista=universo'];
-  ['c', 'para', 'msg', 'de', 'tit'].forEach(function (k) {
+  Object.keys(mapa).forEach(function (k) {
     var v = q.get(k);
-    if (v) partes.push(k + '=' + encodeURIComponent(v));
+    if (v && partes.join('&').indexOf(mapa[k] + '=') < 0) {
+      partes.push(mapa[k] + '=' + encodeURIComponent(v));
+    }
   });
 
   var destino = API + (API.indexOf('?') >= 0 ? '&' : '?') + partes.join('&');
