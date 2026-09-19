@@ -366,9 +366,24 @@ var FOTOS = [];
   if(q.get('de'))   document.getElementById('txtFirma').textContent=q.get('de');
   if(q.get('tit'))  document.getElementById('txtTit').textContent=q.get('tit');
 
-  /* la hoja responde por JSONP, porque esta página vive en otro dominio */
-  window.__ruway=function(d){
-    if(!d||!d.ok) return;
+  var DEPURAR = q.get('debug')==='1';
+  function nota(t){
+    if(!DEPURAR) return;
+    var d=document.getElementById('depu');
+    if(!d){
+      d=document.createElement('div'); d.id='depu';
+      d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:999;background:rgba(0,0,0,.86);'
+        +'color:#9fe6a0;font:12px/1.5 monospace;padding:10px 12px;max-height:45vh;overflow:auto;'
+        +'white-space:pre-wrap;word-break:break-all';
+      document.body.appendChild(d);
+    }
+    d.textContent += t + '\n';
+  }
+
+  /* lo que se hace cuando por fin llegan los datos */
+  function aplicar(d){
+    nota('DATOS: ' + JSON.stringify(d).slice(0,400));
+    if(!d||!d.ok){ nota('El servidor respondió, pero sin datos para ese código.'); return; }
     if(d.para)   document.getElementById('txtPara').textContent=d.para;
     if(d.de)     document.getElementById('txtFirma').textContent=d.de;
     if(d.titulo) document.getElementById('txtTit').textContent=d.titulo;
@@ -376,20 +391,57 @@ var FOTOS = [];
       FOTOS=d.fotos;
       document.getElementById('txtMsg').innerHTML='Toca cada foto para leer lo que guardamos ahí.';
       cargarFotos();
+      nota('Cargadas ' + d.fotos.length + ' fotos.');
+    } else {
+      nota('Vino sin fotos.');
     }
     if(d.cancion){
       var a=document.getElementById('audio');
       a.src=d.cancion;
       document.getElementById('son').classList.remove('oculto');
     }
-  };
+  }
 
   var cod=q.get('c');
-  if(!cod || API.indexOf('PEGA_AQUI')>=0) return;
+  if(!cod || API.indexOf('PEGA_AQUI')>=0){
+    if(!cod) nota('Sin código en el enlace (falta ?c=)');
+    else nota('Falta pegar la dirección del Apps Script en la variable API');
+    return;
+  }
+
+  /* Google no siempre deja cargar la respuesta como archivo JavaScript, así que
+     se intenta por los dos caminos: primero JSONP, y si no contesta, fetch.
+     El primero que llegue gana; el otro se ignora. */
+  var listo=false, sep=(API.indexOf('?')>=0?'&':'?');
+  function llego(d){ if(listo) return; listo=true; aplicar(d); }
+
+  window.__ruway=function(d){ nota('Llegó por JSONP'); llego(d); };
+
+  nota('Pidiendo el universo ' + cod + '…');
   var sc=document.createElement('script');
-  sc.src=API+(API.indexOf('?')>=0?'&':'?')+'vista=datos&callback=__ruway&c='+encodeURIComponent(cod);
-  sc.onerror=function(){console.warn('No se pudo cargar el universo '+cod);};
+  sc.src=API+sep+'vista=datos&callback=__ruway&c='+encodeURIComponent(cod);
+  sc.onerror=function(){ nota('JSONP falló'); porFetch(); };
   document.head.appendChild(sc);
+
+  setTimeout(function(){ if(!listo){ nota('JSONP no contestó en 4s'); porFetch(); } },4000);
+
+  function porFetch(){
+    if(listo) return;
+    nota('Intentando por fetch…');
+    fetch(API+sep+'vista=datos&c='+encodeURIComponent(cod))
+      .then(function(r){ nota('fetch HTTP '+r.status); return r.text(); })
+      .then(function(t){
+        var d;
+        try { d=JSON.parse(t); }
+        catch(e){
+          var m=t.match(/\{[\s\S]*\}/);          /* por si vino envuelto en callback(...) */
+          if(m){ try{ d=JSON.parse(m[0]); }catch(e2){} }
+        }
+        if(d){ nota('Llegó por fetch'); llego(d); }
+        else nota('Respuesta que no se pudo leer: '+String(t).slice(0,200));
+      })
+      .catch(function(e){ nota('fetch falló: '+e.message); });
+  }
 })();
 
 var s1=document.getElementById('s1'),s2=document.getElementById('s2'),s3=document.getElementById('s3');
