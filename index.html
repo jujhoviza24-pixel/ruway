@@ -152,14 +152,50 @@ function runner() {
 }
 var google = { script: { get run() { return runner(); } } };
 
-/* Los datos del catálogo, antes de arrancar. */
+/* ---------------- la puerta de entrada ----------------
+   Esta misma dirección atiende tres cosas, según lo que traiga detrás:
+
+     sin nada        el formulario de pedidos
+     ?c=MMALSQ       el universo de esa tarjeta
+     ?cat=Navidad    ese catálogo
+
+   Va así porque los QR de las tarjetas ya impresas apuntan acá, y un
+   archivo que solo supiera hacer una cosa las dejaría muertas. Da igual
+   dónde se suba este archivo: sabe qué le están pidiendo.
+   -------------------------------------------------------- */
 var D = null;
+
+function irseA(destino, aviso) {
+  var c = document.getElementById('cargando');
+  if (c) c.querySelector('p').textContent = aviso;
+  location.replace(destino);
+}
+
 function arrancar() {
-  /* Atajo por campaña: .../p?cat=Navidad abre ese catálogo en vez del
-     formulario. Sirve para tener un QR distinto por campaña. */
-  var cat = new URLSearchParams(location.search).get('cat');
+  var q = new URLSearchParams(location.search);
+
+  /* Los QR del universo traen nombres cortos (c, para, de...). Hacia Apps
+     Script hay que renombrarlos con la "r" delante: Google se reserva
+     varios parámetros cortos y se los queda antes de que el script se
+     ejecute. Acá los nombres cortos no molestan, así que los QR que ya
+     estén impresos siguen valiendo. */
+  var mapa = { c: 'rcod', cod: 'rcod', rcod: 'rcod', para: 'rpara',
+               msg: 'rmsg', de: 'rde', tit: 'rtit', tem: 'rtem' };
+  var partes = [];
+  Object.keys(mapa).forEach(function (k) {
+    var v = q.get(k);
+    if (v && partes.join('&').indexOf(mapa[k] + '=') < 0) {
+      partes.push(mapa[k] + '=' + encodeURIComponent(v));
+    }
+  });
+  if (partes.length) {
+    irseA(API + '?vista=universo&' + partes.join('&'), 'Abriendo tu universo');
+    return;
+  }
+
+  var cat = q.get('cat');
   if (cat) {
-    location.replace(API + '?vista=catalogo&rcod=' + encodeURIComponent(cat));
+    irseA(API + '?vista=catalogo&rcod=' + encodeURIComponent(cat), 'Abriendo el catálogo');
     return;
   }
   pedirJSONP('datos', [], function (d) {
