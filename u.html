@@ -521,8 +521,15 @@ var MANCHADO=false;
     if(!d.msg) document.getElementById('txtMsg').innerHTML=
       'Toca cada foto para leer lo que guardamos ahí.';
     /* cargarFotos() necesita el motor 3D, que se arma más abajo en este
-       mismo archivo: por eso se espera a que termine de cargar todo. */
-    window.addEventListener('load', function(){ cargarFotos(); });
+       mismo archivo: por eso no se llama aquí mismo sino en cuanto el
+       navegador termine de leer el archivo entero.
+
+       Antes esto colgaba del evento "load", y ahí estuvo el error: "load"
+       no salta hasta que TODO terminó de cargar, la canción incluida. Si
+       Drive tardaba o se colgaba con el audio, las fotos no aparecían
+       nunca. Un setTimeout de cero salta en cuanto el archivo está leído,
+       sin esperar a ninguna descarga. */
+    setTimeout(function(){ cargarFotos(); }, 0);
   }
   if(d.cancion||d.cancionId){
     var a=document.getElementById('audio');
@@ -536,10 +543,11 @@ var MANCHADO=false;
        mismo, en el teléfono. Tarda unos segundos y suena igual. */
     a.addEventListener('error',rescatar);
     /* Drive a veces contesta con una página de aviso en lugar del audio: no
-       da error, simplemente nunca termina de cargar. Si a los ocho segundos
+       da error, simplemente nunca termina de cargar. Si a los seis segundos
        el navegador no sabe ni cuánto dura la canción, se la damos por perdida
-       y se rescata igual. */
-    setTimeout(function(){ if(!a.duration) rescatar(); },8000);
+       y se rescata igual. (Cuando el servidor ya sabe que el archivo no sirve
+       no manda dirección y el rescate empieza de una, sin esperar nada.) */
+    setTimeout(function(){ if(!a.duration) rescatar(); },6000);
   }
 })();
 
@@ -567,7 +575,9 @@ function pedirTrozo(parte,ok,mal){
   if(!d||!d.api||!d.cancionId){ mal&&mal(); return; }
   var nombre='__son'+(++RESCATE.n);
   var t=document.createElement('script');
-  var reloj=setTimeout(function(){limpiar();mal&&mal();},30000);
+  /* Un minuto: un trozo son tres millones de bytes y el servidor tiene que
+     bajarse el archivo de Drive antes de mandarlo. En 3G eso no va rápido. */
+  var reloj=setTimeout(function(){limpiar();mal&&mal();},60000);
   function limpiar(){
     clearTimeout(reloj);
     try{delete window[nombre];}catch(e){window[nombre]=undefined;}
@@ -585,19 +595,24 @@ function pedirTrozo(parte,ok,mal){
 }
 
 function rescatarCancion(){
-  var boton=document.getElementById('son');
-  boton.textContent='♪…';
+  document.getElementById('son').textContent='♪…';
   pistaDice('PREPARANDO TU CANCIÓN…',true);
 
   function siguiente(i){
     pedirTrozo(i,function(r){
       RESCATE.partes[r.parte]=r.b64;
       RESCATE.mime=r.mime||'audio/mpeg';
-      if(r.total>1) pistaDice('PREPARANDO TU CANCIÓN… '
-        +Math.round((r.parte+1)/r.total*100)+'%',true);
+      if(r.total>1) pistaDice('PREPARANDO TU CANCIÓN · '
+        +(r.parte+1)+' de '+r.total,true);
       if(r.parte+1<r.total){ siguiente(r.parte+1); return; }
       armarCancion();
-    },function(){ rendirse(); });
+    },function(){
+      /* Un segundo intento antes de rendirse: casi siempre es que el script
+         estaba dormido y el primer viaje fue el que lo despertó. */
+      if(RESCATE.segundaVez){ rendirse(); return; }
+      RESCATE.segundaVez=true;
+      setTimeout(function(){ siguiente(i); },1200);
+    });
   }
   siguiente(0);
 }

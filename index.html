@@ -80,10 +80,20 @@
 var API = "https://script.google.com/macros/s/AKfycbym_HuTN7HjpEy3IkKwvdamuJtExLvVnUJt83-vWxhhUR1kNx_hfNzd6GC53nNc-jYOGQ/exec";
 var _n = 0;
 
-function pedirJSONP(fn, args, ok, mal) {
+/* Cuarenta segundos, no veinticinco. Google apaga el script cuando lleva
+   rato sin usarse, y la primera visita del día tiene que esperar a que
+   vuelva a encenderse: con veinticinco segundos se cortaba justo antes de
+   tiempo y salía "revisa tu conexión" aunque la conexión estuviera bien. */
+function pedirJSONP(fn, args, ok, mal, reintento) {
   var nombre = '__ruway' + (++_n);
   var t = document.createElement('script');
-  var reloj = setTimeout(function () { limpiar(); mal && mal(new Error('Sin respuesta')); }, 25000);
+  var reloj = setTimeout(function () {
+    limpiar();
+    /* Un segundo intento callado antes de rendirse: si el primero fue el que
+       despertó al servidor, este entra de inmediato. */
+    if (!reintento) { pedirJSONP(fn, args, ok, mal, true); return; }
+    mal && mal(new Error('Sin respuesta'));
+  }, 40000);
 
   function limpiar() {
     clearTimeout(reloj);
@@ -95,7 +105,11 @@ function pedirJSONP(fn, args, ok, mal) {
     if (r && r.ok) ok && ok(r.r);
     else mal && mal(new Error((r && r.error) || 'Error'));
   };
-  t.onerror = function () { limpiar(); mal && mal(new Error('No se pudo conectar')); };
+  t.onerror = function () {
+    limpiar();
+    if (!reintento) { setTimeout(function () { pedirJSONP(fn, args, ok, mal, true); }, 800); return; }
+    mal && mal(new Error('No se pudo conectar'));
+  };
   t.src = API + (API.indexOf('?') >= 0 ? '&' : '?')
     + 'vista=api&rfn=' + encodeURIComponent(fn)
     + '&rargs=' + encodeURIComponent(JSON.stringify(args || []))
