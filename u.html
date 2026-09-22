@@ -249,6 +249,9 @@ function traerRamos(url) {
   window.__ramosPedidos = true;
   var t = document.createElement('script');
   t.src = url; t.async = true;
+  /* Al llegar hay que repartir las figuras entre los ramos decorativos. Si el
+     universo ya está girando cuando esto termina, aparecen sin más. */
+  t.onload = function () { if (typeof window.ponerRamos === 'function') window.ponerRamos(); };
   document.head.appendChild(t);
 }
 
@@ -1151,13 +1154,44 @@ var IMGS=[];
     }
     return;
   }
-  if(typeof RAMOS!=='undefined'){
+})();
+
+var NR=15, ANI=[380,520,680];
+
+/* k:-1 a propósito, y no un reparto entre las imágenes ya cargadas.
+   Antes se daba por hecho que ramos.js estaba puesto al llegar acá. Desde que
+   se carga en paralelo —para que el universo no tenga que esperarlo— puede no
+   haber llegado: IMGS estaba vacío, el reparto daba 0 para los quince, y en
+   cuanto entraban las fotos del cliente los quince dibujaban LA MISMA primera
+   foto, repetida por todo el espacio y a un tamaño que no pegaba con nada.
+   Con -1 no apuntan a ninguna imagen y no se dibuja nada hasta que
+   ponerRamos() le da la suya a cada uno. */
+for(var i=0;i<NR;i++)ramos.push({y:((i%5)-2)*64+R(-12,12),a:(i/NR)*6.283+R(-.08,.08),
+ r:ANI[i%3]+R(-20,20),v:.00042+(i%3)*.00009,k:-1,e:R(.62,.92),txt:''});
+
+/* Reparte las imágenes decorativas entre los ramos que no son foto. Vale
+   igual si ramos.js llegó antes que el universo o después. */
+var RAMOS_PUESTOS=false;
+function ponerRamos(){
+  if(RAMOS_PUESTOS) return;
+  var F=(DATOS&&DATOS.figuras)||[];
+  var desde, n;
+  if(F.length){
+    /* Las figuras de tu Drive ya están en IMGS, en las primeras posiciones. */
+    desde=0; n=F.length;
+  } else {
+    if(typeof RAMOS==='undefined' || !RAMOS.length) return;
+    desde=IMGS.length; n=RAMOS.length;
     for(var j=0;j<RAMOS.length;j++){var r=new Image();r.src=RAMOS[j];IMGS.push(r);}
   }
-})();
-var NR=15, ANI=[380,520,680];
-for(var i=0;i<NR;i++)ramos.push({y:((i%5)-2)*64+R(-12,12),a:(i/NR)*6.283+R(-.08,.08),
- r:ANI[i%3]+R(-20,20),v:.00042+(i%3)*.00009,k:i%Math.max(1,IMGS.length),e:R(.62,.92),txt:''});
+  RAMOS_PUESTOS=true;
+  var c=0;
+  for(var i=0;i<ramos.length;i++){
+    if(ramos[i].foto) continue;
+    ramos[i].k=desde+(c%n); c++;
+  }
+}
+ponerRamos();
 
 /* Las fotos del cliente reemplazan a los primeros ramos y quedan más cerca,
    para que sean fáciles de tocar. */
@@ -1339,19 +1373,84 @@ function dibujar(){
    un celular de 390 tapaban la pantalla entera. Se fija un lado objetivo
    proporcional a la pantalla, y la perspectiva solo lo acerca o lo aleja.
    Los ramos decorativos siguen con su fórmula de siempre. */
-function ladoFoto(){var m=W<H?W:H;return m*(m<520?.22:.17);}
+/* El lado del cuadrado de cada foto. Se subió respecto a antes porque al
+   recortar en cuadrado se pierde el lado largo: con el valor viejo las fotos
+   se veían más pequeñas que cuando cada una se escalaba por su lado mayor. */
+function ladoFoto(){var m=W<H?W:H;return m*(m<520?.28:.225);}
 function medida(e,im){
-  var k;
   if(e.o.foto){
-    var lado=ladoFoto()*(e.o.e||1);
-    /* la perspectiva acerca y aleja, pero con tope: al pasar por delante
-       llegaba a multiplicar por casi cuatro y una sola foto tapaba todo */
+    /* TODAS las fotos salen del mismo tamaño y cuadradas. Antes cada una se
+       escalaba por su lado mayor y además llevaba su propio factor: una foto
+       vertical ocupaba la mitad que una horizontal, y unas se veían grandes y
+       otras pequeñas sin ningún motivo. Un álbum se ve ordenado cuando todas
+       las fotos miden igual; lo que cambia es lo que hay dentro, no el marco.
+       La perspectiva sigue acercando y alejando, pero con tope: al pasar por
+       delante llegaba a multiplicar por casi cuatro y tapaba todo. */
     var f=e.f; if(f<.45)f=.45; if(f>1.5)f=1.5;
-    k=(lado/Math.max(im.naturalWidth,im.naturalHeight))*f;
-  } else {
-    k=Math.min(e.f*e.o.e,.95);
+    var lado=ladoFoto()*f;
+    return {w:lado,h:lado};
   }
+  var k=Math.min(e.f*e.o.e,.95);
   return {w:im.naturalWidth*k,h:im.naturalHeight*k};
+}
+
+/* Un rectángulo de esquinas redondeadas. Hay navegadores que traen roundRect
+   de fábrica y otros no; esto funciona en los dos. */
+function cajaRedonda(ctx,x,y,w,h,r){
+  r=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+
+/* Dibuja una foto cuadrada, recortada por el centro y con marco.
+   El marco no es blanco: es del color del tema, que es lo que hace que las
+   fotos pertenezcan al universo en vez de estar pegadas encima. */
+function pintarFoto(ctx,im,x,y,lado,alfa){
+  var s=Math.min(im.naturalWidth,im.naturalHeight);
+  var sx=(im.naturalWidth-s)/2, sy=(im.naturalHeight-s)/2;
+  var r=lado*0.16, m=Math.max(1.2,lado*0.022);
+
+  ctx.save();
+  ctx.globalAlpha=alfa;
+
+  /* El marco. Antes era un recuadro blanco duro, que en medio de una galaxia
+     se ve como una foto pegada con cinta adhesiva. Ahora es cristal oscuro
+     con un filo encendido del color de la campaña: la foto pertenece al
+     universo en vez de estar encima de él, y el resplandor la despega del
+     fondo sin robarle contraste. */
+  ctx.shadowColor=rgba(C1,.7*alfa);
+  ctx.shadowBlur=lado*0.30;
+  cajaRedonda(ctx,x-lado/2-m,y-lado/2-m,lado+m*2,lado+m*2,r+m);
+  ctx.fillStyle='rgba(8,6,16,.55)';
+  ctx.fill();
+  ctx.shadowBlur=0; ctx.shadowColor='transparent';
+
+  /* la foto, recortada en cuadrado por el centro */
+  ctx.save();
+  cajaRedonda(ctx,x-lado/2,y-lado/2,lado,lado,r);
+  ctx.clip();
+  ctx.drawImage(im,sx,sy,s,s,x-lado/2,y-lado/2,lado,lado);
+  ctx.restore();
+
+  /* el filo encendido, por fuera del recorte para que se vea entero */
+  ctx.lineWidth=Math.max(1,lado*0.016);
+  ctx.strokeStyle=rgba(mez(C1,BL,.35),.85*alfa);
+  cajaRedonda(ctx,x-lado/2-m/2,y-lado/2-m/2,lado+m,lado+m,r+m/2);
+  ctx.stroke();
+
+  /* y un brillo suave arriba, como el de un cristal */
+  var gr=ctx.createLinearGradient(0,y-lado/2,0,y+lado/2);
+  gr.addColorStop(0,rgba(BL,.16*alfa));
+  gr.addColorStop(.45,rgba(BL,0));
+  ctx.fillStyle=gr;
+  cajaRedonda(ctx,x-lado/2,y-lado/2,lado,lado,r);
+  ctx.fill();
+  ctx.restore();
 }
 
 function pintarSprites(a,b){
@@ -1361,13 +1460,8 @@ function pintarSprites(a,b){
    if(im&&im.complete&&im.naturalWidth){
     var m=medida(e,im),w=m.w,h2=m.h;
     var al=Math.min(1,e.f*1.9);
-    /* marquito blanco: separa la foto del resplandor de la galaxia,
-       que si no se le come el contraste */
-    if(e.o.foto){var p=Math.max(1.5,w*.035);
-     g.globalAlpha=al*.9;g.fillStyle='#FFFDF6';
-     g.fillRect(e.x-w/2-p,e.y-h2/2-p,w+p*2,h2+p*2);}
-    g.globalAlpha=al;
-    g.drawImage(im,e.x-w/2,e.y-h2/2,w,h2);}}
+    if(e.o.foto){ pintarFoto(g,im,e.x,e.y,w,al); }
+    else { g.globalAlpha=al; g.drawImage(im,e.x-w/2,e.y-h2/2,w,h2); }}}
   else{var tx=e.o.t.toUpperCase()+' \u2661';
    g.font="800 "+Math.max(9,15*e.f)+"px 'Baloo 2',sans-serif";g.textAlign='center';
    /* neón: primero el resplandor amarillo amplio (dos pasadas), luego el texto casi blanco */
@@ -1618,19 +1712,14 @@ function grabarUniverso(audio){
     lg.fillStyle='#03040a'; lg.fillRect(0,0,VW,VH);
     lg.restore();
 
+    /* En el video las fotos también van todas iguales y cuadradas, con el
+       mismo marco del universo. Si en el universo se ven de una manera y en
+       el video de otra, parecen dos productos distintos. */
     var im=f.im;
-    var esc=Math.min(596*E/im.naturalWidth, 716*E/im.naturalHeight)*acerca;
-    var w=im.naturalWidth*esc, h=im.naturalHeight*esc;
-    var cx=VW/2, cy=(f.txt?500:600)*E;
-
-    lg.save();
-    lg.globalAlpha=alfa;
-    var m=Math.max(5*E,w*.018);
-    lg.fillStyle='#FFFDF6';
-    lg.shadowColor='rgba(0,0,0,.6)'; lg.shadowBlur=26*E; lg.shadowOffsetY=10*E;
-    lg.fillRect(cx-w/2-m, cy-h/2-m, w+m*2, h+m*2);
-    lg.shadowBlur=0; lg.shadowOffsetY=0;
-    lg.drawImage(im, cx-w/2, cy-h/2, w, h);
+    var lado=620*E*acerca;
+    var cx=VW/2, cy=(f.txt?520:620)*E;
+    pintarFoto(lg, im, cx, cy, lado, alfa);
+    var w=lado, h=lado, m=Math.max(1.2,lado*0.022);
 
     if(f.txt){
       lg.textAlign='center';
@@ -1817,6 +1906,9 @@ c.addEventListener('touchend',function(){pinch=0;});
 window.compartirUniverso=compartirUniverso;
 window.tocarGlobo=tocarGlobo;
 window.tocarVoz=tocarVoz;
+/* El cargador la llama en cuanto ramos.js termina de bajar, que puede ser
+   después de que el universo ya esté girando. */
+window.ponerRamos=ponerRamos;
 
 /* La espera se va con una transición, no de golpe: el universo aparece
    detrás mientras el velo se desvanece. */

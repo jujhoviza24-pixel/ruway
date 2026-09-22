@@ -142,20 +142,58 @@ function pedirJSONP(fn, args, ok, mal) {
   intento(false);
 }
 
-function mandarPOST(fn, args, ok, mal) {
+/* Lo que se ESCRIBE (fotos, canción, nota de voz, el pedido).
+
+   Tres cosas que antes no estaban y por las que el envío se quedaba colgado
+   y luego decía "no se pudo enviar":
+
+     · Un plazo. Sin AbortController, un fetch que se pierde en una red móvil
+       no falla nunca: se queda esperando para siempre y el cliente ve la
+       pantalla de envío sin avanzar hasta que se cansa y cierra.
+
+     · Reintentos. Una subida que falla por un bache de red se reintenta sola
+       tres veces, esperando cada vez un poco más. Casi todos los fallos de
+       verdad son eso, un bache, y se arreglan al segundo intento.
+
+     · Distinguir el fallo de red del fallo del servidor. Si el servidor dice
+       "esa foto pesa demasiado", reintentar es perder el tiempo: eso se
+       cuenta tal cual. Solo se reintenta lo que puede salir bien. */
+function mandarPOST(fn, args, ok, mal, intento) {
+  intento = intento || 1;
+  var plazo = (fn === 'guardarPedido') ? 45000 : 120000;
+  var corta = null, reloj = null;
+
+  try { corta = new AbortController(); } catch (e) {}
+  if (corta) reloj = setTimeout(function () { try { corta.abort(); } catch (e) {} }, plazo);
+
+  function otraVez(e) {
+    if (reloj) clearTimeout(reloj);
+    if (intento >= 3) { mal && mal(e); return; }
+    /* 1,5 s, luego 4 s: darle tiempo a la red a recomponerse */
+    setTimeout(function () {
+      mandarPOST(fn, args, ok, mal, intento + 1);
+    }, intento === 1 ? 1500 : 4000);
+  }
+
   fetch(API, {
     method: 'POST',
     /* texto plano a propósito: con 'application/json' el navegador pide
        permiso antes y Apps Script no sabe contestar a esa pregunta */
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ fn: fn, args: args || [] })
+    body: JSON.stringify({ fn: fn, args: args || [] }),
+    signal: corta ? corta.signal : undefined
   })
-    .then(function (r) { return r.json(); })
     .then(function (r) {
-      if (r && r.ok) ok && ok(r.r);
-      else mal && mal(new Error((r && r.error) || 'Error'));
+      if (!r.ok) throw new Error('El servidor contestó ' + r.status);
+      return r.json();
     })
-    .catch(function (e) { mal && mal(e); });
+    .then(function (r) {
+      if (reloj) clearTimeout(reloj);
+      if (r && r.ok) { ok && ok(r.r); return; }
+      /* Esto lo dijo el servidor a propósito: no se reintenta. */
+      mal && mal(new Error((r && r.error) || 'Error'));
+    })
+    .catch(otraVez);
 }
 
 /* Imita a google.script.run para que el resto de la página no cambie. */
@@ -165,7 +203,7 @@ function runner() {
   r.withFailureHandler = function (f) { r.mal = f; return r; };
 
   var porPOST = ['crearUniverso', 'subirFotoUniverso', 'subirCancionUniverso',
-                 'subirVozUniverso', 'guardarPedido'];
+                 'subirVozUniverso', 'subirTrozoAudio', 'guardarPedido'];
   porPOST.forEach(function (fn) {
     r[fn] = function () {
       var args = Array.prototype.slice.call(arguments);
@@ -831,7 +869,9 @@ function prender(){
       if (atras) atras.disabled = true;
       /* un paso por foto, uno por la canción, uno por la nota de voz y uno
          por guardar el pedido: así la barra avanza de verdad */
-      abrirEnvio((conFotos() ? fotos.length + (cancion ? 1 : 0) + (voz ? 1 : 0) : 0) + 1);
+      /* un paso por foto, uno por cada pedazo de audio y uno por el pedido */
+      var pedazos = function (x) { return x ? Math.ceil(x.b64.length / 700000) : 0; };
+      abrirEnvio((conFotos() ? fotos.length + pedazos(cancion) + pedazos(voz) : 0) + 1);
 
       var ctx = {
         precio: total(),
@@ -851,12 +891,12 @@ function prender(){
       if (conFotos() && fotos.length) {
         /* Si ya se creó antes (un reintento), se reanuda: crear otro dejaría
            un universo huérfano y le cambiaría el código al cliente. */
-        if (UNI.codigo) { subirFotoUni(ctx, UNI.hechas); return; }
+        if (UNI.codigo) { subirFotoUni(ctx); return; }
         google.script.run.withSuccessHandler(function (r) {
           UNI.codigo = r && r.codigo ? r.codigo : r;
           UNI.permiso = r && r.permiso ? r.permiso : '';
           UNI.hechas = 0;
-          subirFotoUni(ctx, 0);
+          subirFotoUni(ctx);
         }).withFailureHandler(function (e) { falla(ctx, e); })
           .crearUniverso({ cliente: ctx.nom, telefono: ctx.tel, para: ctx.para,
                            de: ctx.de, titulo: '', msg: ctx.msg,
@@ -933,37 +973,96 @@ function prender(){
       aviso('No se pudo enviar: ' + (e && e.message ? e.message : ''));
     }
 
-    function subirFotoUni(ctx, i) {
+    /* Las fotos suben de tres en tres, no de una en una.
+       Ocho fotos en fila, con lo que tarda cada viaje de ida y vuelta a
+       Google, eran cerca de medio minuto mirando una barra. De tres en tres
+       se aprovecha el ancho de banda que ya hay y baja a un tercio. Más de
+       tres a la vez no ayuda: el cuello de botella pasa a ser la subida del
+       propio celular, y encima se empiezan a pisar unas a otras. */
+    function subirFotoUni(ctx) {
       ctx.codigo = UNI.codigo;
-      if (i >= fotos.length) { subirCancion(ctx); return; }
-      pasoEnvio('Foto ' + (i + 1) + ' de ' + fotos.length, i > 0);
-      google.script.run.withSuccessHandler(function () {
-        UNI.hechas = i + 1; subirFotoUni(ctx, i + 1);
-      }).withFailureHandler(function (e) { falla(ctx, e); })
-        .subirFotoUniverso(ctx.codigo, fotos[i].b64, fotos[i].txt, UNI.permiso);
+      var total = fotos.length;
+      if (!total) { subirCancion(ctx); return; }
+
+      var siguiente = 0, listas = 0, rotas = false;
+
+      function lanzar() {
+        while (siguiente < total && enVuelo < 3) {
+          mandar(siguiente++);
+        }
+      }
+      var enVuelo = 0;
+
+      function mandar(i) {
+        if (fotos[i].subida) { listas++; revisar(); return; }
+        enVuelo++;
+        google.script.run.withSuccessHandler(function () {
+          enVuelo--;
+          fotos[i].subida = true;
+          listas++;
+          UNI.hechas = listas;
+          pasoEnvio('Fotos · ' + listas + ' de ' + total, true);
+          revisar(); lanzar();
+        }).withFailureHandler(function (e) {
+          enVuelo--;
+          if (rotas) return;
+          rotas = true;
+          falla(ctx, e);
+        }).subirFotoUniverso(ctx.codigo, fotos[i].b64, fotos[i].txt, UNI.permiso);
+      }
+
+      function revisar() {
+        if (rotas) return;
+        if (listas >= total) subirCancion(ctx);
+      }
+
+      pasoEnvio('Fotos · 0 de ' + total);
+      lanzar();
+    }
+
+    /* ---------- los audios, por pedazos ----------
+       Una canción de seis megas son ocho de texto. Mandarlos de una sola vez
+       desde un celular es pedir que la conexión aguante un minuto entero sin
+       un bache; si lo hay en el segundo cincuenta, se pierde todo. Eso era el
+       "se queda cargando y luego dice que no se pudo enviar".
+
+       De medio mega en medio mega, cada viaje dura un par de segundos, y si
+       uno falla se reintenta solo ese. Los pedazos que ya llegaron se quedan
+       en el servidor, así que un reintento no repite lo hecho. */
+    var TROZO = 700000;
+
+    function porPedazos(ctx, cual, dato, etiqueta, alTerminar, alFallar) {
+      var partes = Math.max(1, Math.ceil(dato.b64.length / TROZO));
+
+      function mandar(i) {
+        if (i >= partes) { alTerminar(); return; }
+        pasoEnvio(etiqueta + (partes > 1 ? ' · ' + (i + 1) + ' de ' + partes : ''), i === 0);
+        google.script.run
+          .withSuccessHandler(function () { mandar(i + 1); })
+          .withFailureHandler(function (e) { alFallar(e); })
+          .subirTrozoAudio(ctx.codigo, i, partes,
+                           dato.b64.slice(i * TROZO, (i + 1) * TROZO),
+                           dato.mime, dato.nombre || '', UNI.permiso, cual);
+      }
+      mandar(0);
     }
 
     function subirCancion(ctx) {
       if (!cancion || UNI.cancionLista) { subirVoz(ctx); return; }
-      pasoEnvio('Guardando tu canción', true);
-      google.script.run.withSuccessHandler(function () {
-        UNI.cancionLista = true; subirVoz(ctx);
-      }).withFailureHandler(function () {
-        /* Si la canción falla NO se tira el pedido abajo: se avisa y se sigue.
-           Vale más un pedido sin música que ningún pedido. */
-        ctx.sinCancion = true; subirVoz(ctx);
-      }).subirCancionUniverso(ctx.codigo, cancion.b64, cancion.mime,
-                              cancion.nombre, UNI.permiso);
+      porPedazos(ctx, 'cancion', cancion, 'Guardando tu canción',
+        function () { UNI.cancionLista = true; subirVoz(ctx); },
+        function () {
+          /* Si la canción falla NO se tira el pedido abajo: se avisa y se
+             sigue. Vale más un pedido sin música que ningún pedido. */
+          ctx.sinCancion = true; subirVoz(ctx);
+        });
     }
 
     function subirVoz(ctx) {
       if (!voz || UNI.vozLista) { cerrar(ctx); return; }
-      pasoEnvio('Guardando tu mensaje', true);
-      google.script.run.withSuccessHandler(function () {
-        UNI.vozLista = true; cerrar(ctx);
-      }).withFailureHandler(function () {
-        ctx.sinVoz = true; cerrar(ctx);
-      }).subirVozUniverso(ctx.codigo, voz.b64, voz.mime, UNI.permiso);
+      porPedazos(ctx, 'voz', voz, 'Guardando tu mensaje',
+        function () { UNI.vozLista = true; cerrar(ctx); },
+        function () { ctx.sinVoz = true; cerrar(ctx); });
     }
 
     function cerrar(ctx) {
