@@ -1172,6 +1172,13 @@ for(var i=0;i<NR;i++)ramos.push({y:((i%5)-2)*64+R(-12,12),a:(i/NR)*6.283+R(-.08,
 /* Reparte las imágenes decorativas entre los ramos que no son foto. Vale
    igual si ramos.js llegó antes que el universo o después. */
 var RAMOS_PUESTOS=false;
+
+/* Las órbitas decorativas van POR DENTRO y POR FUERA de las fotos, nunca a
+   su misma distancia. Las fotos viajan a 350 y 440; si las figuras usaran
+   esos radios se cruzarían por delante justo cuando alguien mira una foto.
+   Así giran en carriles propios y el espacio se siente lleno sin estorbar. */
+var ORB_FIG=[215,285,545,625];
+
 function ponerRamos(){
   if(RAMOS_PUESTOS) return;
   var F=(DATOS&&DATOS.figuras)||[];
@@ -1185,10 +1192,32 @@ function ponerRamos(){
     for(var j=0;j<RAMOS.length;j++){var r=new Image();r.src=RAMOS[j];IMGS.push(r);}
   }
   RAMOS_PUESTOS=true;
-  var c=0;
-  for(var i=0;i<ramos.length;i++){
-    if(ramos[i].foto) continue;
-    ramos[i].k=desde+(c%n); c++;
+
+  /* Cada figura sale DOS veces, en puntos opuestos del universo. Con una sola
+     vuelta quedaban huecos largos sin nada; con dos, siempre hay algo
+     entrando en pantalla y el espacio se ve habitado. */
+  var copias=2, total=n*copias;
+
+  /* Fuera los decorativos viejos: se rehacen a la medida de cuántas figuras
+     hay de verdad, en vez de repartir quince huecos fijos. Se quitan EN EL
+     SITIO, sin cambiar el array por otro, porque el motor de dibujo se quedó
+     con una referencia a este. */
+  for(var q=ramos.length-1;q>=0;q--){ if(!ramos[q].foto) ramos.splice(q,1); }
+
+  for(var c=0;c<total;c++){
+    var cual=c%n;                       /* qué figura */
+    var vuelta=Math.floor(c/n);         /* qué copia   */
+    ramos.push({
+      k: desde+cual,
+      figura: true,
+      /* las dos copias, medio universo aparte */
+      a: (cual/n)*6.283 + vuelta*3.1416 + R(-.12,.12),
+      r: ORB_FIG[c%ORB_FIG.length] + R(-25,25),
+      y: ((c%6)-2.5)*95 + R(-18,18),
+      v: .00030+(c%3)*.00008,
+      e: R(.75,.95),
+      txt:''
+    });
   }
 }
 ponerRamos();
@@ -1212,15 +1241,11 @@ function cargarFotos(){
     })(FOTOS[i],im);
     im.src=FOTOS[i].cors||FOTOS[i].url;
     IMGS.push(im);
-    var idx=IMGS.length-1;
-    if(i<ramos.length){
-      ramos[i].k=idx; ramos[i].txt=FOTOS[i].txt||'';
-      ramos[i].r=350+(i%2)*90; ramos[i].a=(i/n)*6.283; ramos[i].y=((i%4)-1.5)*70;
-      ramos[i].e=1; ramos[i].foto=true;
-    } else {
-      ramos.push({y:((i%4)-1.5)*70,a:(i/n)*6.283,r:350+(i%2)*90,
-        v:.00042,k:idx,e:1,txt:FOTOS[i].txt||'',foto:true});
-    }
+    /* Cada foto trae su propio sitio, no ocupa uno de los decorativos. Antes
+       los reutilizaba, y según llegara antes o después de las figuras podía
+       convertir una figura en foto o al revés. Así el orden da igual. */
+    ramos.push({y:((i%4)-1.5)*70, a:(i/n)*6.283, r:350+(i%2)*90,
+      v:.00042, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
   }
 }
 for(var i=0;i<TXT.length;i++)palabras.push({t:TXT[i],y:((i%4)-1.5)*76+R(-14,14),
@@ -1389,6 +1414,22 @@ function medida(e,im){
     var f=e.f; if(f<.45)f=.45; if(f>1.5)f=1.5;
     var lado=ladoFoto()*f;
     return {w:lado,h:lado};
+  }
+  /* Las figuras son decoración: tienen que leerse como fondo, no competir
+     con las fotos. Se miden contra el lado de la foto —menos de la mitad— en
+     vez de contra su tamaño natural, que era de 300 px y las hacía salir tan
+     grandes o más que las fotos. */
+  if(e.o.figura){
+    /* El tope está calculado para que la figura MÁS grande (cerca, y con su
+       variación al máximo) siga siendo menor que la foto MÁS pequeña (lejos):
+       0,28 × 0,95 × 1,5 = 0,40, por debajo del 0,45 mínimo de una foto. Sin
+       esa cuenta, una figura pasando por delante salía tan grande como una
+       foto de fondo y dejaba de leerse como adorno. */
+    var f2=e.f; if(f2<.45)f2=.45; if(f2>1.5)f2=1.5;
+    var lado=ladoFoto()*0.28*(e.o.e||1)*f2;
+    var may=Math.max(im.naturalWidth,im.naturalHeight)||1;
+    var kk=lado/may;
+    return {w:im.naturalWidth*kk,h:im.naturalHeight*kk};
   }
   var k=Math.min(e.f*e.o.e,.95);
   return {w:im.naturalWidth*k,h:im.naturalHeight*k};
