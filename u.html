@@ -1223,7 +1223,7 @@ var ORB_FIG=[215,285,545,625];
 /* Una velocidad POR ÓRBITA, no por figura. Cuando cada una llevaba la suya,
    las de un mismo carril se alcanzaban con el tiempo y acababan pegadas.
    Compartiendo velocidad mantienen su separación para siempre. */
-var VEL_FIG=[.00082,.00070,.00058,.00050];
+var VEL_FIG=[.00150,.00128,.00106,.00092];
 
 function ponerRamos(){
   if(RAMOS_PUESTOS) return;
@@ -1291,14 +1291,15 @@ function cargarFotos(){
        los reutilizaba, y según llegara antes o después de las figuras podía
        convertir una figura en foto o al revés. Así el orden da igual. */
     ramos.push({y:((i%4)-1.5)*70, a:(i/n)*6.283, r:350+(i%2)*90,
-      /* Casi el doble de rápido que antes: a la velocidad vieja una foto
-         tardaba más de dos minutos en dar la vuelta y el universo parecía
-         parado. */
-      v:.00078, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
+      /* Una vuelta completa en unos 45 segundos. Al principio eran más de
+         dos minutos y el universo parecía parado; con el primer arreglo
+         seguía arrastrándose. A esta velocidad siempre hay algo entrando en
+         pantalla sin que llegue a marear. */
+      v:.00140, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
   }
 }
 for(var i=0;i<TXT.length;i++)palabras.push({t:TXT[i],y:((i%4)-1.5)*76+R(-14,14),
- a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00062+(i%2)*.00018});
+ a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00112+(i%2)*.00030});
 
 var cy=1,sy=0,cx=1,sx=0;
 function camara(){cy=Math.cos(ry);sy=Math.sin(ry);cx=Math.cos(rx);sx=Math.sin(rx);}
@@ -1400,7 +1401,7 @@ function dibujar(){
  proy(0,HY,0);var ax=_x,ay=_y,af=_f,esc=af*HC;
  /* El resplandor late con las partículas: si solo latieran estas, el halo
     quedaría quieto por detrás y se notaría el truco. */
- esc*=1+latido()*.085;
+ esc*=1+latido()*.11;
  if(esc>.5){
   /* resplandor neón: cuatro capas, la más grande muy tenue y muy amplia */
   g.globalAlpha=MOVIL?.18:.22;g.drawImage(P_NEON,ax-esc*80,ay-esc*74,esc*160,esc*148);
@@ -1411,18 +1412,25 @@ function dibujar(){
   /* el corazón gira despacio sobre su eje, en el mismo sentido que los brazos */
   var hc=Math.cos(giro*.55),hs=Math.sin(giro*.55),h,tw,r2;
 
+  /* El latido es de TODO el corazón, no solo de su silueta.
+     Antes solo se aplicaba al contorno y quedaba raro: el borde se
+     ensanchaba y la nube de luz de dentro se quedaba quieta, como si el
+     dibujo tuviera dos piezas sueltas. Ahora late la nube interior, la
+     silueta y el resplandor a la vez, todos con el mismo factor, que es lo
+     que hace que se lea como un corazón y no como un aro que se estira. */
+  var LAT=1+latido()*.11, BRI=1+latido()*.35;
+
   /* escarcha del cuerpo: puntos finos que titilan, proyectados en 3D */
   for(var i=0;i<relleno.length;i++){h=relleno[i];h.f+=h.v;
-   proy(h.x*hc-h.z*hs,HY+h.y,h.x*hs+h.z*hc);if(_f<=.05)continue;
-   r2=Math.max(.45,h.s*_f*2.9);
+   proy((h.x*hc-h.z*hs)*LAT,HY+h.y*LAT,(h.x*hs+h.z*hc)*LAT);if(_f<=.05)continue;
+   r2=Math.max(.45,h.s*_f*2.9*LAT);
    if(_x<-r2||_x>W+r2||_y<-r2||_y>H+r2)continue;
    tw=.3+.7*Math.abs(Math.sin(h.f));
-   var a2=h.o*tw*_f*2.0; if(a2<.012)continue;
+   var a2=h.o*tw*_f*2.0*BRI; if(a2<.012)continue;
    g.globalAlpha=a2<1?a2:1;
    g.drawImage(i%9===0?P_BLANCO:P_ORO,_x-r2,_y-r2,r2*2,r2*2);}
 
   /* escarcha del contorno: más densa y brillante, dibuja la silueta */
-  var LAT=1+latido()*.085, BRI=1+latido()*.28;
   for(var i=0;i<corazon.length;i++){h=corazon[i];h.f+=h.v;
    /* el latido agranda el corazón desde su centro; por eso se multiplican
       las tres coordenadas y no solo el tamaño del punto */
@@ -1475,16 +1483,14 @@ function medida(e,im){
      vez de contra su tamaño natural, que era de 300 px y las hacía salir tan
      grandes o más que las fotos. */
   if(e.o.figura){
-    /* Más grandes que antes, pero nunca tanto como una foto. El truco es
-       apretar la perspectiva de las figuras (0,60 a 1,25 en vez de 0,45 a
-       1,50): así se puede subir el tamaño base sin que una figura pasando
-       cerca llegue a igualar a una foto de fondo.
-         figura máxima: 0,36 × 1,00 × 1,25 = 0,45
-         foto mínima  : 1,00 × 0,45        = 0,45
-       Justo empatadas en el caso extremo, y en todo lo demás bastante más
-       chicas, que es como se lee "decoración". */
+    /* A la MISMA distancia, una figura mide menos de la mitad que una foto
+       (0,44 × 0,95 = 0,42 contra 1). Esa es la comparación que cuenta: es la
+       que hace el ojo. Que una figura muy cercana pueda parecerse a una foto
+       muy lejana no molesta, porque la profundidad lo explica sola.
+       La perspectiva de las figuras sigue apretada (0,60 a 1,25 en vez de
+       0,45 a 1,50) para que no se disparen al pasar por delante. */
     var f2=e.f; if(f2<.60)f2=.60; if(f2>1.25)f2=1.25;
-    var lado=ladoFoto()*0.36*(e.o.e||1)*f2;
+    var lado=ladoFoto()*0.44*(e.o.e||1)*f2;
     var may=Math.max(im.naturalWidth,im.naturalHeight)||1;
     var kk=lado/may;
     return {w:im.naturalWidth*kk,h:im.naturalHeight*kk};
