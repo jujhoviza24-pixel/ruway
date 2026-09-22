@@ -152,6 +152,15 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   padding:9px 20px;color:var(--c2);font-size:11px;letter-spacing:.16em;font-family:sans-serif}
 #son{position:absolute;top:18px;left:18px;padding:8px 13px;border:1px solid rgba(255,233,168,.3);
   border-radius:22px;background:rgba(255,233,168,.08);color:var(--c2);font-size:14px;z-index:6}
+/* El botón de la nota de voz, al lado del de la música. Late despacio para
+   que se note que hay algo que escuchar, sin ser un cartel. */
+#voz{position:absolute;top:18px;left:72px;padding:8px 13px;
+  border:1px solid rgba(255,233,168,.3);border-radius:22px;
+  background:rgba(255,233,168,.08);color:var(--c2);font-size:14px;z-index:6;
+  animation:latevoz 2.6s ease-in-out infinite}
+#voz.sonando{background:var(--c1);color:#20160a;border-color:var(--c1);animation:none}
+@keyframes latevoz{0%,100%{box-shadow:0 0 0 0 rgba(255,201,74,.30)}
+  60%{box-shadow:0 0 0 10px rgba(255,201,74,0)}}
 #pista{position:absolute;top:60px;left:18px;font-size:10px;color:#9C937E;z-index:6;
   font-family:sans-serif;letter-spacing:.1em;max-width:60%}
 #volver{position:absolute;top:18px;right:18px;padding:8px 15px;border:1px solid rgba(255,233,168,.3);
@@ -426,6 +435,7 @@ function __datosU(r) { __U = (r && r.ok) ? r.r : { ok: false, error: (r && r.err
   <div class="pie">R U W A Y</div>
   <button id="volver">Volver</button>
   <button id="son" class="oculto">♪</button>
+  <button id="voz" class="oculto" onclick="tocarVoz()">🎙️</button>
   <div id="pista" class="oculto"></div>
   <button id="compartir" class="oculto" onclick="compartirUniverso()">Compartir en mi estado</button>
   <div id="grab" class="oculto"><div id="grab-fig"></div><div class="q" id="grab-txt"></div>
@@ -449,6 +459,9 @@ function __datosU(r) { __U = (r && r.ok) ? r.r : { ok: false, error: (r && r.err
      de rescatarla por pedazos mientras él lee la carta, y cuando entra a su
      universo la canción ya está lista. -->
 <audio id="audio" loop preload="auto"></audio>
+<!-- La nota de voz va en su propio reproductor: no se repite en bucle y
+     tiene que poder sonar sin pisarse con la música. -->
+<audio id="avoz" preload="none"></audio>
 
 <!-- Los ramos decorativos viven en GitHub Pages. Cargar un script de otro
      dominio siempre funciona; lo que Google no permite es pedirle datos.
@@ -549,6 +562,12 @@ var MANCHADO=false;
        no manda dirección y el rescate empieza de una, sin esperar nada.) */
     setTimeout(function(){ if(!a.duration) rescatar(); },6000);
   }
+  /* La nota de voz no se descarga hasta que la toquen: pesa poco, pero no
+     tiene por qué competir con las fotos al abrir. */
+  if(d.voz||d.vozId){
+    document.getElementById('voz').classList.remove('oculto');
+    fijarVoz();
+  }
 })();
 
 function rescatar(){
@@ -557,11 +576,19 @@ function rescatar(){
   rescatarCancion();
 }
 
-/* ---------------- la canción, por pedazos ----------------
-   Último recurso, pero el que nunca falla: el script nos manda el archivo en
-   trozos de 720 mil letras, los pegamos, los convertimos otra vez en audio y
-   se lo damos al reproductor como si viniera de este mismo teléfono. */
+/* ---------------- los audios, por pedazos ----------------
+   El mismo mecanismo sirve para las dos cosas que suenan acá: la canción de
+   fondo y la nota de voz del cliente. El script nos manda el archivo en
+   trozos, los pegamos, los convertimos otra vez en audio y se lo damos al
+   reproductor como si viniera de este mismo teléfono.
+
+   Hace falta por tres motivos distintos, y por eso vale la pena:
+     · Drive no siempre entrega el audio al reproductor.
+     · Un archivo traído "de fuera" no se puede meter en el video que se graba;
+       uno armado acá, sí.
+     · Y así el cliente nunca tiene que salir de su universo a otra pestaña. */
 var RESCATE={hecho:false,partes:[],n:0};
+var TRAIDOS={};     /* 'cancion' / 'voz'  ->  {url, mime} ya armados acá */
 
 function pistaDice(t,quedarse){
   var p=document.getElementById('pista');
@@ -570,9 +597,10 @@ function pistaDice(t,quedarse){
   if(!quedarse) p._t=setTimeout(function(){p.classList.add('oculto');},4000);
 }
 
-function pedirTrozo(parte,ok,mal){
+function pedirTrozo(cual,parte,ok,mal){
   var d=DATOS;
-  if(!d||!d.api||!d.cancionId){ mal&&mal(); return; }
+  if(!d||!d.api){ mal&&mal(); return; }
+  if(cual==='voz' ? !d.vozId : !d.cancionId){ mal&&mal(); return; }
   var nombre='__son'+(++RESCATE.n);
   var t=document.createElement('script');
   /* Un minuto: un trozo son tres millones de bytes y el servidor tiene que
@@ -590,44 +618,51 @@ function pedirTrozo(parte,ok,mal){
   t.onerror=function(){limpiar();mal&&mal();};
   t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')
     +'vista=api&rfn=cancion&rcb='+nombre
-    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte]));
+    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte,cual]));
   document.head.appendChild(t);
 }
 
-function rescatarCancion(){
-  document.getElementById('son').textContent='♪…';
-  pistaDice('PREPARANDO TU CANCIÓN…',true);
+/* Trae un audio entero y lo deja listo como archivo local.
+   `avisa(hecho,total)` sirve para ir contando por pantalla. */
+function traerAudio(cual,avisa,ok,mal){
+  if(TRAIDOS[cual]){ ok(TRAIDOS[cual]); return; }
+  var partes=[], mime='', otraVez=false;
 
   function siguiente(i){
-    pedirTrozo(i,function(r){
-      RESCATE.partes[r.parte]=r.b64;
-      RESCATE.mime=r.mime||'audio/mpeg';
-      if(r.total>1) pistaDice('PREPARANDO TU CANCIÓN · '
-        +(r.parte+1)+' de '+r.total,true);
+    pedirTrozo(cual,i,function(r){
+      partes[r.parte]=r.b64;
+      mime=r.mime||'audio/mpeg';
+      avisa&&avisa(r.parte+1,r.total);
       if(r.parte+1<r.total){ siguiente(r.parte+1); return; }
-      armarCancion();
+      try{
+        var bin=atob(partes.join('')), n=bin.length, bytes=new Uint8Array(n);
+        for(var k=0;k<n;k++) bytes[k]=bin.charCodeAt(k);
+        TRAIDOS[cual]={url:URL.createObjectURL(new Blob([bytes],{type:mime})),mime:mime};
+        ok(TRAIDOS[cual]);
+      }catch(e){ mal&&mal(); }
     },function(){
       /* Un segundo intento antes de rendirse: casi siempre es que el script
          estaba dormido y el primer viaje fue el que lo despertó. */
-      if(RESCATE.segundaVez){ rendirse(); return; }
-      RESCATE.segundaVez=true;
+      if(otraVez){ mal&&mal(); return; }
+      otraVez=true;
       setTimeout(function(){ siguiente(i); },1200);
     });
   }
   siguiente(0);
 }
 
-function armarCancion(){
-  try{
-    var b64=RESCATE.partes.join('');
-    var bin=atob(b64), n=bin.length, bytes=new Uint8Array(n);
-    for(var i=0;i<n;i++) bytes[i]=bin.charCodeAt(i);
-    var url=URL.createObjectURL(new Blob([bytes],{type:RESCATE.mime}));
+function rescatarCancion(){
+  document.getElementById('son').textContent='♪…';
+  pistaDice('PREPARANDO TU CANCIÓN…',true);
+  traerAudio('cancion',function(hecho,total){
+    if(total>1) pistaDice('PREPARANDO TU CANCIÓN · '+hecho+' de '+total,true);
+  },function(r){
     var a=document.getElementById('audio');
     /* Este oyente de error ya no sirve para nada y si salta otra vez nos
        mandaría a rescatar lo que ya está rescatado. */
     a.onerror=null;
-    a.src=url;
+    a.src=r.url;
+    RESCATE.mime=r.mime;
     RESCATE.lista=true;
     document.getElementById('son').textContent='♪';
     /* Si el cliente ya estaba dentro de su universo cuando terminó de
@@ -635,12 +670,64 @@ function armarCancion(){
        entrar como siempre. */
     if(vivo){ a.volume=.7; a.play().catch(function(){}); }
     pistaDice('SUENA TU CANCIÓN');
-  }catch(e){ rendirse(); }
+  },rendirse);
 }
 
 function rendirse(){
   document.getElementById('son').classList.add('oculto');
   pistaDice('LA CANCIÓN NO SE PUDO CARGAR');
+}
+
+/* ================= la nota de voz =================
+   El mensaje que grabó quien manda el regalo, con sus propias palabras. Va en
+   su propio botón y calla la música mientras suena: es lo que hay que
+   escuchar. Es también lo que se mete en el video que se comparte. */
+var VOZ={sonando:false};
+
+function tocarVoz(){
+  var b=document.getElementById('voz');
+  var a=document.getElementById('avoz');
+  if(VOZ.sonando){ a.pause(); return; }
+  if(a.src){ ponerVoz(a); return; }
+
+  b.textContent='🎙️…';
+  pistaDice('PREPARANDO EL MENSAJE…',true);
+  traerAudio('voz',null,function(r){
+    a.src=r.url; ponerVoz(a);
+  },function(){
+    b.classList.add('oculto');
+    pistaDice('EL MENSAJE NO SE PUDO CARGAR');
+  });
+}
+
+function ponerVoz(a){
+  var m=document.getElementById('audio');
+  VOZ.antes=!m.paused;
+  if(VOZ.antes) m.pause();
+  a.currentTime=0;
+  a.play().then(function(){
+    VOZ.sonando=true;
+    document.getElementById('voz').classList.add('sonando');
+    document.getElementById('voz').textContent='⏸';
+    pistaDice('UN MENSAJE PARA TI');
+  }).catch(function(){ pistaDice('NO SE PUDO REPRODUCIR'); });
+}
+
+function fijarVoz(){
+  var a=document.getElementById('avoz');
+  if(!a) return;
+  a.addEventListener('ended',soltarVoz);
+  a.addEventListener('pause',soltarVoz);
+}
+function soltarVoz(){
+  if(!VOZ.sonando) return;
+  VOZ.sonando=false;
+  var b=document.getElementById('voz');
+  b.classList.remove('sonando'); b.textContent='🎙️';
+  /* La música vuelve donde estaba, no desde el principio. Salvo si mientras
+     tanto empezó a grabarse el video: ahí todo tiene que estar en silencio,
+     porque el sonido del video se mezcla aparte. */
+  if(VOZ.antes && !GRABANDO){ document.getElementById('audio').play().catch(function(){}); }
 }
 
 var s1=document.getElementById('s1'),s2=document.getElementById('s2'),s3=document.getElementById('s3');
@@ -1167,11 +1254,33 @@ function cerrarGrab(){
 function compartirUniverso(){
   if(GRABANDO) return;
   cerrarGlobo();
+  /* Si el mensaje de voz estaba sonando, se calla: el video trae su propio
+     sonido y oír las dos cosas a la vez suena a error. */
+  VOZ.antes=false;
+  try{ document.getElementById('avoz').pause(); }catch(e){}
   if(!hayGrabador() || !formatoVideo()){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
   }
-  grabarUniverso();
+  /* El video lleva audio, y para poder metérselo el archivo tiene que estar
+     acá dentro: un audio traído de otro sitio el navegador no lo deja
+     mezclar. Así que primero se trae, y después se graba.
+
+     Manda la nota de voz si la hay. Una voz diciendo algo tuyo detiene a
+     quien pasa por los estados; una canción de fondo, no tanto. */
+  var cual = (DATOS.vozId ? 'voz' : (DATOS.cancionId ? 'cancion' : ''));
+  if(!cual){ grabarUniverso(null); return; }
+  if(TRAIDOS[cual]){ grabarUniverso(TRAIDOS[cual]); return; }
+
+  avisoGrab('<div class="pun"></div>','Preparando el audio');
+  traerAudio(cual,function(hecho,total){
+    if(total>1) avisoGrab('<div class="pun"></div>','Preparando el audio · '+hecho+' de '+total);
+  },function(r){
+    grabarUniverso(r);
+  },function(){
+    /* Sin audio se graba igual: vale más un video mudo que ninguno. */
+    grabarUniverso(null);
+  });
 }
 
 /* El guion del video. Un universo girando sin más no vende: lo que emociona
@@ -1195,7 +1304,7 @@ function armarGuion(){
            total: entrada + fotos.length*por + salida };
 }
 
-function grabarUniverso(){
+function grabarUniverso(audio){
   var origen=document.getElementById('uni');
   var guion=armarGuion();
   /* El tamaño del video se elige según lo que este aparato viene aguantando.
@@ -1215,17 +1324,44 @@ function grabarUniverso(){
      cuadro nuevo. Con captureStream(30) el navegador va a buscar treinta
      cuadros por segundo aunque no hayan cambiado, y en un celular que además
      está dibujando el universo eso es justo lo que produce el tirón. */
-  var pista=null;
+  var pista=null, son=null;
   try{
     var flujo=lienzo.captureStream(0);
     pista=flujo.getVideoTracks()[0];
     if(!pista || typeof pista.requestFrame!=='function'){
       pista=null; flujo=lienzo.captureStream(25);
     }
-    rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond: VW===720 ? 7000000 : 4200000});
+
+    /* El audio del video. Se toca en un reproductor aparte, escondido, y su
+       sonido se enchufa al video en vez de a los parlantes: así el cliente no
+       oye dos cosas a la vez mientras se graba, y el video sí lleva sonido.
+       Si algo de esto falla, se graba mudo y no se le dice nada: el video
+       sigue sirviendo. */
+    if(audio && window.AudioContext){
+      try{
+        son={};
+        son.el=new Audio();
+        son.el.src=audio.url; son.el.loop=true; son.el.volume=1;
+        son.ctx=new AudioContext();
+        son.fuente=son.ctx.createMediaElementSource(son.el);
+        son.destino=son.ctx.createMediaStreamDestination();
+        son.fuente.connect(son.destino);
+        son.destino.stream.getAudioTracks().forEach(function(t){ flujo.addTrack(t); });
+      }catch(e){ son=null; }
+    }
+
+    rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond: VW===720 ? 7000000 : 4200000,
+                                 audioBitsPerSecond:128000});
   }catch(err){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
+  }
+
+  function callarSon(){
+    if(!son) return;
+    try{ son.el.pause(); }catch(e){}
+    try{ son.ctx.close(); }catch(e){}
+    son=null;
   }
   lg.imageSmoothingEnabled=true;
   try{ lg.imageSmoothingQuality='high'; }catch(e){}
@@ -1238,7 +1374,7 @@ function grabarUniverso(){
 
   rec.ondataavailable=function(ev){ if(ev.data && ev.data.size) trozos.push(ev.data); };
   rec.onerror=function(){
-    GRABANDO=false; ESC=escAntes; size(); cancelAnimationFrame(parar); cerrarGrab();
+    GRABANDO=false; ESC=escAntes; size(); cancelAnimationFrame(parar); callarSon(); cerrarGrab();
     document.getElementById('ayuda').classList.remove('oculto');
   };
   rec.onstop=function(){
@@ -1371,6 +1507,7 @@ function grabarUniverso(){
 
     if(t>=guion.total){
       GRABANDO=false; ESC=escAntes; size();
+      callarSon();
       try{rec.stop();}catch(e){}
       return;
     }
@@ -1379,6 +1516,24 @@ function grabarUniverso(){
 
   avisoGrab('<div class="n" id="grab-n">'+Math.ceil(guion.total)+'</div>',
             'Grabando tu video · déjalo terminar');
+
+  /* La música de la pantalla se calla mientras se graba: si no, el cliente
+     oye la canción dos veces, desfasada, y suena a error. Vuelve al acabar. */
+  var mus=document.getElementById('audio'), musSonaba=mus && !mus.paused;
+  if(musSonaba) mus.pause();
+
+  if(son){
+    /* El navegador solo deja sonar si viene de un toque del usuario, y este
+       viene de uno: el botón de compartir. */
+    try{ son.ctx.resume(); }catch(e){}
+    son.el.currentTime=0;
+    son.el.play().catch(function(){ callarSon(); });
+  }
+
+  var seguir=function(){ if(musSonaba) mus.play().catch(function(){}); };
+  rec.addEventListener('stop',seguir);
+  rec.addEventListener('error',seguir);
+
   rec.start();
   parar=requestAnimationFrame(cuadro);
 }
