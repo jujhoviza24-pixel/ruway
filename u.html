@@ -11,7 +11,11 @@
 <style>
 /* Los tres colores del tema. Los pone el servidor según la campaña; estos
    son los de fábrica, los amarillos de siempre. */
-:root{--c1:#FFC94A;--c2:#FFE9A8;--c3:#FF9A2E}
+:root{--c1:#FFC94A;--c2:#FFE9A8;--c3:#FF9A2E;
+  /* de fábrica, los amarillos de siempre; el javascript los recalcula a
+     partir de los tres colores de la campaña en cuanto arranca */
+  --pet-claro:#FFF4A8;--pet-medio:#FFD43C;--pet-hondo:#EDA21A;
+  --cen-claro:#F9B24E;--cen-hondo:#8F420C}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:#03040a;overflow:hidden;
   font-family:'Baloo 2',-apple-system,BlinkMacSystemFont,sans-serif;color:#fff}
@@ -22,8 +26,17 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 #s1{flex-direction:column;gap:14px;
   background:radial-gradient(ellipse at 50% 55%,#4a3410 0%,#2a1c08 35%,#120c05 70%,#03040a 100%)}
 #polvo{position:absolute;inset:0;width:100%;height:100%}
-#haloCor{position:absolute;left:50%;top:50%;width:min(112vw,560px);transform:translate(-50%,-56%);
-  pointer-events:none;opacity:.9}
+/* El corazón de la portada late igual que el del universo: dos golpes y
+   descanso. Se hace con CSS porque acá no hay lienzo que dibujar. */
+#haloCor{position:absolute;left:50%;top:50%;width:min(112vw,560px);
+  transform:translate(-50%,-56%);pointer-events:none;opacity:.9;
+  transform-origin:50% 56%;animation:latecor 1.15s ease-out infinite}
+@keyframes latecor{
+  0%{transform:translate(-50%,-56%) scale(1)}
+  9%{transform:translate(-50%,-56%) scale(1.085)}
+  20%{transform:translate(-50%,-56%) scale(1)}
+  29%{transform:translate(-50%,-56%) scale(1.048)}
+  42%,100%{transform:translate(-50%,-56%) scale(1)}}
 .mini{position:absolute;color:#FFD97A;opacity:.28;font-size:18px;pointer-events:none;
   animation:flota 7s ease-in-out infinite}
 @keyframes flota{0%,100%{transform:translateY(0) rotate(-8deg)}50%{transform:translateY(-14px) rotate(8deg)}}
@@ -372,10 +385,18 @@ function traer(par, ok, mal) {
           <stop offset="0" stop-color="#FFD9E0"/><stop offset="1" stop-color="#FFA9BC"/></linearGradient>
         <radialGradient id="gOjo" cx="38%" cy="30%" r="70%">
           <stop offset="0" stop-color="#5B4B58"/><stop offset="1" stop-color="#1A1219"/></radialGradient>
+        <!-- Las flores del ramo siguen los colores de la campaña. Antes eran
+             amarillas fijas: el universo se abría en rosado o en verde y el
+             conejito seguía trayendo girasoles, que es lo primero que ve
+             quien recibe el regalo. Los tonos los calcula el javascript a
+             partir de los tres colores del tema. -->
         <radialGradient id="gPetalo" cx="50%" cy="45%" r="62%">
-          <stop offset="0" stop-color="#FFF4A8"/><stop offset=".55" stop-color="#FFD43C"/><stop offset="1" stop-color="#EDA21A"/></radialGradient>
+          <stop offset="0" stop-color="var(--pet-claro)"/>
+          <stop offset=".55" stop-color="var(--pet-medio)"/>
+          <stop offset="1" stop-color="var(--pet-hondo)"/></radialGradient>
         <radialGradient id="gCentro" cx="40%" cy="35%" r="70%">
-          <stop offset="0" stop-color="#F9B24E"/><stop offset="1" stop-color="#8F420C"/></radialGradient>
+          <stop offset="0" stop-color="var(--cen-claro)"/>
+          <stop offset="1" stop-color="var(--cen-hondo)"/></radialGradient>
         <linearGradient id="gPapel" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stop-color="#F9ECCF"/><stop offset="1" stop-color="#D9BE8E"/></linearGradient>
         <linearGradient id="gHoja" x1="0" y1="0" x2="1" y2="1">
@@ -411,18 +432,19 @@ function traer(par, ok, mal) {
         <filter id="sombra" x="-20%" y="-20%" width="140%" height="150%">
           <feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#2A1A05" flood-opacity=".38"/></filter>
         <symbol id="flor" viewBox="-20 -20 40 40">
-          <g fill="url(#gPetalo)" stroke="#C98A12" stroke-width=".6" stroke-opacity=".6">
+          <g fill="url(#gPetalo)" stroke="var(--pet-hondo)" stroke-width=".6" stroke-opacity=".6">
             <ellipse cx="0" cy="-11" rx="6.2" ry="9.5"/><ellipse cx="0" cy="-11" rx="6.2" ry="9.5" transform="rotate(72)"/>
             <ellipse cx="0" cy="-11" rx="6.2" ry="9.5" transform="rotate(144)"/><ellipse cx="0" cy="-11" rx="6.2" ry="9.5" transform="rotate(216)"/>
             <ellipse cx="0" cy="-11" rx="6.2" ry="9.5" transform="rotate(288)"/></g>
           <circle r="5.6" fill="url(#gCentro)"/>
-          <circle cx="-1.6" cy="-1.8" r="1.6" fill="#FFE1A6" opacity=".7"/>
+          <circle cx="-1.6" cy="-1.8" r="1.6" fill="var(--pet-claro)" opacity=".7"/>
         </symbol>
         <g id="ramoDef" filter="url(#sombra)">
           <path d="M54 152 L106 152 L99 98 L61 98 Z" fill="url(#gPapel)" stroke="#B6935E" stroke-width="1.2" stroke-linejoin="round"/>
           <path d="M61 98 L99 98 L96 108 L64 108 Z" fill="#C9AA76" opacity=".5"/>
-          <path d="M66 122 q14 6 28 0" fill="none" stroke="#E0983A" stroke-width="4" stroke-linecap="round"/>
-          <circle cx="80" cy="124" r="4.5" fill="#F6B850"/>
+          <!-- el lacito del ramo, también del tema -->
+          <path d="M66 122 q14 6 28 0" fill="none" stroke="var(--pet-hondo)" stroke-width="4" stroke-linecap="round"/>
+          <circle cx="80" cy="124" r="4.5" fill="var(--pet-medio)"/>
           <g stroke="#4F8A3A" stroke-width="3" stroke-linecap="round"><path d="M80 104 L72 70"/><path d="M80 104 L95 66"/><path d="M80 104 L60 76"/></g>
           <ellipse cx="50" cy="88" rx="13" ry="6.5" fill="url(#gHoja)" transform="rotate(-32 50 88)"/>
           <ellipse cx="110" cy="90" rx="13" ry="6.5" fill="url(#gHoja)" transform="rotate(32 110 90)"/>
@@ -430,7 +452,7 @@ function traer(par, ok, mal) {
           <use href="#flor" x="58" y="18" width="48" height="48"/><use href="#flor" x="16" y="72" width="40" height="40"/>
           <use href="#flor" x="102" y="70" width="40" height="40"/><use href="#flor" x="57" y="64" width="48" height="48"/>
           <use href="#flor" x="36" y="84" width="38" height="38"/><use href="#flor" x="88" y="88" width="38" height="38"/>
-          <g fill="#FFF0A0"><path d="M20 40 l3 6 6 3 -6 3 -3 6 -3 -6 -6 -3 6 -3z"/><path d="M130 30 l2.5 5 5 2.5 -5 2.5 -2.5 5 -2.5 -5 -5 -2.5 5 -2.5z"/></g>
+          <g fill="var(--pet-claro)"><path d="M20 40 l3 6 6 3 -6 3 -3 6 -3 -6 -6 -3 6 -3z"/><path d="M130 30 l2.5 5 5 2.5 -5 2.5 -2.5 5 -2.5 -5 -5 -2.5 5 -2.5z"/></g>
         </g>
       </defs>
 
@@ -677,6 +699,15 @@ var MANCHADO=false;
 (function(){
   var r=document.documentElement.style;
   r.setProperty('--c1',HX1); r.setProperty('--c2',HX2); r.setProperty('--c3',HX3);
+  /* Los tonos de las flores del conejito: un claro casi blanco para el
+     centro del pétalo, el color principal para el cuerpo, y un tono hondo
+     para el borde y las sombras. Todo sale de los tres del tema, así que
+     cualquier campaña nueva trae sus flores sin tocar nada. */
+  r.setProperty('--pet-claro', hex(mez(C2,BL,.55)));
+  r.setProperty('--pet-medio', HX1);
+  r.setProperty('--pet-hondo', hex(mez(C3,[0,0,0],.18)));
+  r.setProperty('--cen-claro', hex(mez(C1,C3,.45)));
+  r.setProperty('--cen-hondo', hex(mez(C3,[0,0,0],.55)));
   if(TEMA.portada) document.getElementById('p-tit').textContent=TEMA.portada;
   if(TEMA.sub)     document.getElementById('p-sub').textContent=TEMA.sub;
   if(TEMA.cinta)   document.getElementById('p-cinta').textContent=TEMA.cinta;
@@ -1063,6 +1094,17 @@ var NUBES=[nube('120,90,220'),nube('70,120,230'),nube('210,150,60'),nube('190,80
 
 var rx=-0.34,ry=0,zoom=.78,giro=0;
 var neb=[],stars=[],espiral=[],corazon=[],ramos=[],palabras=[];
+
+/* ---------------- el latido ----------------
+   Un corazón de verdad no late como un globo que se infla y se desinfla: da
+   DOS golpes, uno fuerte y otro más flojo justo detrás, y después descansa.
+   Eso es lo que hace que se reconozca como un latido y no como una
+   pulsación cualquiera. Un ciclo cada 1,15 s, que es un pulso tranquilo. */
+function latido(){
+  var p=((performance.now()/1000)%1.15)/1.15;
+  var d1=p-.02, d2=p-.28;
+  return Math.exp(-190*d1*d1) + Math.exp(-150*d2*d2)*.55;
+}
 var TXT=(TEMA.frases && TEMA.frases.length)
   ? TEMA.frases.slice(0,12)
   : ['Te amo','Mi vida','Mi girasol','Eres mi todo','Contigo siempre',
@@ -1178,6 +1220,10 @@ var RAMOS_PUESTOS=false;
    esos radios se cruzarían por delante justo cuando alguien mira una foto.
    Así giran en carriles propios y el espacio se siente lleno sin estorbar. */
 var ORB_FIG=[215,285,545,625];
+/* Una velocidad POR ÓRBITA, no por figura. Cuando cada una llevaba la suya,
+   las de un mismo carril se alcanzaban con el tiempo y acababan pegadas.
+   Compartiendo velocidad mantienen su separación para siempre. */
+var VEL_FIG=[.00082,.00070,.00058,.00050];
 
 function ponerRamos(){
   if(RAMOS_PUESTOS) return;
@@ -1245,11 +1291,14 @@ function cargarFotos(){
        los reutilizaba, y según llegara antes o después de las figuras podía
        convertir una figura en foto o al revés. Así el orden da igual. */
     ramos.push({y:((i%4)-1.5)*70, a:(i/n)*6.283, r:350+(i%2)*90,
-      v:.00042, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
+      /* Casi el doble de rápido que antes: a la velocidad vieja una foto
+         tardaba más de dos minutos en dar la vuelta y el universo parecía
+         parado. */
+      v:.00078, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
   }
 }
 for(var i=0;i<TXT.length;i++)palabras.push({t:TXT[i],y:((i%4)-1.5)*76+R(-14,14),
- a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00034+(i%2)*.00011});
+ a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00062+(i%2)*.00018});
 
 var cy=1,sy=0,cx=1,sx=0;
 function camara(){cy=Math.cos(ry);sy=Math.sin(ry);cx=Math.cos(rx);sx=Math.sin(rx);}
@@ -1349,6 +1398,9 @@ function dibujar(){
 
  /* corazón neón: cuerpo encendido + borde + escarche */
  proy(0,HY,0);var ax=_x,ay=_y,af=_f,esc=af*HC;
+ /* El resplandor late con las partículas: si solo latieran estas, el halo
+    quedaría quieto por detrás y se notaría el truco. */
+ esc*=1+latido()*.085;
  if(esc>.5){
   /* resplandor neón: cuatro capas, la más grande muy tenue y muy amplia */
   g.globalAlpha=MOVIL?.18:.22;g.drawImage(P_NEON,ax-esc*80,ay-esc*74,esc*160,esc*148);
@@ -1370,12 +1422,15 @@ function dibujar(){
    g.drawImage(i%9===0?P_BLANCO:P_ORO,_x-r2,_y-r2,r2*2,r2*2);}
 
   /* escarcha del contorno: más densa y brillante, dibuja la silueta */
+  var LAT=1+latido()*.085, BRI=1+latido()*.28;
   for(var i=0;i<corazon.length;i++){h=corazon[i];h.f+=h.v;
-   proy(h.x*hc-h.z*hs,HY+h.y,h.x*hs+h.z*hc);if(_f<=.05)continue;
-   r2=Math.max(.5,h.s*_f*3.2);
+   /* el latido agranda el corazón desde su centro; por eso se multiplican
+      las tres coordenadas y no solo el tamaño del punto */
+   proy((h.x*hc-h.z*hs)*LAT,HY+h.y*LAT,(h.x*hs+h.z*hc)*LAT);if(_f<=.05)continue;
+   r2=Math.max(.5,h.s*_f*3.2*LAT);
    if(_x<-r2||_x>W+r2||_y<-r2||_y>H+r2)continue;
    tw=.4+.6*Math.abs(Math.sin(h.f));
-   var a3=h.o*tw*_f*2.3; if(a3<.012)continue;
+   var a3=h.o*tw*_f*2.3*BRI; if(a3<.012)continue;
    g.globalAlpha=a3<1?a3:1;
    g.drawImage(i%5===0?P_BLANCO:P_ORO,_x-r2,_y-r2,r2*2,r2*2);}
  }
@@ -1420,13 +1475,16 @@ function medida(e,im){
      vez de contra su tamaño natural, que era de 300 px y las hacía salir tan
      grandes o más que las fotos. */
   if(e.o.figura){
-    /* El tope está calculado para que la figura MÁS grande (cerca, y con su
-       variación al máximo) siga siendo menor que la foto MÁS pequeña (lejos):
-       0,28 × 0,95 × 1,5 = 0,40, por debajo del 0,45 mínimo de una foto. Sin
-       esa cuenta, una figura pasando por delante salía tan grande como una
-       foto de fondo y dejaba de leerse como adorno. */
-    var f2=e.f; if(f2<.45)f2=.45; if(f2>1.5)f2=1.5;
-    var lado=ladoFoto()*0.28*(e.o.e||1)*f2;
+    /* Más grandes que antes, pero nunca tanto como una foto. El truco es
+       apretar la perspectiva de las figuras (0,60 a 1,25 en vez de 0,45 a
+       1,50): así se puede subir el tamaño base sin que una figura pasando
+       cerca llegue a igualar a una foto de fondo.
+         figura máxima: 0,36 × 1,00 × 1,25 = 0,45
+         foto mínima  : 1,00 × 0,45        = 0,45
+       Justo empatadas en el caso extremo, y en todo lo demás bastante más
+       chicas, que es como se lee "decoración". */
+    var f2=e.f; if(f2<.60)f2=.60; if(f2>1.25)f2=1.25;
+    var lado=ladoFoto()*0.36*(e.o.e||1)*f2;
     var may=Math.max(im.naturalWidth,im.naturalHeight)||1;
     var kk=lado/may;
     return {w:im.naturalWidth*kk,h:im.naturalHeight*kk};
