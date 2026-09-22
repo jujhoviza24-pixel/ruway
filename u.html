@@ -165,14 +165,54 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   font-family:sans-serif;letter-spacing:.1em;max-width:60%}
 #volver{position:absolute;top:18px;right:18px;padding:8px 15px;border:1px solid rgba(255,233,168,.3);
   border-radius:22px;background:rgba(255,233,168,.08);color:var(--c2);font-size:11px;font-family:sans-serif}
+
+/* ---------- la pantalla de espera ---------- */
+#esperando{position:fixed;inset:0;z-index:30;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:0;background:#03040a;
+  transition:opacity .7s}
+#esperando.fuera{opacity:0;pointer-events:none}
+#esperando .cielo{position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 45%,#2a1c08 0%,#140d05 45%,#03040a 100%)}
+#esperando .sobre{position:relative;width:104px;height:auto;opacity:.9;
+  animation:respira 2.6s ease-in-out infinite}
+@keyframes respira{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.06);opacity:1}}
+#esperando p{position:relative;margin-top:22px;font-size:12px;letter-spacing:.16em;white-space:pre-line;
+  text-transform:uppercase;color:var(--c2);opacity:.75;text-align:center;
+  padding:0 30px;line-height:1.9;font-family:'Baloo 2',sans-serif}
+#esperando .puntos{position:relative;display:flex;gap:7px;margin-top:16px}
+#esperando .puntos i{width:6px;height:6px;border-radius:50%;background:var(--c1);
+  opacity:.35;animation:late 1.3s ease-in-out infinite}
+#esperando .puntos i:nth-child(2){animation-delay:.18s}
+#esperando .puntos i:nth-child(3){animation-delay:.36s}
+@keyframes late{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+#esperando button{position:relative;margin-top:26px;padding:13px 28px;border:0;
+  border-radius:24px;background:var(--c1);color:#20160a;font-size:13.5px;font-weight:800;
+  font-family:'Baloo 2',sans-serif;display:none}
+#esperando.perdido button{display:block}
+#esperando.perdido .puntos{display:none}
 </style>
 
-<script>
-var __U = null;
-function __datosU(r) { __U = (r && r.ok) ? r.r : { ok: false, error: (r && r.error) || '' }; }
+<!-- Avisar de con quién vamos a hablar ahorra medio segundo largo en el
+     celular: el saludo a cada servidor (DNS, TLS) se hace mientras la página
+     todavía se está leyendo, en vez de cuando ya hace falta. -->
+<link rel="preconnect" href="https://script.google.com" crossorigin>
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+<link rel="dns-prefetch" href="https://drive.google.com">
 
-(function () {
-  var API = "https://script.google.com/macros/s/AKfycbym_HuTN7HjpEy3IkKwvdamuJtExLvVnUJt83-vWxhhUR1kNx_hfNzd6GC53nNc-jYOGQ/exec";
+<script>
+var API = "https://script.google.com/macros/s/AKfycbym_HuTN7HjpEy3IkKwvdamuJtExLvVnUJt83-vWxhhUR1kNx_hfNzd6GC53nNc-jYOGQ/exec";
+var DATOS = null;
+var _n = 0;
+
+function espera(txt, perdido) {
+  var c = document.getElementById('esperando');
+  var t = document.getElementById('esp-txt');
+  if (t && txt) t.textContent = txt;
+  if (c && perdido) c.classList.add('perdido');
+}
+
+function paramsUniverso() {
   var q = new URLSearchParams(location.search);
   var mapa = { c:'rcod', cod:'rcod', rcod:'rcod', para:'rpara', rpara:'rpara',
                 msg:'rmsg', rmsg:'rmsg', de:'rde', rde:'rde',
@@ -182,21 +222,117 @@ function __datosU(r) { __U = (r && r.ok) ? r.r : { ok: false, error: (r && r.err
     var v = q.get(k);
     if (v && !par[mapa[k]]) par[mapa[k]] = v;
   });
-  document.write('<scr' + 'ipt src="' + API
-    + (API.indexOf('?') >= 0 ? '&' : '?')
-    + 'vista=api&rfn=universo&rcb=__datosU&rargs='
-    + encodeURIComponent(JSON.stringify([par]))
-    + '"><\/scr' + 'ipt>');
-})();
-</script>
-<script>
-/* Los ramos y figuras decorativos: cuál toca lo dice el tema de la campaña,
-   así que solo se puede saber ahora, con los datos ya en la mano. */
-(function () {
-  if (__U && __U.ramos) {
-    document.write('<scr' + 'ipt src="' + __U.ramos + '"><\/scr' + 'ipt>');
+  return par;
+}
+
+/* Lo que ya se vio una vez se guarda acá. Un universo se abre muchas veces
+   —se lo enseñas a tu mamá, a tu hermana, al de al lado— y esas veces tienen
+   que entrar de golpe, no esperar otra vez a que Google despierte. */
+function llave(par) { return 'ruway:uni:' + (par.rcod || '-'); }
+
+function guardado(par) {
+  try {
+    var v = JSON.parse(localStorage.getItem(llave(par)) || 'null');
+    if (v && v.d && (Date.now() - v.t) < 30 * 24 * 3600 * 1000) return v.d;
+  } catch (e) {}
+  return null;
+}
+function guardar(par, d) {
+  try { localStorage.setItem(llave(par), JSON.stringify({ t: Date.now(), d: d })); }
+  catch (e) {}
+}
+
+/* Los ramos y figuras del tema. Se piden en cuanto se sabe cuáles son y no
+   frenan nada: si llegan tarde, el universo ya está girando y aparecen. */
+function traerRamos(url) {
+  if (!url || window.__ramosPedidos) return;
+  window.__ramosPedidos = true;
+  var t = document.createElement('script');
+  t.src = url; t.async = true;
+  document.head.appendChild(t);
+}
+
+function pedirDatos() {
+  var par = paramsUniverso();
+
+  /* 1. ¿Ya lo tenemos de otra vez? Adentro sin esperar a nadie. */
+  var viejo = guardado(par);
+  if (viejo && viejo.ok) {
+    traerRamos(viejo.ramos);
+    DATOS = viejo;
+    setTimeout(function () { encender(); }, 0);
+    /* Y por detrás se pide la versión fresca, por si el dueño cambió algo:
+       se guarda para la próxima vez, sin interrumpir esta. */
+    traer(par, function (d) { if (d && d.ok) guardar(par, d); }, function () {});
+    return;
   }
-})();
+
+  espera('Abriendo tu universo');
+  var t0 = Date.now();
+  var contando = setInterval(function () {
+    var s = Math.round((Date.now() - t0) / 1000);
+    if (s > 22) espera('Está tardando, pero seguimos');
+    else if (s > 11) espera('Despertando tu universo');
+  }, 1000);
+
+  traer(par, function (d) {
+    clearInterval(contando);
+    if (!d || !d.ok) {
+      espera('No encontramos este universo.\nRevisa el enlace o escríbenos.', true);
+      return;
+    }
+    guardar(par, d);
+    traerRamos(d.ramos);
+    DATOS = d;
+    encender();
+  }, function () {
+    clearInterval(contando);
+    espera('No pudimos abrirlo.\nRevisa tu conexión.', true);
+  });
+}
+
+/* Pide los datos y no se rinde a la primera: a los siete segundos manda otra
+   petición en paralelo sin cancelar la anterior, y se queda con la que
+   conteste antes. Es exactamente lo que uno hacía a mano cuando le daba a
+   "reintentar" y entraba de golpe. */
+function traer(par, ok, mal) {
+  var hecho = false, vivos = 0, muertos = 0;
+
+  function intento(ultimo) {
+    vivos++;
+    var nombre = '__uni' + (++_n);
+    var t = document.createElement('script');
+    t.async = true;
+
+    function limpiar() {
+      clearTimeout(refuerzo); clearTimeout(tope);
+      try { delete window[nombre]; } catch (e) { window[nombre] = undefined; }
+      if (t.parentNode) t.parentNode.removeChild(t);
+    }
+    function murio() {
+      limpiar(); muertos++;
+      if (muertos < vivos) return;          /* todavía queda otro en camino */
+      if (!ultimo) { setTimeout(function () { intento(true); }, 900); return; }
+      if (!hecho) { hecho = true; mal(); }
+    }
+    window[nombre] = function (r) {
+      limpiar();
+      if (hecho) return;
+      hecho = true;
+      ok(r && r.ok ? r.r : null);
+    };
+    t.onerror = murio;
+
+    var refuerzo = ultimo ? 0 : setTimeout(function () { intento(true); }, 7000);
+    var tope = setTimeout(murio, 45000);
+
+    t.src = API + (API.indexOf('?') >= 0 ? '&' : '?')
+      + 'vista=api&rfn=universo&rcb=' + nombre
+      + '&rargs=' + encodeURIComponent(JSON.stringify([par]));
+    document.head.appendChild(t);
+  }
+  intento(false);
+}
 </script>
 </head>
 <body>
@@ -458,6 +594,22 @@ function __datosU(r) { __U = (r && r.ok) ? r.r : { ok: false, error: (r && r.err
      abría su regalo. Cargándola desde el principio, si algo falla da tiempo
      de rescatarla por pedazos mientras él lee la carta, y cuando entra a su
      universo la canción ya está lista. -->
+
+<!-- La espera. Se pinta con lo que ya trae la página: ni una petición, ni una
+     fuente, ni una imagen de fuera. Aparece en cuanto el navegador lee esto,
+     que desde GitHub son décimas de segundo. Lo que tarde Google en despertar
+     se pasa mirando esto, que es bonito, y no una pantalla en blanco. -->
+<div id="esperando">
+  <div class="cielo"></div>
+  <svg class="sobre" viewBox="0 0 120 84" aria-hidden="true">
+    <path d="M6 14h108v62H6z" fill="none" stroke="rgba(255,233,168,.55)" stroke-width="2.5"/>
+    <path d="M6 14l54 38 54-38" fill="none" stroke="rgba(255,233,168,.55)" stroke-width="2.5"/>
+  </svg>
+  <p id="esp-txt">Abriendo tu universo</p>
+  <div class="puntos"><i></i><i></i><i></i></div>
+  <button id="esp-bt" onclick="location.reload()">Reintentar</button>
+</div>
+
 <audio id="audio" loop preload="auto"></audio>
 <!-- La nota de voz va en su propio reproductor: no se repite en bucle y
      tiene que poder sonar sin pisarse con la música. -->
@@ -478,10 +630,21 @@ var FOTOS = [];
    Antes se le pedían a Apps Script desde GitHub y Google bloqueaba la
    petición por venir de otro dominio. Ahora la página la sirve el propio
    Apps Script con las fotos ya adentro: no hay nada que pedir. */
-var DATOS = __U || { ok: false };
-/* Los datos ya venían incrustados cuando esta página la servía Apps Script.
-   Acá se piden por internet, pero llegan igual de antemano: el cargador de
-   más arriba detiene la lectura de la página hasta tenerlos. */
+/* los datos los trae el cargador */
+
+/* ============================================================
+   TODO lo que viene hasta el final está dentro de encender().
+
+   Antes corría suelto, nada más leerse la página, y eso obligaba a tener los
+   datos ANTES de dibujar una sola letra: la página se quedaba en blanco
+   mientras Google despertaba el script, a veces diez o quince segundos, sin
+   nada en pantalla y sin manera de reintentar. Quien recibía el regalo veía
+   una pantalla blanca y cerraba.
+
+   Ahora la pantalla de espera se pinta de inmediato —no necesita internet—,
+   los datos se piden por detrás, y esto se enciende cuando llegan.
+   ============================================================ */
+function encender(){
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir
@@ -519,7 +682,7 @@ var MANCHADO=false;
 (function(){
   var q=new URLSearchParams(location.search);
   if(q.get('para')) document.getElementById('txtPara').textContent=q.get('para');
-  if(q.get('msg'))  document.getElementById('txtMsg').innerHTML=q.get('msg').replace(/\n/g,'<br>');
+  if(q.get('msg'))  document.getElementById('txtMsg').innerHTML=enLineas(q.get('msg'));
   if(q.get('de'))   document.getElementById('txtFirma').textContent=q.get('de');
   if(q.get('tit'))  document.getElementById('txtTit').textContent=q.get('tit');
 
@@ -528,7 +691,7 @@ var MANCHADO=false;
   if(d.para)   document.getElementById('txtPara').textContent=d.para;
   if(d.de)     document.getElementById('txtFirma').textContent=d.de;
   if(d.titulo) document.getElementById('txtTit').textContent=d.titulo;
-  if(d.msg)    document.getElementById('txtMsg').innerHTML=String(d.msg).replace(/\n/g,'<br>');
+  if(d.msg)    document.getElementById('txtMsg').innerHTML=enLineas(d.msg);
   if(d.fotos && d.fotos.length){
     FOTOS=d.fotos;
     if(!d.msg) document.getElementById('txtMsg').innerHTML=
@@ -728,6 +891,15 @@ function soltarVoz(){
      tanto empezó a grabarse el video: ahí todo tiene que estar en silencio,
      porque el sonido del video se mezcla aparte. */
   if(VOZ.antes && !GRABANDO){ document.getElementById('audio').play().catch(function(){}); }
+}
+
+/* La dedicatoria la escribe el cliente, así que se limpia antes de meterla
+   en la página: solo se le permiten saltos de línea, nada de etiquetas. */
+function enLineas(t){
+  return String(t==null?'':t)
+    .replace(/[&<>"]/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];})
+    .replace(/\r?\n/g,'<br>');
 }
 
 var s1=document.getElementById('s1'),s2=document.getElementById('s2'),s3=document.getElementById('s3');
@@ -1639,24 +1811,28 @@ c.addEventListener('touchmove',function(e){if(e.touches.length===2){e.preventDef
  var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
  if(pinch){zoom*=d/pinch;if(zoom<.3)zoom=.3;if(zoom>3.4)zoom=3.4;}pinch=d;}},{passive:false});
 c.addEventListener('touchend',function(){pinch=0;});
-</script>
-<script>
-(function () {
-  if (DATOS && DATOS.ok) return;
-  document.body.innerHTML =
-    '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;'
-    + 'padding:28px;text-align:center;background:#03040a;color:#EADFC8;'
-    + 'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif">'
-    + '<div style="max-width:420px">'
-    + '<div style="font-size:40px;margin-bottom:16px">&#127803;</div>'
-    + '<h1 style="font-size:19px;margin:0 0 12px;font-weight:700">No pudimos abrir este universo</h1>'
-    + '<p style="font-size:13.5px;line-height:1.65;opacity:.7;margin:0 0 20px">'
-    + 'Revisa tu conexión y vuelve a escanear el QR. Si sigue sin abrir, '
-    + 'escríbenos y te lo mandamos de nuevo.</p>'
-    + '<button onclick="location.reload()" style="padding:14px 28px;border:0;border-radius:26px;'
-    + 'background:#FFC94A;color:#2a1c08;font-size:14px;font-weight:800;font-family:inherit">'
-    + 'Reintentar</button>'
-    + '</div></div>';
+
+/* Lo único que el HTML llama por su nombre. Como ahora todo vive dentro de
+   encender(), hay que sacarlo afuera a mano. */
+window.compartirUniverso=compartirUniverso;
+window.tocarGlobo=tocarGlobo;
+window.tocarVoz=tocarVoz;
+
+/* La espera se va con una transición, no de golpe: el universo aparece
+   detrás mientras el velo se desvanece. */
+var velo=document.getElementById('esperando');
+if(velo){ velo.classList.add('fuera'); setTimeout(function(){ velo.remove(); },700); }
+
+}   /* fin de encender() */
+
+/* ============================================================
+   EL ARRANQUE
+   ============================================================ */
+(function(){
+  /* Servida por Apps Script los datos ya vienen puestos: se enciende y ya. */
+  if(DATOS && typeof DATOS==='object'){ encender(); return; }
+  /* Servida desde GitHub, los pide el cargador que añade construir.js. */
+  if(typeof pedirDatos==='function') pedirDatos();
 })();
 </script>
 </body>

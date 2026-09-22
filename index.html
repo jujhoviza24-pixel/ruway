@@ -859,7 +859,7 @@ function prender(){
           subirFotoUni(ctx, 0);
         }).withFailureHandler(function (e) { falla(ctx, e); })
           .crearUniverso({ cliente: ctx.nom, telefono: ctx.tel, para: ctx.para,
-                           de: ctx.de, titulo: '',
+                           de: ctx.de, titulo: '', msg: ctx.msg,
                            tema: (D.temas && D.temas[tema]) ? D.temas[tema].nombre : '' });
       } else {
         cerrar(ctx);
