@@ -1729,12 +1729,16 @@ dibujar();
 /* ====================== EL VIDEO PARA LOS ESTADOS ======================
    Un enlace en un estado lo abre casi nadie. Un video lo ve todo el mundo.
    Así que la página se graba a sí misma: compone cada cuadro en un lienzo
-   vertical de 720×1280 (la forma de una historia), le pone el título arriba
-   y la marca abajo, y entrega el archivo al menú de compartir del celular.
+   vertical (la forma de una historia), le pone el título arriba y la marca
+   abajo, y entrega el archivo al menú de compartir del celular.
 
-   Va sin sonido a propósito. Meter la canción significaría subir música de
-   otros a las redes, que es problema de derechos, y además Instagram deja
-   poner la suya encima. */
+   Lleva el sonido del universo: la canción de fondo y, encima, la nota de
+   voz si la hay. Antes llevaba solo una de las dos (la voz si existía), y
+   el cliente sentía que su canción se había perdido.
+
+   El tamaño llega a 1080×1920 (Full HD vertical) en los teléfonos que lo
+   aguantan. Más no sirve: WhatsApp reduce todo estado a 720p como mucho, así
+   que un 4K solo pesaría más y tardaría más en grabarse, y saldría igual. */
 
 var GRABANDO=false, SEGUNDOS=14;
 
@@ -1781,25 +1785,61 @@ function compartirUniverso(){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
   }
-  /* El video lleva audio, y para poder metérselo el archivo tiene que estar
-     acá dentro: un audio traído de otro sitio el navegador no lo deja
-     mezclar. Así que primero se trae, y después se graba.
+  /* El mezclador de sonido se crea y se despierta AQUÍ, dentro del toque.
+     Antes se creaba después de bajar el audio, y para entonces el toque ya
+     había pasado: el iPhone lo dejaba dormido y el video salía mudo aunque
+     en pantalla la canción sonara perfecto. Es lo que veía el cliente. */
+  var mezclador=null;
+  try{
+    var CA=window.AudioContext||window.webkitAudioContext;
+    if(CA){ mezclador=new CA(); mezclador.resume&&mezclador.resume(); }
+  }catch(e){ mezclador=null; }
 
-     Manda la nota de voz si la hay. Una voz diciendo algo tuyo detiene a
-     quien pasa por los estados; una canción de fondo, no tanto. */
-  var cual = (DATOS.vozId ? 'voz' : (DATOS.cancionId ? 'cancion' : ''));
-  if(!cual){ grabarUniverso(null); return; }
-  if(TRAIDOS[cual]){ grabarUniverso(TRAIDOS[cual]); return; }
+  /* El video lleva los dos audios: la canción de fondo y, encima, la voz.
+     Para poder mezclarlos los archivos tienen que estar acá dentro (uno
+     traído de otro sitio el navegador no deja mezclarlo), así que primero se
+     traen y después se graba. */
+  var falta=[];
+  if(DATOS.cancionId) falta.push('cancion');
+  if(DATOS.vozId) falta.push('voz');
+  if(!falta.length || !mezclador){ grabarUniverso(null,null); return; }
 
-  avisoGrab('<div class="pun"></div>','Preparando el audio');
-  traerAudio(cual,function(hecho,total){
-    if(total>1) avisoGrab('<div class="pun"></div>','Preparando el audio · '+hecho+' de '+total);
-  },function(r){
-    grabarUniverso(r);
-  },function(){
-    /* Sin audio se graba igual: vale más un video mudo que ninguno. */
-    grabarUniverso(null);
+  var listos={};
+  avisoGrab('<div class="pun"></div>','Preparando el sonido');
+  (function uno(i){
+    if(i>=falta.length){ prepararSonido(mezclador,listos,function(son){ grabarUniverso(son,mezclador); }); return; }
+    var cual=falta[i];
+    traerAudio(cual,function(hecho,total){
+      if(total>1) avisoGrab('<div class="pun"></div>',
+        (cual==='voz'?'Preparando tu mensaje':'Preparando la canción')+' · '+hecho+' de '+total);
+    },function(r){ listos[cual]=r; uno(i+1); },
+      /* Si uno no llega se sigue con el otro: vale más un video con la voz
+         sola, o con la canción sola, que uno mudo. */
+      function(){ uno(i+1); });
+  })(0);
+}
+
+/* Convierte los audios en sonido listo para mezclar. Se descomprimen dentro
+   del mezclador en vez de reproducirlos con un reproductor escondido: el
+   iPhone no deja que un reproductor arranque solo fuera de un toque, pero un
+   mezclador que ya está despierto sí puede sonar cuando quiera. */
+function prepararSonido(ctx,audios,listo){
+  var son={ctx:ctx, cancion:null, voz:null};
+  var pend=0, ya=false;
+  function fin(){ if(ya) return; if(--pend<=0){ ya=true; listo(son.cancion||son.voz?son:null); } }
+  ['cancion','voz'].forEach(function(cual){
+    var a=audios[cual]; if(!a) return;
+    pend++;
+    fetch(a.url).then(function(r){ return r.arrayBuffer(); }).then(function(buf){
+      return new Promise(function(ok,mal){
+        /* La forma vieja con avisos, la única que conocen algunos Safari. */
+        var p=ctx.decodeAudioData(buf,ok,mal);
+        if(p && p.then) p.then(ok,mal);
+      });
+    }).then(function(b){ son[cual]=b; fin(); })
+      .catch(function(){ fin(); });
   });
+  if(!pend){ ya=true; listo(null); }
 }
 
 /* El guion del video. Un universo girando sin más no vende: lo que emociona
@@ -1823,7 +1863,10 @@ function armarGuion(){
            total: entrada + fotos.length*por + salida };
 }
 
-function grabarUniverso(audio){
+function grabarUniverso(sonido,mezclador){
+  /* Sin nada que sonar, el mezclador sobra: se cierra para no dejarlo
+     ocupando el audio del teléfono. */
+  if(!sonido && mezclador){ try{ mezclador.close(); }catch(e){} mezclador=null; }
   var origen=document.getElementById('uni');
   var guion=armarGuion();
   /* El tamaño del video se elige según lo que este aparato viene aguantando.
@@ -1831,7 +1874,11 @@ function grabarUniverso(audio){
      tuvo que bajar la calidad dos escalones, grabar a 720 sería pedirle algo
      que no puede dar, y el resultado es un video a tirones. Más vale un video
      algo más pequeño pero fluido: a tirones se ve mal aunque tenga más píxeles. */
-  var VW = NIVEL<=1 ? 720 : 540, VH = VW===720 ? 1280 : 960, E = VW/720;
+  /* 1080 si el teléfono va fluido, 720 si ya tuvo que aflojar un escalón,
+     540 si va justo. Todo el dibujo del video está hecho en proporción (E),
+     así que el diseño sale igual a cualquier tamaño, solo que más nítido. */
+  var VW = NIVEL===0 ? 1080 : (NIVEL===1 ? 720 : 540), VH = Math.round(VW*16/9), E = VW/720;
+  var BPS = VW===1080 ? 10000000 : (VW===720 ? 6000000 : 3500000);
   var lienzo=document.createElement('canvas');
   lienzo.width=VW; lienzo.height=VH;
   var lg=lienzo.getContext('2d');
@@ -1851,26 +1898,35 @@ function grabarUniverso(audio){
       pista=null; flujo=lienzo.captureStream(25);
     }
 
-    /* El audio del video. Se toca en un reproductor aparte, escondido, y su
-       sonido se enchufa al video en vez de a los parlantes: así el cliente no
-       oye dos cosas a la vez mientras se graba, y el video sí lleva sonido.
-       Si algo de esto falla, se graba mudo y no se le dice nada: el video
-       sigue sirviendo. */
-    if(audio && window.AudioContext){
+    /* El sonido del video: la canción de fondo y la voz encima, mezcladas
+       y enchufadas al video en vez de a los parlantes. Así el cliente no oye
+       dos cosas a la vez mientras se graba, y el video sí lleva las dos.
+       Con voz, la canción baja a un tercio para que se entienda lo que dice.
+       Si algo de esto falla se graba mudo: el video sigue sirviendo. */
+    if(sonido && mezclador){
       try{
-        son={};
-        son.el=new Audio();
-        son.el.src=audio.url; son.el.loop=true; son.el.volume=1;
-        son.ctx=new AudioContext();
-        son.fuente=son.ctx.createMediaElementSource(son.el);
-        son.destino=son.ctx.createMediaStreamDestination();
-        son.fuente.connect(son.destino);
+        son={ctx:mezclador, fuentes:[]};
+        son.destino=mezclador.createMediaStreamDestination();
+        if(sonido.cancion){
+          var fc=mezclador.createBufferSource(), gc=mezclador.createGain();
+          fc.buffer=sonido.cancion; fc.loop=true;
+          gc.gain.value = sonido.voz ? 0.32 : 0.9;
+          fc.connect(gc); gc.connect(son.destino);
+          son.fuentes.push({f:fc, retraso:0});
+        }
+        if(sonido.voz){
+          var fv=mezclador.createBufferSource(), gv=mezclador.createGain();
+          fv.buffer=sonido.voz; gv.gain.value=1;
+          fv.connect(gv); gv.connect(son.destino);
+          /* La voz entra cuando ya se ve el título, no en el primer cuadro. */
+          son.fuentes.push({f:fv, retraso:1.2});
+        }
         son.destino.stream.getAudioTracks().forEach(function(t){ flujo.addTrack(t); });
       }catch(e){ son=null; }
     }
 
-    rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond: VW===720 ? 7000000 : 4200000,
-                                 audioBitsPerSecond:128000});
+    rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond:BPS,
+                                 audioBitsPerSecond:160000});
   }catch(err){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
@@ -1878,7 +1934,7 @@ function grabarUniverso(audio){
 
   function callarSon(){
     if(!son) return;
-    try{ son.el.pause(); }catch(e){}
+    (son.fuentes||[]).forEach(function(x){ try{ x.f.stop(); }catch(e){} });
     try{ son.ctx.close(); }catch(e){}
     son=null;
   }
@@ -1889,7 +1945,8 @@ function grabarUniverso(audio){
      cara de dibujar y en el video apenas se nota, pero libera al teléfono
      para que el universo siga girando suave y el codificador no se ahogue. */
   var escAntes=ESC;
-  ESC=Math.min(ESC,.5); size();
+  /* En Full HD el brillo se nota: se afloja menos. */
+  ESC=Math.min(ESC, VW===1080 ? .75 : .5); size();
 
   rec.ondataavailable=function(ev){ if(ev.data && ev.data.size) trozos.push(ev.data); };
   rec.onerror=function(){
@@ -1991,7 +2048,7 @@ function grabarUniverso(audio){
     var ahora=performance.now();
     /* veinticinco cuadros por segundo: el ojo no distingue más en un estado,
        y cada cuadro que no se compone es trabajo que se ahorra el teléfono */
-    if(ahora-ultimo < 41){ parar=requestAnimationFrame(cuadro); return; }
+    if(ahora-ultimo < (VW===1080 ? 33 : 41)){ parar=requestAnimationFrame(cuadro); return; }
     ultimo=ahora;
     var t=(ahora-t0)/1000;
     var avance=Math.min(1,t/guion.total);
@@ -2037,11 +2094,11 @@ function grabarUniverso(audio){
   if(musSonaba) mus.pause();
 
   if(son){
-    /* El navegador solo deja sonar si viene de un toque del usuario, y este
-       viene de uno: el botón de compartir. */
-    try{ son.ctx.resume(); }catch(e){}
-    son.el.currentTime=0;
-    son.el.play().catch(function(){ callarSon(); });
+    /* El mezclador ya está despierto desde el toque; se arrancan las fuentes
+       todas contra el mismo reloj para que la voz caiga siempre a su hora. */
+    try{ son.ctx.resume&&son.ctx.resume(); }catch(e){}
+    var t=son.ctx.currentTime+0.05;
+    son.fuentes.forEach(function(x){ try{ x.f.start(t+x.retraso); }catch(e){} });
   }
 
   var seguir=function(){ if(musSonaba) mus.play().catch(function(){}); };
