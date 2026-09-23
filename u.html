@@ -108,6 +108,11 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 #s3 .cab b{font-family:'Dancing Script',cursive;font-size:26px;line-height:1.2;
   color:var(--c2);font-weight:700;text-shadow:0 2px 14px rgba(0,0,0,.55)}
 @media (max-width:420px){#s3 .cab b{font-size:22px}}
+/* Con nota de voz hay DOS botones a la izquierda y el título ya no cabe en la
+   misma fila: se montaba encima del micrófono. Baja a su propia fila, justo
+   debajo, y el aviso de la canción se va abajo para no pisarlo. */
+#s3.con-voz .cab{top:62px;left:22px;right:22px}
+#s3.con-voz #pista{top:auto;bottom:104px;left:0;right:0;max-width:none;text-align:center}
 #s3 .pie{position:absolute;bottom:18px;left:0;right:0;text-align:center;pointer-events:none;
   font-size:10px;letter-spacing:.32em;color:#9C937E;font-family:sans-serif}
 #compartir{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:7;
@@ -203,6 +208,35 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   font-family:'Baloo 2',sans-serif;display:none}
 #esperando.perdido button{display:block}
 #esperando.perdido .puntos{display:none}
+
+/* ---------- la cápsula: todavía no se puede abrir ----------
+   Es la misma pantalla de espera, porque ya tiene el cielo y el sobre, pero
+   con la cuenta atrás. Que se note que es a propósito y no que algo falló. */
+#esperando .para-q,#esperando .cuenta,#esperando .vuelve{display:none}
+#esperando.cerrado .puntos{display:none}
+#esperando.cerrado .para-q{display:block;position:relative;margin-top:20px;
+  font-family:'Dancing Script',cursive;font-weight:700;font-size:31px;color:var(--c2);
+  text-shadow:0 0 22px color-mix(in srgb,var(--c1) 55%,transparent);padding:0 24px;text-align:center}
+#esperando.cerrado p{margin-top:10px;opacity:.85}
+#esperando.cerrado .cuenta{display:flex;position:relative;gap:9px;margin-top:22px}
+#esperando .cuenta div{min-width:60px;padding:11px 6px 9px;border-radius:14px;text-align:center;
+  background:color-mix(in srgb,var(--c1) 11%,transparent);
+  border:1px solid color-mix(in srgb,var(--c1) 38%,transparent)}
+#esperando .cuenta b{display:block;font-size:27px;line-height:1.1;color:var(--c2);
+  font-family:'Baloo 2',sans-serif;font-variant-numeric:tabular-nums}
+#esperando .cuenta span{font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--c2);opacity:.6}
+#esperando.cerrado .vuelve{display:block;position:relative;margin-top:24px;max-width:18em;
+  padding:0 28px;text-align:center;font-size:12.5px;line-height:1.7;color:var(--c2);opacity:.62}
+#esperando.cerrado .sobre{animation:respira 3.4s ease-in-out infinite}
+@media (max-width:360px){#esperando .cuenta div{min-width:52px}#esperando .cuenta b{font-size:23px}}
+
+/* La marquita que solo ve el dueño cuando revisa un universo que para el
+   resto todavía está cerrado. */
+#previa{position:fixed;top:max(6px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  z-index:40;padding:5px 12px;border-radius:99px;font:700 10.5px 'Baloo 2',sans-serif;
+  letter-spacing:.06em;color:#20160a;background:var(--c1);opacity:.92;pointer-events:none;
+  white-space:nowrap}
 </style>
 
 <!-- Avisar de con quién vamos a hablar ahorra medio segundo largo en el
@@ -229,7 +263,8 @@ function paramsUniverso() {
   var q = new URLSearchParams(location.search);
   var mapa = { c:'rcod', cod:'rcod', rcod:'rcod', para:'rpara', rpara:'rpara',
                 msg:'rmsg', rmsg:'rmsg', de:'rde', rde:'rde',
-                tit:'rtit', rtit:'rtit', tem:'rtem', rtem:'rtem' };
+                tit:'rtit', rtit:'rtit', tem:'rtem', rtem:'rtem',
+                v:'rver', rver:'rver' };
   var par = {};
   Object.keys(mapa).forEach(function (k) {
     var v = q.get(k);
@@ -241,7 +276,13 @@ function paramsUniverso() {
 /* Lo que ya se vio una vez se guarda acá. Un universo se abre muchas veces
    —se lo enseñas a tu mamá, a tu hermana, al de al lado— y esas veces tienen
    que entrar de golpe, no esperar otra vez a que Google despierte. */
-function llave(par) { return 'ruway:uni:' + (par.rcod || '-'); }
+/* El código sale de la dirección, así que se comprueba antes de usarlo como
+   llave: sin esto, un enlace manipulado podía dejar una entrada por cada
+   valor inventado y llenarle el almacenamiento al cliente. */
+function llave(par) {
+  var c = String(par.rcod || '').trim().toUpperCase();
+  return 'ruway:uni:' + (/^[A-Z0-9]{4,10}$/.test(c) ? c : '-');
+}
 
 function guardado(par) {
   try {
@@ -251,6 +292,12 @@ function guardado(par) {
   return null;
 }
 function guardar(par, d) {
+  /* Ni el universo cerrado ni la vista previa del dueño se guardan.
+     El cerrado, porque la próxima vez ya puede estar abierto y la copia vieja
+     taparía el regalo con la cuenta atrás. La vista previa, porque dejaría el
+     universo abierto en el teléfono del dueño, y al probar el enlace público
+     creería que el candado no funciona. */
+  if (!d || d.bloqueado || d.vistaPrevia) return;
   try { localStorage.setItem(llave(par), JSON.stringify({ t: Date.now(), d: d })); }
   catch (e) {}
 }
@@ -630,8 +677,16 @@ function traer(par, ok, mal) {
     <path d="M6 14h108v62H6z" fill="none" stroke="rgba(255,233,168,.55)" stroke-width="2.5"/>
     <path d="M6 14l54 38 54-38" fill="none" stroke="rgba(255,233,168,.55)" stroke-width="2.5"/>
   </svg>
+  <div class="para-q" id="esp-para"></div>
   <p id="esp-txt">Abriendo tu universo</p>
   <div class="puntos"><i></i><i></i><i></i></div>
+  <div class="cuenta" id="esp-cuenta">
+    <div><b id="cu-d">0</b><span>días</span></div>
+    <div><b id="cu-h">00</b><span>horas</span></div>
+    <div><b id="cu-m">00</b><span>min</span></div>
+    <div><b id="cu-s">00</b><span>seg</span></div>
+  </div>
+  <div class="vuelve" id="esp-vuelve"></div>
   <button id="esp-bt" onclick="location.reload()">Reintentar</button>
 </div>
 
@@ -669,7 +724,75 @@ var FOTOS = [];
    Ahora la pantalla de espera se pinta de inmediato —no necesita internet—,
    los datos se piden por detrás, y esto se enciende cuando llegan.
    ============================================================ */
+/* ================= la cápsula: todavía no se puede abrir =================
+   El servidor manda solo para quién es, los colores y cuántos milisegundos
+   faltan (medidos allá, no con la hora de este teléfono, que puede estar
+   mal). Acá se pinta la cuenta atrás y, al llegar a cero, se vuelve a pedir
+   el universo, que ya sale abierto. */
+var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto',
+           'septiembre','octubre','noviembre','diciembre'];
+var DIAS=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+
+function fechaBonita(t){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(t||''));
+  if(!m) return '';
+  /* Mediodía en UTC: así el día de la semana sale igual en cualquier zona. */
+  var f=new Date(Date.UTC(+m[1],+m[2]-1,+m[3],12));
+  return DIAS[f.getUTCDay()]+' '+(+m[3])+' de '+MESES[+m[2]-1];
+}
+
+/* Las fechas que tienen nombre propio se dicen por su nombre: "se abre en
+   Nochebuena" suena a regalo; "se abre el jueves 24" suena a trámite. */
+function comoSeAbre(t){
+  var md=String(t||'').slice(5);
+  var nombre={'12-24':'en Nochebuena','12-25':'en Navidad','12-31':'en Año Nuevo',
+              '01-01':'en Año Nuevo','02-14':'en San Valentín'}[md];
+  return 'Este regalo se abre '+(nombre||('el '+fechaBonita(t)));
+}
+
+function esperarApertura(d){
+  var t=d.tema||{};
+  var r=document.documentElement.style;
+  if(t.c1) r.setProperty('--c1',t.c1);
+  if(t.c2) r.setProperty('--c2',t.c2);
+  if(t.c3) r.setProperty('--c3',t.c3);
+  /* El cielo de la espera, teñido con el tono hondo de la campaña: verde en
+     Navidad, lavanda en memoria, en vez del marrón genérico de "cargando". */
+  var cielo=document.querySelector('#esperando .cielo');
+  if(cielo && t.c3) cielo.style.background='radial-gradient(ellipse at 50% 42%,'
+    +'color-mix(in srgb,'+t.c3+' 38%,#03040a) 0%,color-mix(in srgb,'+t.c3+' 12%,#03040a) 48%,#03040a 100%)';
+
+  var velo=document.getElementById('esperando');
+  velo.classList.remove('perdido');
+  velo.classList.add('cerrado');
+  document.getElementById('esp-para').textContent=d.para?('Para '+d.para):'Un regalo para ti';
+  document.getElementById('esp-txt').textContent=comoSeAbre(d.abre);
+  document.getElementById('esp-vuelve').textContent=
+    'Vuelve a este enlace el '+fechaBonita(d.abre)+' desde las 12 de la noche. '
+    +(d.de?'Te lo preparó '+d.de+' con mucho cariño.':'Alguien te lo preparó con mucho cariño.');
+
+  var fin=performance.now()+Math.max(0,Number(d.faltan)||0);
+  var dos=function(n){return (n<10?'0':'')+n;};
+  var reloj=setInterval(pinta,1000);
+  pinta();
+  function pinta(){
+    var q=Math.max(0,fin-performance.now());
+    var s=Math.floor(q/1000);
+    document.getElementById('cu-d').textContent=Math.floor(s/86400);
+    document.getElementById('cu-h').textContent=dos(Math.floor(s%86400/3600));
+    document.getElementById('cu-m').textContent=dos(Math.floor(s%3600/60));
+    document.getElementById('cu-s').textContent=dos(s%60);
+    if(q>0) return;
+    clearInterval(reloj);
+    document.getElementById('esp-txt').textContent='¡Ya se puede abrir!';
+    /* Un segundo y medio de margen: la cuenta es la del servidor, pero la
+       petición tarda en ir y volver. */
+    setTimeout(function(){ location.reload(); },1500);
+  }
+}
+
 function encender(){
+if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir
@@ -722,6 +845,10 @@ var MANCHADO=false;
 
   var d=DATOS;
   if(!d||!d.ok) return;
+  /* El título de la campaña va primero y el del cliente, si lo puso, encima.
+     Sin esto un universo "en memoria" decía "Contigo, mi universo tiene
+     sentido", que es de pareja. */
+  if(TEMA.titulo) document.getElementById('txtTit').textContent=TEMA.titulo;
   if(d.para)   document.getElementById('txtPara').textContent=d.para;
   if(d.de)     document.getElementById('txtFirma').textContent=d.de;
   if(d.titulo) document.getElementById('txtTit').textContent=d.titulo;
@@ -763,6 +890,7 @@ var MANCHADO=false;
      tiene por qué competir con las fotos al abrir. */
   if(d.voz||d.vozId){
     document.getElementById('voz').classList.remove('oculto');
+    document.getElementById('s3').classList.add('con-voz');
     fijarVoz();
   }
 })();
@@ -815,7 +943,7 @@ function pedirTrozo(cual,parte,ok,mal){
   t.onerror=function(){limpiar();mal&&mal();};
   t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')
     +'vista=api&rfn=cancion&rcb='+nombre
-    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte,cual]));
+    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte,cual,d.ver||'']));
   document.head.appendChild(t);
 }
 
@@ -1219,11 +1347,16 @@ var RAMOS_PUESTOS=false;
    su misma distancia. Las fotos viajan a 350 y 440; si las figuras usaran
    esos radios se cruzarían por delante justo cuando alguien mira una foto.
    Así giran en carriles propios y el espacio se siente lleno sin estorbar. */
-var ORB_FIG=[215,285,545,625];
+var ORB_FIG=[215,300,545,640];
 /* Una velocidad POR ÓRBITA, no por figura. Cuando cada una llevaba la suya,
    las de un mismo carril se alcanzaban con el tiempo y acababan pegadas.
    Compartiendo velocidad mantienen su separación para siempre. */
-var VEL_FIG=[.00150,.00128,.00106,.00092];
+var VEL_FIG=[.00360,.00315,.00275,.00245];
+/* Y una FRANJA DE ALTURA por órbita, alternando arriba y abajo. Los carriles
+   215 y 285 están cerca entre sí, igual que 545 y 625: sin esto, dos figuras
+   de carriles vecinos podían cruzarse a la misma altura y verse pegadas
+   aunque giraran en órbitas distintas. Con franjas opuestas eso no pasa. */
+var ALTO_FIG=[-175,150,-95,100];
 
 function ponerRamos(){
   if(RAMOS_PUESTOS) return;
@@ -1250,18 +1383,33 @@ function ponerRamos(){
      con una referencia a este. */
   for(var q=ramos.length-1;q>=0;q--){ if(!ramos[q].foto) ramos.splice(q,1); }
 
+  /* Cuántas van a parar a cada carril. Hace falta saberlo ANTES de repartir:
+     el hueco entre una figura y la siguiente del mismo carril es la vuelta
+     entera dividida entre las que hay en él, y así quedan clavadas a la misma
+     distancia unas de otras. Como además comparten velocidad, esa distancia
+     no cambia nunca por mucho que gire el universo. */
+  var cuantas=[];
+  for(var b=0;b<ORB_FIG.length;b++) cuantas.push(0);
+  for(var c=0;c<total;c++) cuantas[c%ORB_FIG.length]++;
+
+  var puestas=[0,0,0,0];
   for(var c=0;c<total;c++){
     var cual=c%n;                       /* qué figura */
-    var vuelta=Math.floor(c/n);         /* qué copia   */
+    var orb=c%ORB_FIG.length;           /* en qué carril */
+    var j=puestas[orb]++;               /* la que hace en ese carril */
+    var hueco=6.283/cuantas[orb];
+    /* El temblorcito nunca pasa de un octavo del hueco: da naturalidad sin
+       que dos lleguen jamás a juntarse. Antes era fijo (±.12) y con pocas
+       figuras se comía la separación. */
+    var tiembla=hueco*0.12;
     ramos.push({
       k: desde+cual,
       figura: true,
-      /* las dos copias, medio universo aparte */
-      a: (cual/n)*6.283 + vuelta*3.1416 + R(-.12,.12),
-      r: ORB_FIG[c%ORB_FIG.length] + R(-25,25),
-      y: ((c%6)-2.5)*95 + R(-18,18),
-      v: .00030+(c%3)*.00008,
-      e: R(.75,.95),
+      a: j*hueco + orb*0.83 + R(-tiembla,tiembla),
+      r: ORB_FIG[orb] + ((j%2)?20:-20),
+      y: ALTO_FIG[orb] + ((j%3)-1)*46 + R(-10,10),
+      v: VEL_FIG[orb],
+      e: R(.82,.98),
       txt:''
     });
   }
@@ -1295,11 +1443,11 @@ function cargarFotos(){
          dos minutos y el universo parecía parado; con el primer arreglo
          seguía arrastrándose. A esta velocidad siempre hay algo entrando en
          pantalla sin que llegue a marear. */
-      v:.00140, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
+      v:.00230, k:IMGS.length-1, e:1, txt:FOTOS[i].txt||'', foto:true});
   }
 }
 for(var i=0;i<TXT.length;i++)palabras.push({t:TXT[i],y:((i%4)-1.5)*76+R(-14,14),
- a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00112+(i%2)*.00030});
+ a:(i/TXT.length)*6.283+3.14/TXT.length,r:440+(i%3)*95,v:.00170+(i%2)*.00045});
 
 var cy=1,sy=0,cx=1,sx=0;
 function camara(){cy=Math.cos(ry);sy=Math.sin(ry);cx=Math.cos(rx);sx=Math.sin(rx);}
@@ -2019,6 +2167,15 @@ window.ponerRamos=ponerRamos;
    detrás mientras el velo se desvanece. */
 var velo=document.getElementById('esperando');
 if(velo){ velo.classList.add('fuera'); setTimeout(function(){ velo.remove(); },700); }
+
+/* El dueño revisando un universo que para todos los demás sigue cerrado:
+   que se note, para no confundirlo con lo que verá el cliente hoy. */
+if(DATOS && DATOS.vistaPrevia && DATOS.abre){
+  var pv=document.createElement('div');
+  pv.id='previa';
+  pv.textContent='Vista previa · el cliente lo abre el '+fechaBonita(DATOS.abre);
+  document.body.appendChild(pv);
+}
 
 }   /* fin de encender() */
 
