@@ -913,6 +913,16 @@ fs.writeFileSync(SALIDA + '/index.html', indexHtml);
 fs.writeFileSync(SALIDA + '/u.html', uni);
 fs.writeFileSync(SALIDA + '/nfc.html', nfcHtml);
 
+// ===================================================================
+//  4. x.html — las experiencias del llavero (juegos, planeta, cartas…)
+//     Sale de Experiencias.html con la dirección del servidor puesta.
+// ===================================================================
+const xOrigen = fs.readFileSync(APP + '/Experiencias.html', 'utf8');
+if (xOrigen.indexOf('/*@@API@@*/') < 0) throw new Error('Experiencias.html cambió de forma: no encuentro dónde va la dirección.');
+const xHtml = xOrigen.replace('/*@@API@@*/', 'var API = ' + API_JSON + ';\nvar MAPA = ' + MAPA + ';')
+  .replace('<head>', '<head>\n<!-- GENERADO POR construir.js desde Experiencias.html · NO EDITAR A MANO -->');
+fs.writeFileSync(SALIDA + '/x.html', xHtml);
+
 /* Las librerías que las páginas piden solo cuando hacen falta: la que
    rehace la canción en mp3 ligero (formulario) y la que arma el video
    (universo). Van al lado de las páginas, en el mismo GitHub. */
@@ -925,4 +935,5 @@ LIBRERIAS.forEach(function (n) {
 
 console.log('index.html  ' + Math.round(indexHtml.length / 1024) + ' KB   (pedidos)');
 console.log('u.html      ' + Math.round(uni.length / 1024) + ' KB   (universo)');
+console.log('x.html      ' + Math.round(xHtml.length / 1024) + ' KB   (experiencias del llavero)');
 console.log('apuntan a   ' + EXEC);

@@ -860,6 +860,14 @@ function esperarApertura(d){
 
 function encender(){
 if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
+/* Las experiencias del llavero (juegos, planeta, bitácora, cartas…) viven en
+   x.html, al lado de esta página en GitHub. Se llega con el mismo enlace del
+   QR o del NFC y los mismos datos, que ya quedaron guardados en el teléfono. */
+if(DATOS && /^(constelaciones|planeta|laberinto|carrito|bitacora|cartas)$/.test(String(DATOS.tipo||''))
+   && !/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
+  location.replace('x.html'+location.search);
+  return;
+}
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir

@@ -9,6 +9,7 @@ cambio y además quedan dos versiones distintas del mismo sitio.
 |---|---|
 | `index.html` | El formulario donde el cliente arma su pedido. También es la puerta de entrada: si el enlace trae un código de universo, manda a `u.html`. |
 | `u.html` | El universo (o el árbol, o la vela) que se abre al escanear el QR o al acercar el celular a la etiqueta NFC de la tarjeta. |
+| `x.html` | Las experiencias del llavero: constelaciones, planeta 3D, laberinto del osito, avenida del amor 3D, bitácora de pareja y cartas para abrir cuando… `u.html` manda acá cuando el regalo es una de ellas. |
 | `nfc.html` | La página para grabar el enlace de una tarjeta en una etiqueta NFC desde un Android con Chrome. En iPhone explica cómo hacerlo con NFC Tools. |
 | `lame.min.js` | Convierte la canción y la nota de voz del cliente a mp3 liviano en su propio celular, antes de subirlas (licencia LGPL, va sin cambios). |
 | `mp4-muxer.min.js` | Arma el video para el estado en alta, cuadro por cuadro (licencia MIT). |
@@ -33,7 +34,7 @@ internet.
 node construir.js "https://script.google.com/macros/s/.../exec"
 ```
 
-Genera `index.html`, `u.html` y `nfc.html` apuntando a esa dirección, y copia
+Genera `index.html`, `u.html`, `x.html` y `nfc.html` apuntando a esa dirección, y copia
 al lado `lame.min.js` y `mp4-muxer.min.js`. Después se suben todos a este
 repositorio.
 
