@@ -1,23 +1,49 @@
-# Ruway
+# Ruway · las páginas de los clientes
 
-Página del universo animado que se abre al escanear el QR de las tarjetas de
-Ruway, y lanzador de la app de gestión.
+Acá viven las dos páginas que ve la gente. **Ninguna se edita a mano**: las
+genera `construir.js` a partir de `Codigo.gs` y `Universo.html`, que son los
+originales. Si editas estos archivos, la próxima vez que se generen pierdes el
+cambio y además quedan dos versiones distintas del mismo sitio.
 
-- `index.html` + `ramos.js` — el universo. Se abre con `?c=CODIGO`.
-- `app/` — lanzador de la app del negocio, para agregarlo a la pantalla de inicio.
+| archivo | qué es |
+|---|---|
+| `index.html` | El formulario donde el cliente arma su pedido. También es la puerta de entrada: si el enlace trae un código de universo, manda a `u.html`. |
+| `u.html` | El universo (o el árbol, o la vela) que se abre al escanear el QR o al acercar el celular a la etiqueta NFC de la tarjeta. |
+| `nfc.html` | La página para grabar el enlace de una tarjeta en una etiqueta NFC desde un Android con Chrome. En iPhone explica cómo hacerlo con NFC Tools. |
+| `lame.min.js` | Convierte la canción y la nota de voz del cliente a mp3 liviano en su propio celular, antes de subirlas (licencia LGPL, va sin cambios). |
+| `mp4-muxer.min.js` | Arma el video para el estado en alta, cuadro por cuadro (licencia MIT). |
+| `ramos.js` | Los ramos de flores que flotan en el universo. |
+| `obj-corazones.js` | Otro juego de objetos, para las campañas de corazones. |
+| `app/` | El lanzador que instala la app en el celular. |
 
-## Importante
+## Por qué viven acá y no en Apps Script
 
-Este repositorio es **público**. Nunca escribas acá dentro:
+Apps Script le pone a cada página un cartel encima: *"Un usuario de Apps Script
+creó esta aplicación · Denunciar abuso"*. En la pantalla donde alguien escribe
+su nombre y su teléfono, y sobre todo en el regalo que acaba de recibir, ese
+cartel espanta. No se puede quitar desde dentro porque lo pone Google por
+fuera de la página. En GitHub Pages no existe.
 
-- el enlace privado de la app (el que lleva `?k=`),
-- la clave,
-- ningún dato de clientes.
+Los datos siguen viviendo en Google: estas páginas se los piden al script por
+internet.
 
-`index.html` sí lleva la dirección `/exec` del Apps Script en la variable `API`,
-y eso está bien: esa dirección sola no abre nada. La app de gestión pide la
-clave, y las funciones que leen o escriben datos no se pueden llamar desde
-ningún navegador.
+## Para actualizarlas
 
-`app/index.html` no lleva ninguna clave: la pide una vez en el celular y la
-guarda solo ahí.
+```
+node construir.js "https://script.google.com/macros/s/.../exec"
+```
+
+Genera `index.html`, `u.html` y `nfc.html` apuntando a esa dirección, y copia
+al lado `lame.min.js` y `mp4-muxer.min.js`. Después se suben todos a este
+repositorio.
+
+## Lo que nunca va acá
+
+Este repositorio es público. No se sube:
+
+- el enlace con `?k=` (la clave de la app),
+- la clave en sí,
+- nada de los clientes: fotos, teléfonos, pedidos.
+
+La dirección que termina en `/exec`, sin clave, sí es pública a propósito: es
+la que usan estas páginas para pedir el catálogo y mandar los pedidos.

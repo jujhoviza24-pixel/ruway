@@ -145,6 +145,26 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 #grab-bots button.tenue{background:none;border-color:rgba(255,233,168,.2);
   font-weight:400;font-size:11.5px;letter-spacing:.16em}
 @keyframes gira{to{transform:rotate(360deg)}}
+/* Elegir las fotos del video: una rejilla de miniaturas que se marcan con su
+   número de orden. */
+#grab .elige{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:min(320px,86vw)}
+#grab .elige button{position:relative;padding:0;aspect-ratio:1/1;border-radius:12px;overflow:hidden;
+  border:2px solid rgba(255,233,168,.16);background:#0b0e14;cursor:pointer}
+#grab .elige canvas{display:block;width:100%;height:100%;opacity:.4;transition:opacity .15s}
+#grab .elige button.on{border-color:var(--c1);box-shadow:0 0 14px color-mix(in srgb,var(--c1) 45%,transparent)}
+#grab .elige button.on canvas{opacity:1}
+#grab .elige i{position:absolute;top:5px;right:5px;min-width:20px;height:20px;padding:0 5px;
+  border-radius:10px;background:var(--c1);color:#140f06;font:800 11px/20px sans-serif;
+  font-style:normal;text-shadow:none;display:none}
+#grab .elige button.on i{display:block}
+#grab-bots button:disabled{opacity:.4}
+/* Mientras se arma el video se ve cómo va quedando. */
+#grab-vista{width:132px;height:235px;border-radius:14px;background:#03040a;
+  border:1px solid rgba(255,233,168,.18);box-shadow:0 12px 34px rgba(0,0,0,.6)}
+#grab .barra-v{width:min(240px,70vw);height:6px;border-radius:99px;margin:14px auto 0;
+  background:rgba(255,233,168,.14);overflow:hidden}
+#grab .barra-v i{display:block;height:100%;width:0;border-radius:99px;
+  background:linear-gradient(90deg,var(--c2),var(--c1));transition:width .25s linear}
 #ayuda{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:14px;padding:30px 24px;
   background:rgba(6,8,14,.92);color:#EADFC8;font-family:sans-serif;text-align:left}
@@ -168,6 +188,37 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   color:#FFF6E2;text-align:center;text-shadow:0 2px 12px rgba(0,0,0,.7);max-width:22em}
 #globo button{background:none;border:1px solid rgba(255,233,168,.32);border-radius:22px;
   padding:9px 20px;color:var(--c2);font-size:11px;letter-spacing:.16em;font-family:sans-serif}
+/* El corazón de vuelta: abajo a la derecha, lejos de "Compartir". */
+#corazon{position:absolute;right:16px;bottom:38px;z-index:7;width:48px;height:48px;border-radius:50%;
+  border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);font-size:20px;line-height:1;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c2) 22%,transparent),
+                                    color-mix(in srgb,var(--c1) 16%,transparent));
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 8px 26px rgba(0,0,0,.45);
+  animation:latevoz 2.8s ease-in-out infinite}
+#corazon:active{transform:scale(.9)}
+#cor-globo{position:absolute;right:16px;bottom:94px;z-index:7;max-width:220px;padding:9px 13px;
+  border-radius:14px;background:rgba(10,8,16,.78);color:var(--c2);font:600 12.5px/1.45 sans-serif;
+  border:1px solid rgba(255,233,168,.22);text-align:right}
+.cor-vuela{position:absolute;z-index:8;font-size:26px;pointer-events:none;
+  animation:corvuela 1.8s ease-out forwards}
+@keyframes corvuela{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:1}
+  100%{transform:translate(var(--dx),-340px) scale(1.4);opacity:0}}
+/* "Regala uno tú también": sube suave, se cierra con la ×. */
+#regala{position:absolute;left:16px;right:16px;bottom:96px;z-index:7;padding:14px 16px;
+  border-radius:18px;background:rgba(10,8,16,.82);border:1px solid rgba(255,233,168,.22);
+  color:#EADFC8;font-family:sans-serif;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  box-shadow:0 14px 40px rgba(0,0,0,.5);transition:opacity .4s}
+/* La animación solo al aparecer: con .oculto el elemento sigue ahí, en
+   transparente, y la animación se gastaría al cargar la página. */
+#regala:not(.oculto){animation:regsube .5s ease-out}
+#regala b{display:block;color:var(--c2);font-family:'Baloo 2',sans-serif;font-size:16px}
+#regala span{display:block;font-size:13px;opacity:.85;margin-top:2px}
+#regala .bts{display:flex;gap:10px;align-items:center;margin-top:10px}
+#regala a{flex:1;text-align:center;padding:11px;border-radius:22px;text-decoration:none;font-weight:700;
+  font-size:13.5px;color:#1b1206;background:var(--c1)}
+#regala button{background:none;border:1px solid rgba(255,233,168,.25);color:var(--c2);width:40px;
+  height:40px;border-radius:50%;font-size:18px}
+@keyframes regsube{from{transform:translateY(20px);opacity:0}to{transform:none;opacity:1}}
 #son{position:absolute;top:18px;left:18px;padding:8px 13px;border:1px solid rgba(255,233,168,.3);
   border-radius:22px;background:rgba(255,233,168,.08);color:var(--c2);font-size:14px;z-index:6}
 /* El botón de la nota de voz, al lado del de la música. Late despacio para
@@ -181,6 +232,14 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   60%{box-shadow:0 0 0 10px rgba(255,201,74,0)}}
 #pista{position:absolute;top:60px;left:18px;font-size:10px;color:#9C937E;z-index:6;
   font-family:sans-serif;letter-spacing:.1em;max-width:60%}
+/* El árbol y la vela dicen qué hacer con una pista abajo, al centro, justo
+   encima del botón de compartir. El aviso de la canción, si hay nota de voz,
+   sube un poco para no pisarla. */
+#esc-pista{position:absolute;left:16px;right:16px;bottom:104px;z-index:6;margin:0 auto;
+  width:max-content;max-width:calc(100% - 32px);padding:9px 16px;border-radius:20px;
+  background:rgba(10,8,16,.62);border:1px solid rgba(255,233,168,.2);color:var(--c2);
+  font:600 12.5px/1.4 sans-serif;text-align:center;pointer-events:none;transition:opacity .5s}
+#s3.otra-exp.con-voz #pista{top:98px;bottom:auto}
 #volver{position:absolute;top:18px;right:18px;padding:8px 15px;border:1px solid rgba(255,233,168,.3);
   border-radius:22px;background:rgba(255,233,168,.08);color:var(--c2);font-size:11px;font-family:sans-serif}
 
@@ -330,18 +389,20 @@ function pedirDatos() {
     return;
   }
 
-  espera('Abriendo tu universo');
+  /* "Regalo" y no "universo": todavía no se sabe si es un universo, un árbol
+     o una vela. */
+  espera('Abriendo tu regalo');
   var t0 = Date.now();
   var contando = setInterval(function () {
     var s = Math.round((Date.now() - t0) / 1000);
     if (s > 22) espera('Está tardando, pero seguimos');
-    else if (s > 11) espera('Despertando tu universo');
+    else if (s > 11) espera('Despertando tu regalo');
   }, 1000);
 
   traer(par, function (d) {
     clearInterval(contando);
     if (!d || !d.ok) {
-      espera('No encontramos este universo.\nRevisa el enlace o escríbenos.', true);
+      espera('No encontramos este regalo.\nRevisa el enlace o escríbenos.', true);
       return;
     }
     guardar(par, d);
@@ -645,7 +706,13 @@ function traer(par, ok, mal) {
   <button id="son" class="oculto">♪</button>
   <button id="voz" class="oculto" onclick="tocarVoz()">🎙️</button>
   <div id="pista" class="oculto"></div>
+  <div id="esc-pista" class="oculto"></div>
   <button id="compartir" class="oculto" onclick="compartirUniverso()">Compartir en mi estado</button>
+  <button id="corazon" class="oculto" onclick="mandarCorazon()" aria-label="Mandar un corazón">❤️</button>
+  <div id="cor-globo" class="oculto"></div>
+  <div id="regala" class="oculto"><b>¿Te gustó? 🌻</b><span>Sorprende tú también a alguien que quieres.</span>
+    <div class="bts"><a id="regala-si" target="_blank" rel="noopener">Quiero uno</a>
+    <button onclick="cerrarRegala()" aria-label="Cerrar">×</button></div></div>
   <div id="grab" class="oculto"><div id="grab-fig"></div><div class="q" id="grab-txt"></div>
     <div id="grab-bots"></div></div>
   <div id="ayuda" class="oculto">
@@ -654,7 +721,7 @@ function traer(par, ok, mal) {
        la pantalla, y queda igual de bien.</p>
     <p><b>iPhone:</b> desliza desde arriba a la derecha y toca el círculo de grabar.<br>
        <b>Android:</b> baja la barra de notificaciones y busca «Grabar pantalla».</p>
-    <p>Empieza a grabar, vuelve acá, deja que el universo gire unos segundos y detén la
+    <p>Empieza a grabar, vuelve acá, déjalo correr unos segundos y detén la
        grabación. El video te queda en la galería, listo para tu estado.</p>
     <button onclick="document.getElementById('ayuda').classList.add('oculto')">ENTENDIDO</button>
   </div>
@@ -678,7 +745,7 @@ function traer(par, ok, mal) {
     <path d="M6 14l54 38 54-38" fill="none" stroke="rgba(255,233,168,.55)" stroke-width="2.5"/>
   </svg>
   <div class="para-q" id="esp-para"></div>
-  <p id="esp-txt">Abriendo tu universo</p>
+  <p id="esp-txt">Abriendo tu regalo</p>
   <div class="puntos"><i></i><i></i><i></i></div>
   <div class="cuenta" id="esp-cuenta">
     <div><b id="cu-d">0</b><span>días</span></div>
@@ -813,6 +880,10 @@ function hex(c){return '#'+c.map(function(n){return ('0'+n.toString(16)).slice(-
 
 var HX1=TEMA.c1||'#FFC94A', HX2=TEMA.c2||'#FFE9A8', HX3=TEMA.c3||'#FF9A2E';
 var C1=hx(HX1), C2=hx(HX2), C3=hx(HX3), BL=[255,255,255];
+/* El cielo del tema. Los temas nuevos traen el suyo: el fondo del espacio se
+   tiñe de su tono y las nubes salen de sus propios colores. Sin él, el cielo
+   de siempre, con sus nubes de todos los colores. */
+var FONDO=/^#[0-9a-f]{6}$/i.test(String(TEMA.fondo||'')) ? String(TEMA.fondo) : '';
 
 /* Mientras las imágenes se carguen "como propias" el navegador deja grabar el
    video. Si alguna tiene que caer a la dirección de respaldo, el lienzo queda
@@ -822,6 +893,7 @@ var MANCHADO=false;
 (function(){
   var r=document.documentElement.style;
   r.setProperty('--c1',HX1); r.setProperty('--c2',HX2); r.setProperty('--c3',HX3);
+  if(FONDO){ document.documentElement.style.background=FONDO; document.body.style.background=FONDO; }
   /* Los tonos de las flores del conejito: un claro casi blanco para el
      centro del pétalo, el color principal para el cuerpo, y un tono hondo
      para el borde y las sombras. Todo sale de los tres del tema, así que
@@ -869,22 +941,12 @@ var MANCHADO=false;
     setTimeout(function(){ cargarFotos(); }, 0);
   }
   if(d.cancion||d.cancionId){
-    var a=document.getElementById('audio');
     document.getElementById('son').classList.remove('oculto');
-    if(d.cancion) a.src=d.cancion;
-    /* Sin dirección de Drive no hay error que esperar: al rescate directo. */
-    else setTimeout(rescatar,0);
-    /* Si Drive no entrega el audio —contesta una página de aviso, o las reglas
-       del marco de Google lo bloquean— NO se manda al cliente a otra pestaña:
-       ahí se pierde la gracia. Se trae la canción por pedazos y se arma acá
-       mismo, en el teléfono. Tarda unos segundos y suena igual. */
-    a.addEventListener('error',rescatar);
-    /* Drive a veces contesta con una página de aviso en lugar del audio: no
-       da error, simplemente nunca termina de cargar. Si a los seis segundos
-       el navegador no sabe ni cuánto dura la canción, se la damos por perdida
-       y se rescata igual. (Cuando el servidor ya sabe que el archivo no sirve
-       no manda dirección y el rescate empieza de una, sin esperar nada.) */
-    setTimeout(function(){ if(!a.duration) rescatar(); },6000);
+    /* Con un respiro de cero: lo que usa la canción (RESCATE, SON, el
+       silencio…) se prepara más abajo en este mismo archivo. En un teléfono
+       sin almacenamiento de audio la respuesta llegaba en el acto, antes de
+       eso, y la página se quedaba para siempre en "Abriendo tu regalo". */
+    setTimeout(function(){ arrancarCancion(d); },0);
   }
   /* La nota de voz no se descarga hasta que la toquen: pesa poco, pero no
      tiene por qué competir con las fotos al abrir. */
@@ -895,25 +957,65 @@ var MANCHADO=false;
   }
 })();
 
-function rescatar(){
-  if(RESCATE.hecho) return;
-  RESCATE.hecho=true;
-  rescatarCancion();
+/* ================= el sonido =================
+   Lo que pasaba: "a veces no termina de cargar la canción". Tres causas, las
+   tres arregladas acá:
+
+   · El iPhone no deja que un reproductor empiece a sonar si no es con un
+     toque. Cuando la canción llegaba tarde (por pedazos, mientras se leía la
+     carta) ya no había toque y se quedaba muda aunque dijera "suena tu
+     canción". Ahora, en el toque de "Abrir tu universo", el reproductor se
+     despierta SIEMPRE —con la canción si ya está, o con un silencio cortito
+     si no— y a partir de ahí puede sonar cuando llegue.
+
+   · El rescate por pedazos iba de uno en uno, con un solo reintento, y
+     empezaba a los seis segundos. Ahora empieza a los tres y medio, pide los
+     pedazos a la vez, reintenta cada uno y manda un refuerzo si Google tarda
+     en despertar. Las canciones nuevas, además, llegan en un solo pedazo.
+
+   · Cada visita volvía a bajarla entera. Ahora queda guardada en el teléfono:
+     la segunda vez suena al instante, aunque haya poca señal.
+
+   Y si aun así no llega, el botón ♪ no desaparece: se queda para reintentar. */
+var RESCATE={hecho:false,lista:false,n:0};
+var TRAIDOS={};     /* 'cancion' / 'voz'  ->  {url, mime, blob} ya armados acá */
+var TRAYENDO={};    /* quien espera a un audio que ya se está trayendo */
+var SON={quiere:false, fallo:false};
+var CAJA_AUDIO='ruway-audio-1';
+
+/* Un silencio de medio instante, hecho acá mismo. Sirve para despertar un
+   reproductor en el toque cuando todavía no hay nada que tocar. */
+var SILENCIO=(function(){
+  try{
+    var n=480, b=new Uint8Array(44+n), v=new DataView(b.buffer);
+    function txt(o,t){ for(var i=0;i<t.length;i++) b[o+i]=t.charCodeAt(i); }
+    txt(0,'RIFF'); v.setUint32(4,36+n,true); txt(8,'WAVEfmt ');
+    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+    v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true);
+    v.setUint16(34,8,true); txt(36,'data'); v.setUint32(40,n,true);
+    for(var i=44;i<b.length;i++) b[i]=128;
+    return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
+  }catch(e){ return ''; }
+})();
+function despertar(a){
+  /* En el toque: si no tiene nada puesto, se le pone el silencio. */
+  if(!a.getAttribute('src') && SILENCIO){ a.src=SILENCIO; }
+  try{ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){}
 }
-
-/* ---------------- los audios, por pedazos ----------------
-   El mismo mecanismo sirve para las dos cosas que suenan acá: la canción de
-   fondo y la nota de voz del cliente. El script nos manda el archivo en
-   trozos, los pegamos, los convertimos otra vez en audio y se lo damos al
-   reproductor como si viniera de este mismo teléfono.
-
-   Hace falta por tres motivos distintos, y por eso vale la pena:
-     · Drive no siempre entrega el audio al reproductor.
-     · Un archivo traído "de fuera" no se puede meter en el video que se graba;
-       uno armado acá, sí.
-     · Y así el cliente nunca tiene que salir de su universo a otra pestaña. */
-var RESCATE={hecho:false,partes:[],n:0};
-var TRAIDOS={};     /* 'cancion' / 'voz'  ->  {url, mime} ya armados acá */
+/* Lo mismo, pero sin que se oiga nada: se toca en silencio y se para. El
+   reproductor queda despierto igual. Es lo de la vela, donde la canción tiene
+   que esperar a que se encienda la llama. */
+function despertarCallado(a){
+  if(!a.getAttribute('src') && SILENCIO){ a.src=SILENCIO; }
+  a.muted=true;
+  var p;
+  try{ p=a.play(); }catch(e){ a.muted=false; return; }
+  function listo(){
+    if(!SON.quiere){ try{ a.pause(); a.currentTime=0; }catch(e){} }
+    a.muted=false;
+  }
+  if(p && p.then) p.then(listo,function(){ a.muted=false; }); else listo();
+}
 
 function pistaDice(t,quedarse){
   var p=document.getElementById('pista');
@@ -922,15 +1024,54 @@ function pistaDice(t,quedarse){
   if(!quedarse) p._t=setTimeout(function(){p.classList.add('oculto');},4000);
 }
 
+/* ---- lo guardado en el teléfono ----
+   La llave lleva el archivo de Drive: si el cliente cambia la canción, el
+   archivo es otro y lo guardado ya no sirve. */
+function llaveAudio(cual){
+  var d=DATOS||{}, id=cual==='voz'?d.vozId:d.cancionId;
+  if(!id||!d.codigo) return '';
+  try{ return new URL('/__audio/'+encodeURIComponent(d.codigo)+'/'+cual+'/'+encodeURIComponent(id),location.href).href; }
+  catch(e){ return ''; }
+}
+function audioGuardado(cual,listo){
+  var k=llaveAudio(cual), hecho=false;
+  function fin(x){ if(hecho) return; hecho=true; clearTimeout(t); listo(x); }
+  /* Si el almacenamiento no contesta rápido, se sigue sin él. */
+  var t=setTimeout(function(){ fin(null); },1500);
+  if(!k||!window.caches){ fin(null); return; }
+  try{
+    caches.open(CAJA_AUDIO).then(function(c){ return c.match(k); })
+      .then(function(r){ return r ? r.blob() : null; })
+      .then(function(b){
+        if(b && b.size>500) fin({url:URL.createObjectURL(b), mime:b.type||'audio/mpeg', blob:b});
+        else fin(null);
+      })['catch'](function(){ fin(null); });
+  }catch(e){ fin(null); }
+}
+function guardarAudio(cual,blob){
+  var k=llaveAudio(cual);
+  if(!k||!window.caches||!blob) return;
+  try{
+    caches.open(CAJA_AUDIO).then(function(c){
+      return c.put(k,new Response(blob,{headers:{'Content-Type':blob.type||'audio/mpeg'}}))
+        .then(function(){ return c.keys(); })
+        .then(function(ks){
+          /* Los últimos ocho, nada más: un teléfono no tiene por qué cargar con
+             todos los universos que abrió en su vida. */
+          for(var i=0;i<ks.length-8;i++) c['delete'](ks[i]);
+        });
+    })['catch'](function(){});
+  }catch(e){}
+}
+
+/* ---- un pedazo, por JSONP ---- */
 function pedirTrozo(cual,parte,ok,mal){
   var d=DATOS;
-  if(!d||!d.api){ mal&&mal(); return; }
-  if(cual==='voz' ? !d.vozId : !d.cancionId){ mal&&mal(); return; }
+  if(!d||!d.api){ mal&&mal(true); return; }
+  if(cual==='voz' ? !d.vozId : !d.cancionId){ mal&&mal(true); return; }
   var nombre='__son'+(++RESCATE.n);
   var t=document.createElement('script');
-  /* Un minuto: un trozo son tres millones de bytes y el servidor tiene que
-     bajarse el archivo de Drive antes de mandarlo. En 3G eso no va rápido. */
-  var reloj=setTimeout(function(){limpiar();mal&&mal();},60000);
+  var reloj=setTimeout(function(){limpiar();mal&&mal(false);},40000);
   function limpiar(){
     clearTimeout(reloj);
     try{delete window[nombre];}catch(e){window[nombre]=undefined;}
@@ -938,69 +1079,164 @@ function pedirTrozo(cual,parte,ok,mal){
   }
   window[nombre]=function(r){
     limpiar();
-    if(r&&r.ok&&r.r) ok(r.r); else mal&&mal();
+    if(r&&r.ok&&r.r&&r.r.b64) ok(r.r);
+    /* Lo que el servidor contesta a propósito ("todavía no se puede abrir")
+       no se arregla reintentando. */
+    else mal&&mal(!!(r&&r.ok===false&&r.error));
   };
-  t.onerror=function(){limpiar();mal&&mal();};
+  t.onerror=function(){limpiar();mal&&mal(false);};
   t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')
     +'vista=api&rfn=cancion&rcb='+nombre
     +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte,cual,d.ver||'']));
   document.head.appendChild(t);
 }
 
-/* Trae un audio entero y lo deja listo como archivo local.
+/* Un pedazo sin rendirse a la primera: si a los siete segundos no contestó,
+   sale otro igual por detrás (Google puede estar despertando); si los dos
+   fallan, una vuelta más al rato. */
+function pedirTrozoFuerte(cual,parte,ok,mal){
+  var hecho=false, vivos=0, muertos=0, vuelta=0, refuerzo=null;
+  function uno(){
+    vivos++;
+    pedirTrozo(cual,parte,function(r){
+      if(hecho) return; hecho=true; clearTimeout(refuerzo); ok(r);
+    },function(fijo){
+      if(hecho) return;
+      muertos++;
+      if(fijo){ hecho=true; clearTimeout(refuerzo); mal(); return; }
+      if(muertos<vivos) return;              /* otro sigue en camino */
+      clearTimeout(refuerzo);
+      if(++vuelta>2){ hecho=true; mal(); return; }
+      setTimeout(ronda,vuelta*1500);
+    });
+  }
+  function ronda(){
+    if(hecho) return;
+    uno();
+    refuerzo=setTimeout(function(){ if(!hecho) uno(); },7000);
+  }
+  ronda();
+}
+
+/* Trae un audio entero y lo deja listo como archivo de este teléfono.
    `avisa(hecho,total)` sirve para ir contando por pantalla. */
 function traerAudio(cual,avisa,ok,mal){
   if(TRAIDOS[cual]){ ok(TRAIDOS[cual]); return; }
-  var partes=[], mime='', otraVez=false;
-
-  function siguiente(i){
-    pedirTrozo(cual,i,function(r){
-      partes[r.parte]=r.b64;
-      mime=r.mime||'audio/mpeg';
-      avisa&&avisa(r.parte+1,r.total);
-      if(r.parte+1<r.total){ siguiente(r.parte+1); return; }
+  /* Si ya lo está trayendo otro (la canción por detrás y el video a la vez),
+     se espera a ese en vez de pedirlo dos veces. */
+  if(TRAYENDO[cual]){ TRAYENDO[cual].push([ok,mal,avisa]); return; }
+  var esperan=TRAYENDO[cual]=[[ok,mal,avisa]];
+  function acabar(r){
+    delete TRAYENDO[cual];
+    esperan.forEach(function(x){ try{ if(r) x[0](r); else if(x[1]) x[1](); }catch(e){} });
+  }
+  audioGuardado(cual,function(g){
+    if(g){ TRAIDOS[cual]=g; acabar(g); return; }
+    var partes=[], total=0, hechos=0, mime='', roto=false;
+    function uno(i,listo){
+      pedirTrozoFuerte(cual,i,function(r){
+        if(roto) return;
+        if(partes[r.parte]==null) hechos++;
+        partes[r.parte]=r.b64; mime=r.mime||mime||'audio/mpeg'; total=r.total;
+        esperan.forEach(function(x){ if(x[2]) x[2](hechos,total); });
+        listo();
+      },function(){ if(roto) return; roto=true; acabar(null); });
+    }
+    /* El primero dice cuántos son; los demás van a la vez, de a tres. */
+    uno(0,function(){
+      if(total<=1){ armar(); return; }
+      var sig=1, vuelo=0;
+      (function lanzar(){
+        while(vuelo<3 && sig<total){
+          vuelo++;
+          uno(sig++,function(){ vuelo--; if(hechos>=total) armar(); else lanzar(); });
+        }
+      })();
+    });
+    function armar(){
+      if(roto) return;
       try{
         var bin=atob(partes.join('')), n=bin.length, bytes=new Uint8Array(n);
         for(var k=0;k<n;k++) bytes[k]=bin.charCodeAt(k);
-        TRAIDOS[cual]={url:URL.createObjectURL(new Blob([bytes],{type:mime})),mime:mime};
-        ok(TRAIDOS[cual]);
-      }catch(e){ mal&&mal(); }
-    },function(){
-      /* Un segundo intento antes de rendirse: casi siempre es que el script
-         estaba dormido y el primer viaje fue el que lo despertó. */
-      if(otraVez){ mal&&mal(); return; }
-      otraVez=true;
-      setTimeout(function(){ siguiente(i); },1200);
+        var blob=new Blob([bytes],{type:mime});
+        TRAIDOS[cual]={url:URL.createObjectURL(blob),mime:mime,blob:blob};
+        guardarAudio(cual,blob);
+        acabar(TRAIDOS[cual]);
+      }catch(e){ acabar(null); }
+    }
+  });
+}
+
+/* ---- la canción ---- */
+function arrancarCancion(d){
+  var a=document.getElementById('audio');
+  audioGuardado('cancion',function(g){
+    /* 1. Ya sonó alguna vez en este teléfono: al instante, sin internet. */
+    if(g){ TRAIDOS.cancion=g; RESCATE.hecho=true; ponerCancion(g); return; }
+    if(d.cancion){
+      /* 2. Directo de Drive, que cuando funciona es lo más rápido. */
+      a.addEventListener('error',rescatar);
+      a.src=d.cancion;
+      /* 3. Si a los tres segundos y medio el navegador todavía no puede
+         empezar a tocarla, se trae por pedazos por detrás. En el iPhone pasa
+         siempre (no carga nada hasta el toque) y así, al tocar, ya está. */
+      setTimeout(function(){ if(a.readyState<3) rescatar(); },3500);
+    } else rescatar();
+  });
+}
+
+/* ¿Está sonando de verdad (no el silencio de despertar)? */
+function cancionSuena(){
+  var a=document.getElementById('audio');
+  return !a.paused && a.currentTime>0.25 && a.src!==SILENCIO && a.readyState>=3;
+}
+
+function ponerCancion(r){
+  var a=document.getElementById('audio');
+  RESCATE.lista=true;
+  /* Si ya suena la de Drive, no se corta: lo traído queda guardado para la
+     próxima vez y para el video. */
+  if(cancionSuena() && a.src.indexOf('blob:')!==0) return;
+  a.removeEventListener('error',rescatar);
+  a.src=r.url;
+  var b=document.getElementById('son'); b.textContent='♪';
+  /* Si llega mientras habla la nota de voz, espera a que termine. */
+  if(vivo && SON.quiere && VOZ.sonando){ VOZ.antes=true; return; }
+  if(vivo && SON.quiere){
+    a.volume=.7;
+    var p=a.play();
+    if(p&&p.then) p.then(function(){ pistaDice('SUENA TU CANCIÓN'); })['catch'](function(){
+      /* Sin el toque de antes, algún navegador igual la frena: se pide uno. */
+      b.textContent='♪ ▶';
+      pistaDice('TOCA ♪ PARA ESCUCHAR TU CANCIÓN');
     });
   }
-  siguiente(0);
+}
+
+function rescatar(){
+  if(RESCATE.hecho) return;
+  RESCATE.hecho=true;
+  rescatarCancion();
 }
 
 function rescatarCancion(){
-  document.getElementById('son').textContent='♪…';
-  pistaDice('PREPARANDO TU CANCIÓN…',true);
+  /* En la vela, mientras nadie la enciende, la canción se prepara callada:
+     no hay nada que avisar todavía. */
+  var avisa=function(){ return vivo && !cancionSuena() && (TIPO!=='vela' || SON.quiere); };
+  if(!cancionSuena()){
+    document.getElementById('son').textContent='♪…';
+    if(avisa()) pistaDice('PREPARANDO TU CANCIÓN…',true);
+  }
   traerAudio('cancion',function(hecho,total){
-    if(total>1) pistaDice('PREPARANDO TU CANCIÓN · '+hecho+' de '+total,true);
-  },function(r){
-    var a=document.getElementById('audio');
-    /* Este oyente de error ya no sirve para nada y si salta otra vez nos
-       mandaría a rescatar lo que ya está rescatado. */
-    a.onerror=null;
-    a.src=r.url;
-    RESCATE.mime=r.mime;
-    RESCATE.lista=true;
-    document.getElementById('son').textContent='♪';
-    /* Si el cliente ya estaba dentro de su universo cuando terminó de
-       llegar, la canción arranca sola; si todavía no entró, arranca al
-       entrar como siempre. */
-    if(vivo){ a.volume=.7; a.play().catch(function(){}); }
-    pistaDice('SUENA TU CANCIÓN');
-  },rendirse);
+    if(avisa() && total>1) pistaDice('PREPARANDO TU CANCIÓN · '+hecho+' de '+total,true);
+  },ponerCancion,rendirse);
 }
 
 function rendirse(){
-  document.getElementById('son').classList.add('oculto');
-  pistaDice('LA CANCIÓN NO SE PUDO CARGAR');
+  if(cancionSuena()) return;       /* la de Drive llegó a sonar: no hay nada que decir */
+  SON.fallo=true; RESCATE.hecho=false;
+  document.getElementById('son').textContent='♪ ↻';
+  pistaDice('LA CANCIÓN NO CARGÓ · TOCA ♪ PARA INTENTAR DE NUEVO');
 }
 
 /* ================= la nota de voz =================
@@ -1013,22 +1249,27 @@ function tocarVoz(){
   var b=document.getElementById('voz');
   var a=document.getElementById('avoz');
   if(VOZ.sonando){ a.pause(); return; }
-  if(a.src){ ponerVoz(a); return; }
+  if(TRAIDOS.voz){ if(a.src!==TRAIDOS.voz.url) a.src=TRAIDOS.voz.url; ponerVoz(a); return; }
 
+  /* Se despierta el reproductor en este mismo toque: el iPhone no dejaría
+     que sonara después, cuando termine de llegar. */
+  despertar(a);
   b.textContent='🎙️…';
   pistaDice('PREPARANDO EL MENSAJE…',true);
   traerAudio('voz',null,function(r){
     a.src=r.url; ponerVoz(a);
   },function(){
-    b.classList.add('oculto');
-    pistaDice('EL MENSAJE NO SE PUDO CARGAR');
+    b.textContent='🎙️';
+    pistaDice('EL MENSAJE NO CARGÓ · TOCA 🎙️ OTRA VEZ');
   });
 }
 
 function ponerVoz(a){
   var m=document.getElementById('audio');
-  VOZ.antes=!m.paused;
-  if(VOZ.antes) m.pause();
+  /* Callado no cuenta como sonando: es el reproductor despertándose en la
+     vela, y al terminar la voz no hay ninguna canción que retomar. */
+  VOZ.antes=!m.paused && !m.muted && m.src!==SILENCIO;
+  if(!m.paused) m.pause();
   a.currentTime=0;
   a.play().then(function(){
     VOZ.sonando=true;
@@ -1090,30 +1331,54 @@ document.getElementById('ver').addEventListener('click',function(){
   /* el botón aparece unos segundos después: primero que vea su universo */
   setTimeout(function(){ if(typeof pintarBotonCompartir==='function') pintarBotonCompartir(); },4000);
   var a=document.getElementById('audio');
-  /* Si la canción se está rescatando por pedazos, no se toca: arranca sola
-     en cuanto termine de llegar. Insistir acá solo borraría el aviso. */
-  if(a.src && !(RESCATE.hecho && !RESCATE.lista)){
-    a.volume=.7; a.play().then(function(){
-      document.getElementById('son').textContent='♪';
-      pistaDice('SUENA TU CANCIÓN');
-    }).catch(function(){
-      document.getElementById('son').textContent='♪';
-      /* Si no arrancó porque el archivo no sirve —y no porque el teléfono
-         pida un toque antes de sonar— se rescata. */
-      if(a.error||a.readyState===0) rescatar();
-    });
+  if(DATOS && (DATOS.cancion||DATOS.cancionId) && TIPO==='vela'){
+    /* En la vela la canción espera a la llama. En este toque solo se deja el
+       reproductor despierto, y callado, para que después pueda sonar sola. */
+    if(!SON.quiere) despertarCallado(a);
+    else { a.muted=false; var pv=a.play(); if(pv&&pv['catch']) pv['catch'](function(){}); }
   }
+  else if(DATOS && (DATOS.cancion||DATOS.cancionId)){
+    SON.quiere=true;
+    a.volume=.7;
+    /* SIEMPRE se le da al play en este toque, aunque la canción todavía esté
+       llegando: es lo que deja que después suene sola en el iPhone. Si aún
+       no hay nada, suena un silencio y la canción entra cuando llegue. */
+    if(a.getAttribute('src') && a.src!==SILENCIO){
+      var p=a.play();
+      if(p&&p.then) p.then(function(){
+        if(a.src!==SILENCIO){ document.getElementById('son').textContent='♪'; pistaDice('SUENA TU CANCIÓN'); }
+      })['catch'](function(){ if(a.error||a.readyState===0) rescatar(); });
+      if(!RESCATE.lista && a.readyState<3) pistaDice('PREPARANDO TU CANCIÓN…',true);
+    } else {
+      despertar(a);
+      pistaDice('PREPARANDO TU CANCIÓN…',true);
+    }
+  }
+  /* El mensaje de voz se va trayendo por detrás mientras mira sus fotos: así,
+     cuando toque el botón, suena al instante. */
+  if(DATOS && DATOS.vozId) setTimeout(function(){
+    if(!TRAIDOS.voz) traerAudio('voz',null,function(){},function(){});
+  },5000);
 });
 
 document.getElementById('son').addEventListener('click',function(){
   var a=document.getElementById('audio');
-  if(a.paused){
-    var b=this;
-    a.play().then(function(){b.textContent='♪';})
-            .catch(function(){ if(a.error||a.readyState===0) rescatar(); });
-    this.textContent='♪';
+  var b=this;
+  if(SON.fallo){
+    /* Reintentar, y el reproductor queda despierto por este toque. */
+    SON.fallo=false; SON.quiere=true;
+    despertar(a);
+    rescatar();
+    return;
   }
-  else{a.pause();this.textContent='✕';}
+  if(a.paused || a.src===SILENCIO){
+    SON.quiere=true;
+    if(a.src===SILENCIO || !a.getAttribute('src')){ despertar(a); b.textContent='♪…'; rescatar(); return; }
+    a.play().then(function(){b.textContent='♪';})
+            ['catch'](function(){ if(a.error||a.readyState===0) rescatar(); });
+    b.textContent='♪';
+  }
+  else{ SON.quiere=false; a.pause(); b.textContent='✕'; }
 });
 document.getElementById('volver').addEventListener('click',function(){
   vivo=false;esconder(s3);ver(s1);cerrarGlobo();
@@ -1149,7 +1414,7 @@ function bajarCalidad(){
   return true;
 }
 
-function size(){W=c.clientWidth;H=c.clientHeight;if(!W)return;
+function size(){if(VIDEO_OCUPA)return;W=c.clientWidth;H=c.clientHeight;if(!W)return;
   MOVIL=(W<520);
   c.width=W*DPR|0;c.height=H*DPR|0;g.setTransform(DPR,0,0,DPR,0,0);
   LUZ.width=Math.max(1,(W*DPR*ESC)|0); LUZ.height=Math.max(1,(H*DPR*ESC)|0);
@@ -1157,11 +1422,15 @@ function size(){W=c.clientWidth;H=c.clientHeight;if(!W)return;
   pintarCielo();}
 
 /* fondo: estrellas lejanas y una banda de vía láctea en diagonal, se dibuja una sola vez */
+/* Se pinta a la resolución de verdad del lienzo, no a la mitad: antes se
+   estiraba y las estrellas del fondo salían borrosas, sobre todo en el video
+   en alta. */
 function pintarCielo(){
-  var cw=W+200,ch=H+120;
-  cielo=document.createElement('canvas');cielo.width=cw;cielo.height=ch;
-  var x=cielo.getContext('2d');
-  x.fillStyle='#03040a';x.fillRect(0,0,cw,ch);
+  var cw=W+200,ch=H+120,k=Math.min(3,Math.max(1,DPR));
+  cielo=document.createElement('canvas');cielo.width=Math.round(cw*k);cielo.height=Math.round(ch*k);
+  cielo.__w=cw; cielo.__h=ch;
+  var x=cielo.getContext('2d'); x.scale(k,k);
+  x.fillStyle=FONDO||'#03040a';x.fillRect(0,0,cw,ch);
   /* eje de la banda: de arriba-derecha a abajo-izquierda */
   var ang=-.55,cs=Math.cos(ang),sn=Math.sin(ang),L=Math.hypot(cw,ch);
   function banda(u,v){return {x:cw/2+u*cs-v*sn,y:ch/2*.9+u*sn+v*cs};}
@@ -1218,7 +1487,10 @@ function nube(rgb){
   x.fillStyle=gr;x.fillRect(0,0,128,128);
   return t;
 }
-var NUBES=[nube('120,90,220'),nube('70,120,230'),nube('210,150,60'),nube('190,80,170'),nube('90,180,220')];
+var NUBES=FONDO
+  ? [nube(C1.join(',')),nube(C3.join(',')),nube(mez(C1,C3,.5).join(',')),
+     nube(mez(C2,C1,.45).join(',')),nube(mez(C3,[0,0,0],.25).join(','))]
+  : [nube('120,90,220'),nube('70,120,230'),nube('210,150,60'),nube('190,80,170'),nube('90,180,220')];
 
 var rx=-0.34,ry=0,zoom=.78,giro=0;
 var neb=[],stars=[],espiral=[],corazon=[],ramos=[],palabras=[];
@@ -1228,8 +1500,13 @@ var neb=[],stars=[],espiral=[],corazon=[],ramos=[],palabras=[];
    DOS golpes, uno fuerte y otro más flojo justo detrás, y después descansa.
    Eso es lo que hace que se reconozca como un latido y no como una
    pulsación cualquiera. Un ciclo cada 1,15 s, que es un pulso tranquilo. */
+/* El reloj del universo. Mientras se arma el video, el tiempo lo marca el
+   video (cuadro 1, cuadro 2...) y no el reloj de la pared: así el corazón
+   late igual de parejo aunque el teléfono tarde en dibujar cada cuadro. */
+var RELOJ_VIDEO=-1;
+function ahoraMs(){ return RELOJ_VIDEO>=0 ? RELOJ_VIDEO*1000 : performance.now(); }
 function latido(){
-  var p=((performance.now()/1000)%1.15)/1.15;
+  var p=((ahoraMs()/1000)%1.15)/1.15;
   var d1=p-.02, d2=p-.28;
   return Math.exp(-190*d1*d1) + Math.exp(-150*d2*d2)*.55;
 }
@@ -1473,13 +1750,41 @@ function vigilarFluidez(){
   if(fps<27) bajarCalidad();
 }
 
+/* Mover y dibujar van por separado. Mover avanza el universo un paso
+   (lo que antes era un cuadro a 60 por segundo); dibujar solo lo pinta. Así
+   se puede dibujar el universo para el video cuadro por cuadro, con su propio
+   reloj, sin que dependa de lo rápido que sea el teléfono. */
+function avanzar(k){
+ giro+=.0027*k;
+ for(var i=0;i<ramos.length;i++) ramos[i].a+=ramos[i].v*k;
+ for(var i=0;i<palabras.length;i++) palabras[i].a+=palabras[i].v*k;
+ for(var i=0;i<stars.length;i++){var o=stars[i];
+  o.x+=o.vx*k;o.y+=o.vy*k;o.z+=o.vz*k;o.f+=o.tw*k;
+  if(o.x*o.x+o.z*o.z>3400000){o.vx=-o.vx;o.vz=-o.vz;}      /* rebota al llegar al borde */
+  if(o.y>700||o.y<-700)o.vy=-o.vy;}
+ for(var i=0;i<relleno.length;i++) relleno[i].f+=relleno[i].v*k;
+ for(var i=0;i<corazon.length;i++) corazon[i].f+=corazon[i].v*k;
+}
+
+/* El paso se mide con el reloj y no por cuadro. Antes cada cuadro era un
+   paso, y en los teléfonos de pantalla rápida (90 o 120 cuadros por segundo)
+   el universo giraba el doble de rápido que en los demás. */
+var _ultimo=0;
 function dibujar(){
  requestAnimationFrame(dibujar);
- if(!vivo||!W)return;
+ if(!vivo||!W||VIDEO_OCUPA){ _ultimo=0; return; }
+ var ahora=performance.now();
+ var k=_ultimo ? (ahora-_ultimo)/16.667 : 1;
+ _ultimo=ahora;
+ if(!(k>0)) k=1; if(k>4) k=4;
  vigilarFluidez();
- giro+=.0027;
+ avanzar(k);
+ pintarUniverso();
+}
+
+function pintarUniverso(){
  g.globalCompositeOperation='source-over';g.globalAlpha=1;
- if(cielo)g.drawImage(cielo,-100+Math.sin(ry)*60,-60+rx*40);else{g.fillStyle='#03040a';g.fillRect(0,0,W,H);}
+ if(cielo)g.drawImage(cielo,-100+Math.sin(ry)*60,-60+rx*40,cielo.__w,cielo.__h);else{g.fillStyle=FONDO||'#03040a';g.fillRect(0,0,W,H);}
 
  /* nebulosas */
  for(var i=0;i<neb.length;i++){var o=neb[i];proy(o.x,o.y,o.z);
@@ -1488,10 +1793,10 @@ function dibujar(){
 
  /* ramos y palabras que quedan DETRÁS de la galaxia */
  sprites.length=0;
- for(var i=0;i<ramos.length;i++){var o=ramos[i];o.a+=o.v;
+ for(var i=0;i<ramos.length;i++){var o=ramos[i];
   proy(Math.cos(o.a)*o.r,o.y,Math.sin(o.a)*o.r);
   sprites.push({t:0,o:o,x:_x,y:_y,f:_f,z:_z});}
- for(var i=0;i<palabras.length;i++){var o=palabras[i];o.a+=o.v;
+ for(var i=0;i<palabras.length;i++){var o=palabras[i];
   proy(Math.cos(o.a)*o.r,o.y,Math.sin(o.a)*o.r);
   sprites.push({t:1,o:o,x:_x,y:_y,f:_f,z:_z});}
  sprites.sort(function(a,b){return b.z-a.z;});
@@ -1508,9 +1813,6 @@ function dibujar(){
  g=gl;
 
  for(var i=0;i<stars.length;i++){var o=stars[i];
-  o.x+=o.vx;o.y+=o.vy;o.z+=o.vz;o.f+=o.tw;
-  if(o.x*o.x+o.z*o.z>3400000){o.vx=-o.vx;o.vz=-o.vz;}      /* rebota al llegar al borde */
-  if(o.y>700||o.y<-700)o.vy=-o.vy;
   proy(o.x,o.y,o.z);
   if(_f<=.05)continue;var r=o.s*_f*3.2;if(r<.5)r=.5;
   if(_x<-r||_x>W+r||_y<-r||_y>H+r)continue;               /* fuera de pantalla: no se dibuja */
@@ -1569,7 +1871,7 @@ function dibujar(){
   var LAT=1+latido()*.11, BRI=1+latido()*.35;
 
   /* escarcha del cuerpo: puntos finos que titilan, proyectados en 3D */
-  for(var i=0;i<relleno.length;i++){h=relleno[i];h.f+=h.v;
+  for(var i=0;i<relleno.length;i++){h=relleno[i];
    proy((h.x*hc-h.z*hs)*LAT,HY+h.y*LAT,(h.x*hs+h.z*hc)*LAT);if(_f<=.05)continue;
    r2=Math.max(.45,h.s*_f*2.9*LAT);
    if(_x<-r2||_x>W+r2||_y<-r2||_y>H+r2)continue;
@@ -1579,7 +1881,7 @@ function dibujar(){
    g.drawImage(i%9===0?P_BLANCO:P_ORO,_x-r2,_y-r2,r2*2,r2*2);}
 
   /* escarcha del contorno: más densa y brillante, dibuja la silueta */
-  for(var i=0;i<corazon.length;i++){h=corazon[i];h.f+=h.v;
+  for(var i=0;i<corazon.length;i++){h=corazon[i];
    /* el latido agranda el corazón desde su centro; por eso se multiplican
       las tres coordenadas y no solo el tamaño del punto */
    proy((h.x*hc-h.z*hs)*LAT,HY+h.y*LAT,(h.x*hs+h.z*hc)*LAT);if(_f<=.05)continue;
@@ -1724,32 +2026,622 @@ function pintarSprites(a,b){
    g.shadowBlur=0;g.shadowColor='transparent';
    g.fillStyle='#FFFBEA';g.fillText(tx,e.x,e.y);}}
 }
-dibujar();
+/* ====================== OTRAS EXPERIENCIAS ======================
+   Con las mismas fotos, la misma dedicatoria, la misma canción y la misma
+   voz, dos formas más de vivirlo, para fechas en las que el universo no es lo
+   que toca:
+
+   · EL ÁRBOL QUE SE ENCIENDE (Navidad). Un árbol a oscuras donde cada esfera
+     es una foto. Al tocarla se abre con su frase, y al cerrarla queda
+     brillando y se prende un tramo de luces. Con la última, se enciende la
+     estrella.
+
+   · LA VELA QUE NO SE APAGA (para recordar a alguien). Una vela en un cuarto
+     oscuro que se enciende dejando el dedo en la mecha. En su luz van
+     apareciendo las fotos con su frase y, al final, la dedicatoria. Cada
+     persona que la enciende se suma a la cuenta: "18 velas encendidas".
+
+   Usan el mismo lienzo y el mismo tamaño que el universo, así que el video
+   para compartir sale igual para las tres. */
+var TIPO=(DATOS && DATOS.tipo==='arbol')?'arbol':(DATOS && DATOS.tipo==='vela')?'vela':'universo';
+/* Lo que el bucle, el video y los toques usan. Por defecto, el universo. */
+var ESCENA={avanzar:avanzar, pintar:pintarUniverso, tocar:null, abajo:null, mueve:null, arriba:null,
+            paraVideo:null, alCerrar:null};
+/* El nombre del archivo del video, sin tildes: con una "á" algunos teléfonos
+   lo guardaban como "download", sin nombre ni extensión. */
+var NOMBRE_VIDEO={universo:'Mi universo Ruway', arbol:'Mi arbolito Ruway', vela:'Mi vela Ruway'}[TIPO];
+if(TIPO!=='universo') document.getElementById('s3').classList.add('otra-exp','exp-'+TIPO);
+
+/* La pista de abajo: qué hacer. Al esconderla se deja el texto, para que se
+   apague con lo que decía y no como una burbuja vacía. */
+function pistaEscena(t){
+  var p=document.getElementById('esc-pista');
+  if(!p) return;
+  if(t) p.textContent=t;
+  p.classList.toggle('oculto',!t);
+}
+
+/* Las fotos del cliente, cada una con su sitio fijo —la tercera es siempre la
+   tercera, aunque la segunda tarde en llegar— y cómo va: lista, en camino o
+   rota (no se pudo traer de ninguna forma). La primera vez se piden "como
+   propias"; si eso falla se piden de la forma normal, sin esa marca. Solo si
+   también falla así está rota de verdad. */
+function fotosConSitio(){
+  var r=[], j=0;
+  for(var i=0;i<ramos.length;i++){
+    var o=ramos[i];
+    if(!o.foto) continue;
+    var im=IMGS[o.k];
+    var lista=!!(im && im.complete && im.naturalWidth);
+    var rota=!lista && (!im || (im.complete && !im.naturalWidth && !im.crossOrigin));
+    r.push({im:im, txt:o.txt||'', j:j++, lista:lista, rota:rota});
+  }
+  return r;
+}
+function nombrePara(){
+  var p=String((DATOS&&DATOS.para)||'').trim().replace(/^para\s+/i,'');
+  return p.length<=24 ? p : '';
+}
+
+/* ---------------- el árbol ---------------- */
+function escenaArbol(){
+  var S={abiertas:{}, pendiente:-1, prendido:0, estrella:0, t:0, nieve:[], chispas:[],
+         fin:false, finT:0, todo:false, antes:null};
+  /* Dónde cuelga cada esfera: a qué altura del árbol y hacia qué lado. Se
+     reparten de arriba abajo por todo el árbol, sean dos o sean ocho, y van
+     alternando de lado para que ninguna tape a otra. */
+  var MAXE=8;
+  function sitio(i,n){
+    if(n<=1) return [.56,0];
+    return [.30+.56*i/(n-1), (i%2?1:-1)*[.34,.52,.2][i%3]];
+  }
+  var LUCES=[], NL=64;
+  var COLS=[HX1,HX2,'#FF5A5A','#58D2FF','#FFD84D','#8CFF72',hex(mez(C1,BL,.4))];
+  for(var i=0;i<NL;i++){
+    LUCES.push({u:.1+.8*i/NL, v:Math.sin(i*.93)*.92, c:COLS[i%COLS.length], f:Math.random()*6.28});
+  }
+  for(var j=0;j<90;j++) S.nieve.push({x:Math.random(),y:Math.random(),v:.0006+Math.random()*.0012,
+                                       r:.6+Math.random()*1.6,d:Math.random()*6.28});
+  /* El árbol deja arriba sitio para el título y abajo para la pista y el
+     botón de compartir. */
+  function geo(){
+    var cx=W/2, top=H*.19, base=H*.74, alto=base-top;
+    return {cx:cx, top:top, base:base, alto:alto, ancho:Math.min(W*.44,alto*.42)};
+  }
+  function anchoEn(G,u){ return G.ancho*(.18+.82*u); }
+  function punto(G,u,v){ return {x:G.cx+v*anchoEn(G,u)*.78, y:G.top+u*G.alto}; }
+  /* Con pocas fotos las esferas son más grandes: hay sitio de sobra. Una
+     foto rota no deja un hueco: las demás se reparten sin ella. */
+  function esferas(){
+    var F=fotosConSitio().slice(0,MAXE).filter(function(x){ return !x.rota; });
+    var G=geo(), n=F.length, r=Math.max(18,Math.min(W,H)*(n<=4?.085:.07)), l=[];
+    for(var i=0;i<n;i++){
+      if(!F[i].lista) continue;
+      var s=sitio(i,n), p=punto(G,s[0],s[1]);
+      l.push({x:p.x, y:p.y, r:r, f:F[i], i:F[i].j});
+    }
+    return l;
+  }
+  /* Cuántas hay que abrir y cuántas van. Una foto rota no cuenta: si contara,
+     el árbol se quedaría a medio encender para siempre. */
+  function cuenta(){
+    var F=fotosConSitio(), c={total:0, abiertas:0};
+    for(var i=0;i<F.length && i<MAXE;i++){
+      if(F[i].rota) continue;
+      c.total++;
+      if(S.abiertas[F[i].j]) c.abiertas++;
+    }
+    return c;
+  }
+  function terminar(){
+    S.fin=true; S.finT=S.t;
+    var G=geo();
+    for(var i=0;i<70;i++){ var a=Math.random()*6.283, v=1+Math.random()*3;
+      S.chispas.push({x:G.cx,y:G.top-H*.02,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.5,v:1,
+                      c:[HX1,HX2,'#FFFFFF','#FFD84D'][i%4]}); }
+    pistaEscena('');
+  }
+
+  function avanzarA(k){
+    S.t+=k/60;
+    var c=cuenta();
+    /* Sin fotos que abrir, el árbol se enciende solo. */
+    var meta=S.todo?1:(c.total?c.abiertas/c.total:1);
+    S.prendido+=(meta-S.prendido)*Math.min(1,.04*k);
+    if(!S.fin && !S.todo && (c.total ? c.abiertas>=c.total : S.prendido>.97)) terminar();
+    if(S.fin||S.todo) S.estrella=Math.min(1,S.estrella+.02*k);
+    for(var i=0;i<S.nieve.length;i++){ var n=S.nieve[i];
+      n.y+=n.v*k; n.d+=.01*k; if(n.y>1.05){ n.y=-.05; n.x=Math.random(); } }
+    for(var q=S.chispas.length-1;q>=0;q--){ var ch=S.chispas[q];
+      ch.x+=ch.vx*k; ch.y+=ch.vy*k; ch.vy+=.05*k; ch.v-=.012*k; if(ch.v<=0) S.chispas.splice(q,1); }
+  }
+
+  function arbol(G){
+    /* el cuarto: noche azul, luz baja en el piso */
+    var fondo=g.createLinearGradient(0,0,0,H);
+    fondo.addColorStop(0,'#070b1a'); fondo.addColorStop(.7,'#0b1024'); fondo.addColorStop(1,'#120c10');
+    g.fillStyle=fondo; g.fillRect(0,0,W,H);
+    var piso=g.createRadialGradient(G.cx,G.base+H*.05,10,G.cx,G.base+H*.05,W*.7);
+    piso.addColorStop(0,rgba(C1,.10+.18*S.prendido)); piso.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=piso; g.fillRect(0,G.base-H*.2,W,H*.5);
+    /* nieve detrás */
+    g.fillStyle='#FFFFFF';
+    for(var i=0;i<S.nieve.length;i++){ var n=S.nieve[i];
+      g.globalAlpha=.25+.35*Math.sin(n.d)*Math.sin(n.d);
+      g.beginPath(); g.arc(n.x*W+Math.sin(n.d)*6,n.y*H,n.r,0,6.283); g.fill(); }
+    g.globalAlpha=1;
+    /* tronco y maceta */
+    g.fillStyle='#3b2615'; g.fillRect(G.cx-G.ancho*.09,G.base-4,G.ancho*.18,H*.05);
+    g.fillStyle=hex(mez(C3,[0,0,0],.35));
+    g.beginPath(); g.moveTo(G.cx-G.ancho*.26,G.base+H*.035); g.lineTo(G.cx+G.ancho*.26,G.base+H*.035);
+    g.lineTo(G.cx+G.ancho*.2,G.base+H*.09); g.lineTo(G.cx-G.ancho*.2,G.base+H*.09); g.closePath(); g.fill();
+    /* regalitos al pie */
+    [[-.62,.9,C1],[.56,.7,C3],[-.3,.62,C2]].forEach(function(r){
+      var w=G.ancho*.3*r[1], x=G.cx+G.ancho*r[0]-w/2, y=G.base+H*.09-w*.8;
+      g.fillStyle=rgba(mez(r[2],[0,0,0],.25),1); g.fillRect(x,y,w,w*.8);
+      g.fillStyle=rgba(mez(r[2],BL,.55),.9); g.fillRect(x+w*.42,y,w*.16,w*.8); g.fillRect(x,y+w*.3,w,w*.14);
+    });
+    /* las cuatro capas de ramas */
+    var capas=4;
+    for(var c=0;c<capas;c++){
+      var u0=c/capas*.86, u1=Math.min(1,u0+.36);
+      var y0=G.top+u0*G.alto, y1=G.top+u1*G.alto, a1=anchoEn(G,u1)*1.02;
+      var gr=g.createLinearGradient(G.cx-a1,0,G.cx+a1,0);
+      var luz=.35+.35*S.prendido;
+      gr.addColorStop(0,'#0c2a17'); gr.addColorStop(.5,rgba(mez([20,84,44],C1,.08*S.prendido),1));
+      gr.addColorStop(1,'#0a2414');
+      g.fillStyle=gr;
+      g.beginPath(); g.moveTo(G.cx,y0-6);
+      g.quadraticCurveTo(G.cx+a1*.55,y0+(y1-y0)*.55,G.cx+a1,y1);
+      for(var z=6;z>=-6;z--){ g.lineTo(G.cx+a1*z/6,y1+(z%2?6:0)); }
+      g.quadraticCurveTo(G.cx-a1*.55,y0+(y1-y0)*.55,G.cx,y0-6);
+      g.fill();
+      g.strokeStyle=rgba(C2,.06+.10*luz); g.lineWidth=1.2; g.stroke();
+    }
+  }
+
+  function luces(G){
+    var prendidas=Math.round(S.prendido*LUCES.length);
+    g.globalCompositeOperation='lighter';
+    for(var i=0;i<LUCES.length;i++){ var L=LUCES[i], p=punto(G,L.u,L.v);
+      var tw=.6+.4*Math.sin(S.t*3+L.f);
+      if(i<prendidas){
+        var rr=7+3*tw;
+        var gg=g.createRadialGradient(p.x,p.y,0,p.x,p.y,rr*2.4);
+        gg.addColorStop(0,L.c); gg.addColorStop(1,'rgba(0,0,0,0)');
+        g.globalAlpha=.55*tw+.2; g.fillStyle=gg; g.beginPath(); g.arc(p.x,p.y,rr*2.4,0,6.283); g.fill();
+        g.globalAlpha=1; g.fillStyle='#FFFFFF'; g.beginPath(); g.arc(p.x,p.y,1.6,0,6.283); g.fill();
+      } else {
+        g.globalAlpha=.35; g.fillStyle='#4a5a52'; g.beginPath(); g.arc(p.x,p.y,1.8,0,6.283); g.fill();
+      }
+    }
+    g.globalAlpha=1; g.globalCompositeOperation='source-over';
+  }
+
+  function estrella(G){
+    var x=G.cx, y=G.top-H*.02, R=Math.min(W,H)*.055, e=S.estrella;
+    if(e>0){
+      g.globalCompositeOperation='lighter';
+      var gg=g.createRadialGradient(x,y,0,x,y,R*5);
+      gg.addColorStop(0,rgba(mez(C2,BL,.5),.8*e)); gg.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gg; g.beginPath(); g.arc(x,y,R*5,0,6.283); g.fill();
+      g.globalCompositeOperation='source-over';
+    }
+    g.save(); g.translate(x,y); g.rotate(Math.sin(S.t*.8)*.05);
+    g.beginPath();
+    for(var i=0;i<10;i++){ var a=-Math.PI/2+i*Math.PI/5, rr=i%2?R*.45:R;
+      g.lineTo(Math.cos(a)*rr,Math.sin(a)*rr); }
+    g.closePath();
+    g.fillStyle=e>0?rgba(mez(C2,[255,215,90],.5),.5+.5*e):'rgba(90,90,80,.5)';
+    g.fill(); g.strokeStyle=rgba(C2,.3+.6*e); g.lineWidth=1.5; g.stroke();
+    g.restore();
+  }
+
+  function esfera(s,abierta,foco){
+    var im=s.f.im, r=s.r*(foco?1.08:1), on=abierta||S.todo;
+    /* el hilo y el gancho */
+    g.strokeStyle='rgba(220,210,180,.5)'; g.lineWidth=1;
+    g.beginPath(); g.moveTo(s.x,s.y-r-9); g.lineTo(s.x,s.y-r); g.stroke();
+    g.fillStyle='#C9A85A'; g.fillRect(s.x-r*.22,s.y-r-3,r*.44,5);
+    /* resplandor si ya se abrió; si no, un latido que invita a tocarla */
+    if(on){
+      g.globalCompositeOperation='lighter';
+      var gg=g.createRadialGradient(s.x,s.y,r*.6,s.x,s.y,r*2);
+      gg.addColorStop(0,rgba(C1,.55)); gg.addColorStop(1,'rgba(0,0,0,0)');
+      g.fillStyle=gg; g.beginPath(); g.arc(s.x,s.y,r*2,0,6.283); g.fill();
+      g.globalCompositeOperation='source-over';
+    } else {
+      var lat=.5+.5*Math.sin(S.t*2.4+s.i);
+      g.strokeStyle=rgba(C2,.18+.3*lat); g.lineWidth=2+2*lat;
+      g.beginPath(); g.arc(s.x,s.y,r+4+3*lat,0,6.283); g.stroke();
+    }
+    g.save(); g.beginPath(); g.arc(s.x,s.y,r,0,6.283); g.clip();
+    var w=im.naturalWidth, h=im.naturalHeight, l=Math.min(w,h);
+    g.drawImage(im,(w-l)/2,(h-l)/2,l,l,s.x-r,s.y-r,r*2,r*2);
+    if(!on){ g.fillStyle='rgba(8,12,24,.62)'; g.fillRect(s.x-r,s.y-r,r*2,r*2); }
+    /* brillo de cristal */
+    var br=g.createLinearGradient(s.x-r,s.y-r,s.x+r*.2,s.y+r*.2);
+    br.addColorStop(0,'rgba(255,255,255,.45)'); br.addColorStop(.45,'rgba(255,255,255,0)');
+    g.fillStyle=br; g.fillRect(s.x-r,s.y-r,r*2,r*2);
+    g.restore();
+    g.strokeStyle=on?rgba(mez(C1,BL,.35),.95):'rgba(200,190,160,.5)';
+    g.lineWidth=2; g.beginPath(); g.arc(s.x,s.y,r,0,6.283); g.stroke();
+  }
+
+  /* Al encenderse la estrella, el saludo en grande unos segundos. Con el
+     nombre si es corto ("¡Feliz Navidad, Mamá!"). */
+  function saludo(){
+    var u=S.t-S.finT;
+    var a=u<1?u:(u<6?1:Math.max(0,1-(u-6)/1.2));
+    if(a<=0) return;
+    var p=nombrePara(), m=Math.min(W,H);
+    var txt='¡Feliz Navidad'+(p && p.length<=18 ? ', '+p : '')+'!';
+    g.save(); g.globalAlpha=a; g.textAlign='center';
+    g.font="700 "+Math.round(m*.085)+"px 'Dancing Script', cursive";
+    var l=partirTexto(g,txt,W*.86).slice(0,2), y=H*.47-(l.length-1)*m*.05;
+    /* Una sombra suave detrás, para que se lea aunque pase por encima de
+       las esferas encendidas. */
+    var cyS=y+(l.length-1)*m*.05-m*.03, sombra=g.createRadialGradient(W/2,cyS,0,W/2,cyS,W*.55);
+    sombra.addColorStop(0,'rgba(4,8,20,.55)'); sombra.addColorStop(1,'rgba(4,8,20,0)');
+    g.fillStyle=sombra; g.fillRect(0,cyS-W*.55,W,W*1.1);
+    g.shadowColor='rgba(0,0,0,.85)'; g.shadowBlur=18; g.fillStyle=HX2;
+    for(var i=0;i<l.length;i++) g.fillText(l[i],W/2,y+i*m*.1);
+    g.restore();
+  }
+
+  function pintarA(){
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    var G=geo();
+    arbol(G); luces(G); estrella(G);
+    esferas().forEach(function(s){ esfera(s,!!S.abiertas[s.i],S.pendiente===s.i); });
+    /* chispas cuando se enciende la estrella */
+    g.globalCompositeOperation='lighter';
+    for(var i=0;i<S.chispas.length;i++){ var ch=S.chispas[i];
+      g.globalAlpha=Math.max(0,ch.v); g.fillStyle=ch.c;
+      g.beginPath(); g.arc(ch.x,ch.y,2,0,6.283); g.fill(); }
+    g.globalAlpha=1; g.globalCompositeOperation='source-over';
+    if(S.fin && !S.todo) saludo();
+  }
+
+  /* Se abre la esfera más cercana al dedo, con un margen generoso. */
+  function tocarA(px,py){
+    var l=esferas(), mejor=null, dm=1e9;
+    for(var i=0;i<l.length;i++){ var s=l[i], d=Math.hypot(px-s.x,py-s.y);
+      if(d<s.r+14 && d<dm){ dm=d; mejor=s; } }
+    if(!mejor) return false;
+    S.pendiente=mejor.i;
+    document.getElementById('globo-img').src=mejor.f.im.src;
+    document.getElementById('globo-txt').textContent=mejor.f.txt||'';
+    document.getElementById('globo').classList.add('on');
+    abiertoEn=Date.now();
+    return true;
+  }
+  /* Al cerrar la foto, su esfera queda encendida. */
+  function alCerrar(){
+    if(S.pendiente<0) return;
+    S.abiertas[S.pendiente]=1; S.pendiente=-1;
+    var c=cuenta();
+    if(c.abiertas<c.total) pistaEscena('Toca las esferas para encender el árbol · '+c.abiertas+' de '+c.total);
+  }
+
+  ESCENA={avanzar:avanzarA, pintar:pintarA, tocar:tocarA, abajo:null, mueve:null, arriba:null,
+          alCerrar:alCerrar,
+          /* En el video el árbol sale encendido entero; al terminar, vuelve
+             a como estaba. */
+          paraVideo:function(si){
+            if(si){ S.antes={p:S.prendido, e:S.estrella, ch:S.chispas, t:S.t};
+                    S.todo=true; S.prendido=1; S.estrella=1; S.chispas=[]; }
+            else { S.todo=false;
+                   if(S.antes){ S.prendido=S.antes.p; S.estrella=S.antes.e; S.chispas=S.antes.ch;
+                                S.t=S.antes.t; S.antes=null; } }
+          }};
+  setTimeout(function(){
+    if(!S.fin && fotosConSitio().length) pistaEscena('Toca las esferas para encender el árbol');
+  },1200);
+  document.getElementById('ver').textContent='Encender el árbol';
+}
+
+/* ---------------- la vela ---------------- */
+function escenaVela(){
+  var S={luz:0, prendida:false, presion:0, apretando:false, x0:0, y0:0, t:0, desde:0,
+         velas:+(DATOS.corazones||0)||0, chispas:[], todo:false, antes:null,
+         turno:-1, turnoT:0, visible:null, avisoT:null};
+  var POR=5.5;
+  function geo(){
+    var w=Math.min(W*.2,86), h=H*.22, x=W/2, top=H*.56;
+    return {x:x, w:w, h:h, top:top, mecha:{x:x, y:top-6}};
+  }
+  function avanzarV(k){
+    S.t+=k/60;
+    if(S.apretando && !S.prendida){
+      S.presion=Math.min(1,S.presion+k/60/1.2);
+      if(S.presion>=1) prender();
+    } else if(!S.prendida) S.presion=Math.max(0,S.presion-k/60*2);
+    var meta=(S.prendida||S.todo)?1:0;
+    S.luz+=(meta-S.luz)*Math.min(1,.03*k);
+    /* Los recuerdos van por turnos: una foto cada cinco segundos y medio y, al
+       final de la vuelta, la dedicatoria. Por turnos y no por reloj: si en
+       medio llega otra foto, no se salta a la mitad de la que se estaba viendo. */
+    if(S.prendida && !S.todo && S.t-S.desde>=2.5){
+      if(S.turno<0){ S.turno=0; S.turnoT=S.t; }
+      else if(S.t-S.turnoT>=POR){ S.turno++; S.turnoT=S.t; }
+    }
+    for(var c=S.chispas.length-1;c>=0;c--){ var ch=S.chispas[c];
+      ch.x+=ch.vx*k; ch.y+=ch.vy*k; ch.v-=.015*k; if(ch.v<=0) S.chispas.splice(c,1); }
+  }
+  function prender(){
+    if(S.prendida) return;
+    S.prendida=true; S.desde=S.t; S.apretando=false;
+    var G=geo();
+    for(var i=0;i<30;i++){ var a=-Math.PI/2+(Math.random()-.5)*2.2, v=.6+Math.random()*1.8;
+      S.chispas.push({x:G.mecha.x,y:G.mecha.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,v:1}); }
+    clearTimeout(S.avisoT);
+    pistaEscena('');
+    sonarCancion();
+    setTimeout(contarVela,2500);
+  }
+  /* La canción empieza con la llama. El reproductor quedó despierto (y
+     callado) con el toque de "Encender la vela", así que puede sonar aunque
+     esto pase dentro de la animación y no en un toque. */
+  function sonarCancion(){
+    if(!(DATOS.cancion||DATOS.cancionId)) return;
+    SON.quiere=true;
+    var a=document.getElementById('audio');
+    a.muted=false;
+    /* Si está sonando la nota de voz, la canción espera a que termine: es lo
+       que hay que escuchar. Al acabar la voz, entra sola. */
+    if(VOZ.sonando){ VOZ.antes=true; return; }
+    if(a.getAttribute('src') && a.src!==SILENCIO){
+      a.volume=.7;
+      var p=a.play();
+      if(p&&p.then) p.then(function(){ document.getElementById('son').textContent='♪'; pistaDice('SUENA TU CANCIÓN'); })
+        ['catch'](function(){ if(a.error||a.readyState===0) rescatar(); });
+    } else {
+      pistaDice('PREPARANDO TU CANCIÓN…',true);
+      rescatar();
+    }
+  }
+  /* Cada persona que la enciende se suma, una vez por teléfono. La vista
+     previa (el taller, o quien la regaló) no suma. */
+  function contarVela(){
+    var ya=false;
+    try{ ya=!!localStorage.getItem('ruway:vela:'+DATOS.codigo); }catch(e){}
+    if(DATOS.vistaPrevia || ya || !DATOS.codigo || !DATOS.api) return;
+    llamarApi('corazon',[DATOS.codigo],function(r){
+      try{ localStorage.setItem('ruway:vela:'+DATOS.codigo,'1'); }catch(e){}
+      S.velas=(r && +r.corazones) || (S.velas+1);
+      decirCorazon(S.velas>1 ? '🕯️ Tu vela se sumó · ya son '+S.velas
+                             : '🕯️ Encendiste la primera vela');
+    },function(){});
+  }
+  function llama(G){
+    var t=S.t, x=G.mecha.x+Math.sin(t*7.3)*1.2, y=G.mecha.y;
+    var alto=(30+4*Math.sin(t*9.1)+3*Math.sin(t*13.7))*1.3, ancho=(9+1.2*Math.sin(t*11))*1.3;
+    var sway=Math.sin(t*2.3)*3.5;
+    /* la luz que llena el cuarto */
+    g.globalCompositeOperation='lighter';
+    var R=Math.max(W,H)*.75*S.luz+1;
+    var gl2=g.createRadialGradient(x,y-alto*.6,0,x,y-alto*.6,R);
+    gl2.addColorStop(0,'rgba(255,190,110,'+(.34*S.luz)+')');
+    gl2.addColorStop(.35,rgba(mez([255,170,90],C1,.25),.12*S.luz)); gl2.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gl2; g.fillRect(0,0,W,H);
+    /* la llama: capas de afuera hacia adentro */
+    function gota(ax,ah,col){
+      g.beginPath(); g.moveTo(x,y);
+      g.bezierCurveTo(x-ax,y-ah*.25,x-ax*.55+sway*.4,y-ah*.75,x+sway,y-ah);
+      g.bezierCurveTo(x+ax*.55+sway*.4,y-ah*.75,x+ax,y-ah*.25,x,y);
+      g.fillStyle=col; g.fill();
+    }
+    gota(ancho*1.9,alto*1.25,'rgba(255,120,40,'+(.25*S.luz)+')');
+    gota(ancho,alto,'rgba(255,170,60,'+(.85*S.luz)+')');
+    gota(ancho*.55,alto*.72,'rgba(255,240,190,'+(.95*S.luz)+')');
+    g.globalCompositeOperation='source-over';
+    g.fillStyle='rgba(90,140,255,'+(.35*S.luz)+')';
+    g.beginPath(); g.ellipse(x,y-2,ancho*.45,alto*.12,0,0,6.283); g.fill();
+  }
+  function pintarV(){
+    g.globalCompositeOperation='source-over'; g.globalAlpha=1;
+    var G=geo();
+    var fondo=g.createLinearGradient(0,0,0,H);
+    fondo.addColorStop(0,'#050407'); fondo.addColorStop(1,'#0c0806');
+    g.fillStyle=fondo; g.fillRect(0,0,W,H);
+    /* el platito */
+    g.fillStyle='rgba(120,100,80,'+(.25+.45*S.luz)+')';
+    g.beginPath(); g.ellipse(G.x,G.top+G.h,G.w*1.25,G.w*.28,0,0,6.283); g.fill();
+    /* la vela: cera iluminada por su propia llama */
+    var gr=g.createLinearGradient(G.x-G.w/2,0,G.x+G.w/2,0);
+    var cl=.25+.75*S.luz;
+    gr.addColorStop(0,'rgba(120,108,96,'+cl+')'); gr.addColorStop(.45,'rgba(250,240,222,'+cl+')');
+    gr.addColorStop(1,'rgba(150,135,118,'+cl+')');
+    g.fillStyle=gr; g.fillRect(G.x-G.w/2,G.top,G.w,G.h);
+    g.fillStyle='rgba(255,236,200,'+(.2+.6*S.luz)+')';
+    g.beginPath(); g.ellipse(G.x,G.top,G.w/2,G.w*.12,0,0,6.283); g.fill();
+    /* la mecha */
+    g.strokeStyle='#241a12'; g.lineWidth=2.5;
+    g.beginPath(); g.moveTo(G.x,G.top); g.lineTo(G.mecha.x,G.mecha.y); g.stroke();
+    if(S.luz>.01) llama(G);
+    /* apagada: el anillo que dice dónde tocar y, mientras se aprieta, cuánto falta */
+    if(!S.prendida && !S.todo){
+      var lat=.5+.5*Math.sin(S.t*2.5);
+      g.strokeStyle='rgba(255,210,150,'+(.25+.25*lat)+')'; g.lineWidth=2;
+      g.beginPath(); g.arc(G.mecha.x,G.mecha.y,26+5*lat,0,6.283); g.stroke();
+      if(S.presion>0){
+        g.strokeStyle='rgba(255,200,120,.95)'; g.lineWidth=4;
+        g.beginPath(); g.arc(G.mecha.x,G.mecha.y,34,-Math.PI/2,-Math.PI/2+S.presion*6.283); g.stroke();
+      }
+    }
+    for(var i=0;i<S.chispas.length;i++){ var ch=S.chispas[i];
+      g.globalAlpha=Math.max(0,ch.v); g.fillStyle='#FFD9A0';
+      g.beginPath(); g.arc(ch.x,ch.y,1.6,0,6.283); g.fill(); }
+    g.globalAlpha=1;
+    /* La cuenta, como una placa a los pies de la vela. */
+    if((S.prendida||S.todo) && S.velas>0){
+      var p=nombrePara();
+      g.save(); g.globalAlpha=Math.min(1,S.luz); g.textAlign='center';
+      g.font="600 "+Math.round(Math.min(W,H)*.034)+"px sans-serif"; g.fillStyle='rgba(255,226,180,.72)';
+      g.fillText(S.velas+(S.velas===1?' vela encendida':' velas encendidas')+(p?' para '+p:''),
+                 G.x,G.top+G.h+G.w*.28+26);
+      g.restore();
+    }
+    /* los recuerdos en la luz, uno por uno */
+    S.visible=null;
+    if(S.prendida && !S.todo) recuerdos();
+  }
+  function recuerdos(){
+    if(S.turno<0) return;
+    var F=fotosDelUniverso(), n=F.length;
+    var cual=S.turno%(n+1);                 /* las fotos y, al final, la dedicatoria */
+    var u=Math.min(1,(S.t-S.turnoT)/POR);
+    var alfa=u<.15?u/.15:u>.85?(1-u)/.15:1;
+    var m=Math.min(W,H), cx=W/2, cy=H*.28, lado=Math.min(W*.58,H*.3);
+    if(cual<n){
+      var f=F[cual];
+      pintarFoto(g,f.im,cx,cy,lado,alfa*.96);
+      if(alfa>.3) S.visible={f:f, x:cx, y:cy, lado:lado};
+      if(f.txt){
+        g.save(); g.globalAlpha=alfa; g.textAlign='center';
+        g.font="700 "+Math.round(m*.058)+"px 'Dancing Script', cursive";
+        g.fillStyle='#FFF1DA'; g.shadowColor='rgba(0,0,0,.8)'; g.shadowBlur=10;
+        var l=partirTexto(g,f.txt,W*.8);
+        for(var i=0;i<l.length && i<2;i++) g.fillText(l[i],cx,cy+lado/2+34+i*28);
+        g.restore();
+      }
+    } else {
+      var msg=String(DATOS.msg||'').split('\n').filter(function(x){return x.trim();}).slice(0,4);
+      g.save(); g.globalAlpha=alfa; g.textAlign='center'; g.fillStyle='#FFF1DA';
+      g.shadowColor='rgba(0,0,0,.8)'; g.shadowBlur=10;
+      g.font="700 "+Math.round(m*.062)+"px 'Dancing Script', cursive";
+      var y=H*.2, paso=Math.round(m*.075);
+      msg.forEach(function(x){ partirTexto(g,x,W*.82).slice(0,2).forEach(function(z){ g.fillText(z,cx,y); y+=paso; }); });
+      /* y la firma de quien la encendió primero */
+      var de=String(DATOS.de||'').trim();
+      if(de){
+        g.font="700 "+Math.round(m*.048)+"px 'Dancing Script', cursive"; g.fillStyle='rgba(255,236,205,.9)';
+        g.fillText('— '+partirTexto(g,de,W*.7)[0],cx,y+6); y+=Math.round(m*.07);
+      }
+      g.font="600 "+Math.round(m*.036)+"px sans-serif"; g.fillStyle='rgba(255,230,190,.75)';
+      g.fillText('Esta vela sigue encendida para ti',cx,y+18);
+      g.restore();
+    }
+  }
+  /* Se puede apretar la mecha, la llama o el cuerpo de la vela: el dedo no es
+     tan preciso como para pedirle que atine a la mecha. */
+  function cercaDeMecha(px,py){
+    var G=geo();
+    return Math.hypot(px-G.mecha.x,py-G.mecha.y)<80 ||
+           (Math.abs(px-G.x)<G.w*.9 && py>G.mecha.y-60 && py<G.top+G.h+20);
+  }
+  /* Tocar la foto que está en la luz la abre en grande, como en el universo. */
+  function tocarV(px,py){
+    var v=S.visible;
+    if(!v) return false;
+    if(Math.abs(px-v.x)>v.lado/2+10 || Math.abs(py-v.y)>v.lado/2+10) return false;
+    document.getElementById('globo-img').src=v.f.im.src;
+    document.getElementById('globo-txt').textContent=v.f.txt||'';
+    document.getElementById('globo').classList.add('on');
+    abiertoEn=Date.now();
+    return true;
+  }
+  function pistaApagada(){ if(!S.prendida) pistaEscena('Mantén el dedo en la mecha para encenderla'); }
+
+  ESCENA={avanzar:avanzarV, pintar:pintarV, tocar:tocarV,
+          abajo:function(px,py){
+            if(!S.prendida && cercaDeMecha(px,py)){ S.apretando=true; S.x0=px; S.y0=py; }
+          },
+          /* Si el dedo se va lejos, se suelta: era un arrastre, no la mecha. */
+          mueve:function(px,py){
+            if(S.apretando && Math.hypot(px-S.x0,py-S.y0)>45) S.apretando=false;
+          },
+          arriba:function(){
+            var soltoAntes=S.apretando && !S.prendida && S.presion>.05;
+            S.apretando=false;
+            if(soltoAntes){
+              pistaEscena('Déjalo un poquito más, hasta que prenda');
+              clearTimeout(S.avisoT); S.avisoT=setTimeout(pistaApagada,2600);
+            }
+            /* Si el teléfono no dejó sonar la canción sola, este toque sí vale.
+               Salvo que esté hablando la nota de voz: ahí la canción espera. */
+            if(S.prendida && SON.quiere && !VOZ.sonando){
+              var a=document.getElementById('audio');
+              if(a.paused && a.getAttribute('src') && a.src!==SILENCIO){
+                a.muted=false; var p=a.play(); if(p&&p['catch']) p['catch'](function(){});
+              }
+            }
+          },
+          alCerrar:null,
+          /* En el video sale encendida, sin el anillo ni los recuerdos de la
+             pantalla (el video pone sus propias fotos encima). */
+          paraVideo:function(si){
+            if(si){ S.antes={luz:S.luz, t:S.t, ch:S.chispas}; S.todo=true; S.luz=1; S.chispas=[]; }
+            else { S.todo=false;
+                   if(S.antes){ S.luz=S.antes.luz; S.t=S.antes.t; S.chispas=S.antes.ch; S.antes=null; } }
+          }};
+  setTimeout(pistaApagada,1200);
+  document.getElementById('ver').textContent='Encender la vela';
+}
+
+if(TIPO==='arbol') escenaArbol();
+else if(TIPO==='vela') escenaVela();
+
+/* Un solo bucle para las tres: cada una se mueve y se pinta a su manera. */
+var _ultimoE=0;
+function dibujarEscena(){
+  requestAnimationFrame(dibujarEscena);
+  if(!vivo||!W||VIDEO_OCUPA){ _ultimoE=0; return; }
+  var ahora=performance.now();
+  var k=_ultimoE?(ahora-_ultimoE)/16.667:1;
+  _ultimoE=ahora;
+  if(!(k>0)) k=1; if(k>4) k=4;
+  vigilarFluidez();
+  ESCENA.avanzar(k);
+  ESCENA.pintar();
+}
+if(TIPO==='universo') dibujar(); else dibujarEscena();
 
 /* ====================== EL VIDEO PARA LOS ESTADOS ======================
    Un enlace en un estado lo abre casi nadie. Un video lo ve todo el mundo.
-   Así que la página se graba a sí misma: compone cada cuadro en un lienzo
-   vertical (la forma de una historia), le pone el título arriba y la marca
-   abajo, y entrega el archivo al menú de compartir del celular.
+   Así que la página arma un video vertical (la forma de una historia) con el
+   universo girando, las fotos una por una con su frase, y la canción y la
+   voz de fondo, y se lo entrega al menú de compartir del celular.
 
-   Lleva el sonido del universo: la canción de fondo y, encima, la nota de
-   voz si la hay. Antes llevaba solo una de las dos (la voz si existía), y
-   el cliente sentía que su canción se había perdido.
+   Lo que pasaba antes y por qué ya no:
 
-   El tamaño llega a 1080×1920 (Full HD vertical) en los teléfonos que lo
-   aguantan. Más no sirve: WhatsApp reduce todo estado a 720p como mucho, así
-   que un 4K solo pesaría más y tardaría más en grabarse, y saldría igual. */
+   · "Se ve con lag y se queda pegado". El video se grababa EN VIVO, mientras
+     el teléfono dibujaba el universo en pantalla: si un cuadro tardaba, el
+     video se quedaba con el cuadro de antes y salía a tirones. Ahora se ARMA
+     cuadro por cuadro, como en un editor: cada cuadro se dibuja con calma y
+     se guarda en su sitio exacto. Un teléfono lento tarda más en terminarlo,
+     pero el video sale igual de fluido que en uno rápido. En Full HD
+     (1080×1920) cuando el teléfono lo aguanta; si no, en 720.
 
-var GRABANDO=false, SEGUNDOS=14;
+   · "Las fotos pasan muy rápido". Con ocho fotos en treinta segundos (lo que
+     dura un estado) cada una duraba dos segundos. Ahora van como mucho
+     CUATRO, de cinco segundos y medio a seis y medio cada una; si hay más, el
+     cliente elige cuáles.
+
+   · El sonido se mezcla aparte, también con calma: la canción baja mientras
+     habla la voz y vuelve a subir cuando termina.
+
+   Donde el teléfono no sabe armar video (algunos iPhone viejos), se graba en
+   vivo como antes, pero sin dibujar la pantalla a la vez: la mitad de
+   trabajo, y en 720. */
+
+var GRABANDO=false;
+var VIDEO_OCUPA=false;       /* la pantalla deja de dibujarse mientras tanto */
+var FPS_VIDEO=30;
+var MAX_FOTOS_VIDEO=4;
 
 function hayGrabador(){
   return !!(window.MediaRecorder && HTMLCanvasElement.prototype.captureStream && !MANCHADO);
 }
+function hayArmador(){
+  return !!(window.VideoEncoder && window.VideoFrame && !MANCHADO);
+}
 function formatoVideo(){
   /* El orden importa: mp4 con h264 es lo único que reproducen WhatsApp e
      Instagram en cualquier teléfono. Lo demás es red de seguridad. */
-  var t=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4',
-         'video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];
+  var t=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1',
+         'video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
   for(var i=0;i<t.length;i++){
     try{ if(MediaRecorder.isTypeSupported(t[i])) return t[i]; }catch(e){}
   }
@@ -1759,7 +2651,7 @@ function pintarBotonCompartir(){
   var b=document.getElementById('compartir');
   if(!b) return;
   b.classList.remove('oculto');
-  b.textContent = hayGrabador() && formatoVideo()
+  b.textContent = (hayArmador() || (hayGrabador() && formatoVideo()))
     ? 'Compartir en mi estado' : 'Cómo compartirlo';
 }
 
@@ -1773,6 +2665,156 @@ function cerrarGrab(){
   document.getElementById('grab').classList.add('oculto');
   document.getElementById('grab-bots').innerHTML='';
 }
+function boton(txt,clase,fn){
+  var b=document.createElement('button');
+  b.textContent=txt; if(clase) b.className=clase; b.onclick=fn;
+  document.getElementById('grab-bots').appendChild(b);
+  return b;
+}
+
+/* ---- la librería que arma el .mp4, que se trae solo cuando hace falta ---- */
+function urlLibU(n){
+  var h=String(location.hostname||'');
+  if(!/(^|\.)google(usercontent)?\.com$/.test(h)){
+    try{ return new URL(n,location.href).href; }catch(e){ return n; }
+  }
+  var b=String((DATOS&&DATOS.base)||'');
+  var m=b.match(/^(https:\/\/[^?#]*\/)[^\/?#]*(?:[?#].*)?$/);
+  return m ? m[1]+n : '';
+}
+function cargarMuxer(listo){
+  if(window.Mp4Muxer){ listo(true); return; }
+  var u=urlLibU('mp4-muxer.min.js');
+  if(!u){ listo(false); return; }
+  var t=document.createElement('script'), hecho=false;
+  function fin(ok){ if(hecho) return; hecho=true; clearTimeout(r); listo(ok && !!window.Mp4Muxer); }
+  var r=setTimeout(function(){ fin(false); },15000);
+  t.onload=function(){ fin(true); }; t.onerror=function(){ fin(false); };
+  t.src=u; document.head.appendChild(t);
+}
+
+/* ¿Qué sabe codificar este teléfono? Se le pregunta a él, no se adivina por
+   la marca. H.264 con AAC es lo que abre cualquier galería y cualquier red. */
+function elegirCodecs(VW,VH,conAudio,listo){
+  if(!hayArmador()){ listo(null); return; }
+  /* Solo para las pruebas automáticas: el navegador de pruebas no trae H.264. */
+  var prueba=!!window.__RUWAY_PRUEBA_VIDEO;
+  /* Con tantas chispas y estrellas, el universo necesita buena tasa para no
+     verse en cuadritos; más de ocho megas ya no se nota y el archivo pesa. */
+  var bps=VW>=1080?8000000:5000000, nivel=VW>=1080?'28':'1f';
+  var videos=[{c:'avc',codec:'avc1.6400'+nivel},{c:'avc',codec:'avc1.4d00'+nivel},
+              {c:'avc',codec:'avc1.4200'+nivel}];
+  if(prueba) videos.push({c:'vp9',codec:'vp09.00.40.08'});
+  var audios=[{c:'aac',codec:'mp4a.40.2'}];
+  if(prueba) audios.push({c:'opus',codec:'opus'});
+  var elegido={};
+
+  function probarV(i){
+    if(i>=videos.length){ listo(null); return; }
+    var v=videos[i];
+    var cfg={codec:v.codec,width:VW,height:VH,bitrate:bps,framerate:FPS_VIDEO,latencyMode:'quality'};
+    if(v.c==='avc') cfg.avc={format:'avc'};
+    var p;
+    try{ p=VideoEncoder.isConfigSupported(cfg); }catch(e){ probarV(i+1); return; }
+    p.then(function(r){
+      if(r && r.supported){ elegido.video=cfg; elegido.vcodec=v.c; probarA(0); }
+      else probarV(i+1);
+    },function(){ probarV(i+1); });
+  }
+  function probarA(i){
+    if(!conAudio){ listo(elegido); return; }
+    if(!window.AudioEncoder || !window.AudioData || i>=audios.length){ listo(null); return; }
+    var a=audios[i];
+    var cfg={codec:a.codec,sampleRate:48000,numberOfChannels:2,bitrate:128000};
+    var p;
+    try{ p=AudioEncoder.isConfigSupported(cfg); }catch(e){ probarA(i+1); return; }
+    p.then(function(r){
+      if(r && r.supported){ elegido.audio=cfg; elegido.acodec=a.c; listo(elegido); }
+      else probarA(i+1);
+    },function(){ probarA(i+1); });
+  }
+  probarV(0);
+}
+
+/* ---- las fotos que van en el video ---- */
+function fotosDelUniverso(){
+  var r=[];
+  for(var i=0;i<ramos.length;i++){
+    var o=ramos[i];
+    if(!o.foto) continue;
+    var im=IMGS[o.k];
+    if(im && im.complete && im.naturalWidth) r.push({im:im, txt:o.txt||''});
+  }
+  return r;
+}
+
+/* Con más de cuatro, el cliente elige cuáles: son las que más le importan y
+   cada una se merece su tiempo en pantalla. Vienen marcadas las cuatro
+   primeras, que son las que él puso primero. */
+function elegirFotos(fotos,listo){
+  var sel=[];
+  for(var i=0;i<fotos.length && sel.length<MAX_FOTOS_VIDEO;i++) sel.push(i);
+  var caja=document.createElement('div');
+  caja.className='elige';
+  var botones=[];
+  fotos.forEach(function(f,i){
+    var b=document.createElement('button');
+    /* La miniatura se pinta de la foto que ya está cargada: sin volver a
+       bajarla. */
+    var mini=document.createElement('canvas'); mini.width=mini.height=140;
+    try{
+      var w=f.im.naturalWidth, h=f.im.naturalHeight, l=Math.min(w,h);
+      mini.getContext('2d').drawImage(f.im,(w-l)/2,(h-l)/2,l,l,0,0,140,140);
+    }catch(e){}
+    var n=document.createElement('i');
+    b.appendChild(mini); b.appendChild(n);
+    b.onclick=function(){
+      var p=sel.indexOf(i);
+      if(p>=0) sel.splice(p,1);
+      else if(sel.length<MAX_FOTOS_VIDEO) sel.push(i);
+      else {
+        /* Ya hay cuatro: no se cambia ninguna a escondidas, se le dice. */
+        document.getElementById('grab-txt').textContent=
+          'Ya elegiste '+MAX_FOTOS_VIDEO+' · toca una marcada para quitarla';
+        return;
+      }
+      pinta();
+    };
+    botones.push(b); caja.appendChild(b);
+  });
+  avisoGrab('','');
+  document.getElementById('grab-fig').appendChild(caja);
+  var hacer=boton('Crear mi video','',function(){
+    if(!sel.length) return;
+    /* En el orden en que las puso, no en el que las marcó. */
+    listo(sel.slice().sort(function(a,b){return a-b;}).map(function(i){ return fotos[i]; }));
+  });
+  boton('CANCELAR','tenue',cerrarGrab);
+  function pinta(){
+    botones.forEach(function(b,i){
+      var p=sel.indexOf(i);
+      b.className=p>=0?'on':'';
+      b.lastChild.textContent=p>=0?String(p+1):'';
+    });
+    document.getElementById('grab-txt').textContent=sel.length
+      ? 'Tu video lleva '+sel.length+(sel.length===1?' foto':' fotos')+' · elige hasta '+MAX_FOTOS_VIDEO
+      : 'Elige hasta '+MAX_FOTOS_VIDEO+' fotos para tu video';
+    hacer.disabled=!sel.length;
+  }
+  pinta();
+}
+
+/* El guion del video. Un universo girando sin más no vende: lo que emociona
+   es ver cada foto con lo que se escribió para ella. Abre con el universo y
+   el título, trae las fotos una por una y cierra con el universo otra vez.
+   Treinta segundos como mucho, que es lo que dura un estado. */
+function armarGuion(fotos){
+  fotos=fotos.slice(0,MAX_FOTOS_VIDEO);
+  var n=fotos.length, entrada=4, salida=3.5, tope=29.5;
+  if(!n) return {fotos:[], entrada:8.5, por:0, salida:3.5, total:12};
+  var por=Math.min(6.5,(tope-entrada-salida)/n);
+  return {fotos:fotos, entrada:entrada, por:por, salida:salida, total:entrada+n*por+salida};
+}
 
 function compartirUniverso(){
   if(GRABANDO) return;
@@ -1781,48 +2823,401 @@ function compartirUniverso(){
      sonido y oír las dos cosas a la vez suena a error. */
   VOZ.antes=false;
   try{ document.getElementById('avoz').pause(); }catch(e){}
-  if(!hayGrabador() || !formatoVideo()){
+  if(!hayArmador() && !(hayGrabador() && formatoVideo())){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
   }
-  /* El mezclador de sonido se crea y se despierta AQUÍ, dentro del toque.
-     Antes se creaba después de bajar el audio, y para entonces el toque ya
-     había pasado: el iPhone lo dejaba dormido y el video salía mudo aunque
-     en pantalla la canción sonara perfecto. Es lo que veía el cliente. */
+  var fotos=fotosDelUniverso();
+  if(fotos.length>MAX_FOTOS_VIDEO) elegirFotos(fotos,empezarVideo);
+  else empezarVideo(fotos);
+}
+
+function empezarVideo(fotos){
+  var guion=armarGuion(fotos);
+  /* El mezclador para el camino "en vivo" se crea y se despierta AQUÍ,
+     dentro del toque: el iPhone no deja despertarlo después, y el video
+     saldría mudo. Si al final el video se arma cuadro por cuadro, no se usa
+     y se cierra. */
   var mezclador=null;
   try{
     var CA=window.AudioContext||window.webkitAudioContext;
-    if(CA){ mezclador=new CA(); mezclador.resume&&mezclador.resume(); }
+    if(CA){ mezclador=new CA(); if(mezclador.resume) mezclador.resume(); }
   }catch(e){ mezclador=null; }
+  var conAudio=!!(DATOS && (DATOS.cancionId||DATOS.vozId));
+  /* Full HD salvo en los teléfonos que ya tuvieron que aflojar dos escalones
+     para mover el universo en pantalla: esos lo arman en 720, que tarda la
+     mitad. Como el video se arma con calma, ir justo no lo vuelve a tirones:
+     solo lo hace tardar más. */
+  var VW=(NIVEL<=1 || window.__RUWAY_PRUEBA_VIDEO)?1080:720, VH=Math.round(VW*16/9);
 
-  /* El video lleva los dos audios: la canción de fondo y, encima, la voz.
-     Para poder mezclarlos los archivos tienen que estar acá dentro (uno
-     traído de otro sitio el navegador no deja mezclarlo), así que primero se
-     traen y después se graba. */
-  var falta=[];
-  if(DATOS.cancionId) falta.push('cancion');
-  if(DATOS.vozId) falta.push('voz');
-  if(!falta.length || !mezclador){ grabarUniverso(null,null); return; }
-
-  var listos={};
-  avisoGrab('<div class="pun"></div>','Preparando el sonido');
-  (function uno(i){
-    if(i>=falta.length){ prepararSonido(mezclador,listos,function(son){ grabarUniverso(son,mezclador); }); return; }
-    var cual=falta[i];
-    traerAudio(cual,function(hecho,total){
-      if(total>1) avisoGrab('<div class="pun"></div>',
-        (cual==='voz'?'Preparando tu mensaje':'Preparando la canción')+' · '+hecho+' de '+total);
-    },function(r){ listos[cual]=r; uno(i+1); },
-      /* Si uno no llega se sigue con el otro: vale más un video con la voz
-         sola, o con la canción sola, que uno mudo. */
-      function(){ uno(i+1); });
-  })(0);
+  GRABANDO=true;
+  avisoGrab('<div class="pun"></div>','Preparando tu video');
+  cargarMuxer(function(hay){
+    if(!hay){ enVivo(); return; }
+    elegirCodecs(VW,VH,conAudio,function(cod){
+      if(!cod){ enVivo(); return; }
+      if(mezclador){ try{ mezclador.close(); }catch(e){} mezclador=null; }
+      armarVideo(guion,VW,VH,cod,function(){
+        /* Si armarlo falla a medio camino, se intenta en vivo. */
+        var CA=window.AudioContext||window.webkitAudioContext;
+        try{ mezclador=CA?new CA():null; }catch(e){ mezclador=null; }
+        enVivo();
+      });
+    });
+  });
+  function enVivo(){
+    if(!(hayGrabador() && formatoVideo())){
+      GRABANDO=false; cerrarGrab();
+      document.getElementById('ayuda').classList.remove('oculto');
+      return;
+    }
+    grabarEnVivo(guion,mezclador);
+  }
 }
 
-/* Convierte los audios en sonido listo para mezclar. Se descomprimen dentro
-   del mezclador en vez de reproducirlos con un reproductor escondido: el
-   iPhone no deja que un reproductor arranque solo fuera de un toque, pero un
-   mezclador que ya está despierto sí puede sonar cuando quiera. */
+/* ---- lo que se ve en cada cuadro ----
+   El universo se dibuja en el lienzo del video, a su propio tamaño, con el
+   mismo motor de la pantalla: se le cambia por un momento dónde dibuja. Lo
+   que va encima (el título, las fotos, la marca) se dibuja después, en
+   píxeles del video. Las dos formas de hacer el video usan esto mismo. */
+function hacerCompositor(guion,VW,VH){
+  var E=VW/720;
+  var lienzo=document.createElement('canvas');
+  lienzo.width=VW; lienzo.height=VH;
+  var lg=lienzo.getContext('2d',{alpha:false});
+  var titulo=(document.getElementById('txtTit')||{}).textContent||'';
+  /* Si en Ajustes hay un Instagram puesto, sale en el cierre: es lo que
+     convierte el estado de un cliente en un cliente nuevo. */
+  var contacto=(DATOS&&DATOS.marca)?String(DATOS.marca).trim():'';
+  if(contacto==='-----'||contacto==='—') contacto='';
+  var antes=null, ry0=0;
+
+  function entrar(){
+    antes={c:c,g:g,W:W,H:H,DPR:DPR,ESC:ESC,LUZ:LUZ,gl:gl,cielo:cielo,MOVIL:MOVIL,
+           zoom:zoom,rx:rx,ry:ry};
+    VIDEO_OCUPA=true;
+    c=lienzo; g=lg;
+    /* El universo se piensa para una pantalla de celular de 405 de ancho y se
+       dibuja con la nitidez que pide el video. */
+    W=405; H=Math.round(405*VH/VW); DPR=VW/W; ESC=VW>=1080?.7:.8; MOVIL=true;
+    zoom=.78; rx=-0.34; ry0=ry;
+    LUZ=document.createElement('canvas'); gl=LUZ.getContext('2d');
+    LUZ.width=Math.max(1,(W*DPR*ESC)|0); LUZ.height=Math.max(1,(H*DPR*ESC)|0);
+    if(TIPO==='universo') pintarCielo();
+    lg.imageSmoothingEnabled=true;
+    try{ lg.imageSmoothingQuality='high'; }catch(e){}
+    /* El árbol sale encendido entero y la vela prendida, aunque en la pantalla
+       todavía no lo estén. */
+    if(ESCENA.paraVideo) ESCENA.paraVideo(true);
+  }
+  function salir(){
+    if(!antes) return;
+    if(ESCENA.paraVideo) ESCENA.paraVideo(false);
+    c=antes.c; g=antes.g; W=antes.W; H=antes.H; DPR=antes.DPR; ESC=antes.ESC;
+    LUZ=antes.LUZ; gl=antes.gl; cielo=antes.cielo; MOVIL=antes.MOVIL;
+    zoom=antes.zoom; rx=antes.rx; ry=antes.ry; camara();
+    antes=null;
+    RELOJ_VIDEO=-1;
+    VIDEO_OCUPA=false;
+    size();
+  }
+
+  function rotulo(alfa){
+    if(!titulo||alfa<=0.01) return;
+    lg.save(); lg.globalAlpha=alfa;
+    lg.textAlign='center';
+    lg.shadowColor='rgba(0,0,0,.7)'; lg.shadowBlur=16*E;
+    lg.fillStyle=HX2;
+    lg.font="700 "+Math.round(44*E)+"px 'Dancing Script', cursive";
+    var l=partirTexto(lg,titulo,600*E);
+    for(var i=0;i<l.length && i<2;i++) lg.fillText(l[i],VW/2,(118+i*52)*E);
+    lg.restore();
+  }
+  function marca(cierre){
+    lg.save();
+    lg.textAlign='center';
+    lg.font="800 "+Math.round(17*E)+"px 'Baloo 2', sans-serif";
+    lg.fillStyle='rgba(234,223,200,.62)';
+    lg.fillText('R U W A Y',VW/2,(contacto&&cierre?1198:1222)*E);
+    if(contacto&&cierre){
+      lg.font="600 "+Math.round(15*E)+"px 'Baloo 2', sans-serif";
+      lg.fillStyle='rgba(255,233,168,'+(0.55*cierre).toFixed(2)+')';
+      lg.fillText(contacto,VW/2,1228*E);
+    }
+    lg.restore();
+  }
+  /* Una foto en grande, con su frase debajo, entrando y saliendo suave. En
+     el video las fotos van cuadradas y con el mismo marco del universo: si
+     se vieran distinto, parecerían dos productos.
+     La foto con su marco y su resplandor, y la frase con su sombra, se
+     pintan UNA vez por foto y después solo se pegan: el resplandor difuminado
+     es de lo más caro que hay, y hacerlo en cada cuadro era la mitad del
+     trabajo del video. */
+  var ACERCA=.06;
+  function preparada(f){
+    if(f.__vid && f.__vid.VW===VW) return f.__vid;
+    var lado=620*E*(1+ACERCA), borde=Math.round(lado*.42);
+    var cv=document.createElement('canvas');
+    cv.width=cv.height=Math.round(lado+borde*2);
+    pintarFoto(cv.getContext('2d'),f.im,cv.width/2,cv.height/2,lado,1);
+    var tx=null;
+    if(f.txt){
+      var ancho=Math.round(640*E), alto=Math.round(3*48*E+40*E);
+      tx=document.createElement('canvas'); tx.width=ancho; tx.height=alto;
+      var x=tx.getContext('2d');
+      x.textAlign='center';
+      x.font="700 "+Math.round(40*E)+"px 'Dancing Script', cursive";
+      x.shadowColor='rgba(0,0,0,.85)'; x.shadowBlur=18*E;
+      x.fillStyle='#FFF6E2';
+      var l=partirTexto(x,f.txt,580*E), y=40*E;
+      for(var i=0;i<l.length && i<3;i++){ x.fillText(l[i],ancho/2,y); y+=48*E; }
+    }
+    f.__vid={VW:VW, cv:cv, lado:lado, tx:tx};
+    return f.__vid;
+  }
+  function escenaFoto(f,u){
+    var alfa = u<.12 ? u/.12 : u>.88 ? Math.max(0,(1-u)/.12) : 1;
+    if(alfa<=0.01) return;
+    var pf=preparada(f);
+    lg.save();
+    lg.globalAlpha=alfa*.74;
+    lg.fillStyle='#03040a'; lg.fillRect(0,0,VW,VH);
+    lg.globalAlpha=alfa;
+    var k=(1+ACERCA*u)/(1+ACERCA);                /* se acerca despacio */
+    var w=pf.cv.width*k, cx=VW/2, cy=(f.txt?520:620)*E;
+    lg.drawImage(pf.cv,cx-w/2,cy-w/2,w,w);
+    if(pf.tx){
+      var lado=pf.lado*k, m=Math.max(1.2,lado*0.022);
+      lg.drawImage(pf.tx,(VW-pf.tx.width)/2,cy+lado/2+m+18*E);
+    }
+    lg.restore();
+  }
+
+  /* Un cuadro, en el segundo t. `pasos` es cuánto se mueve el universo desde
+     el cuadro anterior (a 30 por segundo, dos pasos de los de pantalla). */
+  function cuadro(t,pasos){
+    RELOJ_VIDEO=t;
+    while(pasos>=1){ ESCENA.avanzar(1); pasos-=1; }
+    if(pasos>0) ESCENA.avanzar(pasos);
+    /* Media vuelta en todo el video, despacio: una vuelta entera pasaba las
+       fotos como un borrón. */
+    ry=ry0+Math.min(1,t/guion.total)*3.14; camara();
+    g.setTransform(DPR,0,0,DPR,0,0);
+    ESCENA.pintar();
+    lg.setTransform(1,0,0,1,0,0);
+    lg.globalAlpha=1; lg.globalCompositeOperation='source-over';
+    lg.shadowBlur=0; lg.shadowColor='transparent';
+    var cierre=0;
+    if(t<guion.entrada){
+      rotulo(Math.min(1,t/1.2));
+    } else if(t<guion.total-guion.salida && guion.fotos.length){
+      var k=Math.floor((t-guion.entrada)/guion.por);
+      if(k>=guion.fotos.length) k=guion.fotos.length-1;
+      escenaFoto(guion.fotos[k],((t-guion.entrada)-k*guion.por)/guion.por);
+    } else {
+      cierre=Math.min(1,Math.max(0,(t-(guion.total-guion.salida))/1.2));
+      rotulo(cierre);
+    }
+    marca(cierre);
+  }
+  return {lienzo:lienzo, entrar:entrar, salir:salir, cuadro:cuadro};
+}
+
+/* ---- el sonido del video, mezclado con calma ----
+   La canción de fondo y, encima, la voz. Mientras habla la voz, la canción
+   baja para que se entienda; cuando termina, vuelve a subir. Al final, todo
+   se apaga suave. */
+function mezclarAudio(total,listo){
+  var OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+  var quiere=[];
+  if(DATOS && DATOS.cancionId) quiere.push('cancion');
+  if(DATOS && DATOS.vozId) quiere.push('voz');
+  if(!OAC || !quiere.length){ listo(null); return; }
+  var SR=48000, oc;
+  try{ oc=new OAC(2,Math.ceil(SR*total),SR); }catch(e){ listo(null); return; }
+  var bufs={}, pend=quiere.length;
+  quiere.forEach(function(cual){
+    traerAudio(cual,function(h,t){
+      if(t>1) document.getElementById('grab-txt').textContent=
+        (cual==='voz'?'Preparando tu mensaje':'Preparando la canción')+' · '+h+' de '+t;
+    },function(r){
+      fetch(r.url).then(function(x){ return x.arrayBuffer(); }).then(function(ab){
+        return new Promise(function(ok,mal){
+          var p=oc.decodeAudioData(ab,ok,mal);
+          if(p && p.then) p.then(ok,mal);
+        });
+      }).then(function(b){ bufs[cual]=b; uno(); })['catch'](uno);
+    },uno);
+  });
+  function uno(){ if(--pend===0) mezclar(); }
+  function mezclar(){
+    if(!bufs.cancion && !bufs.voz){ listo(null); return; }
+    var fin=total, v0=1.2;
+    if(bufs.cancion){
+      var s=oc.createBufferSource(), gn=oc.createGain();
+      s.buffer=bufs.cancion; s.loop=true;
+      var alto=.85, bajo=.28, nivelFin=alto;
+      gn.gain.setValueAtTime(0,0);
+      gn.gain.linearRampToValueAtTime(alto,.6);
+      if(bufs.voz){
+        var v1=v0+bufs.voz.duration;
+        gn.gain.setValueAtTime(alto,.7);
+        gn.gain.linearRampToValueAtTime(bajo,v0);
+        if(v1+.8<fin-2){ gn.gain.setValueAtTime(bajo,v1); gn.gain.linearRampToValueAtTime(alto,v1+.8); }
+        else nivelFin=bajo;
+      }
+      gn.gain.setValueAtTime(nivelFin,Math.max(1.3,fin-2));
+      gn.gain.linearRampToValueAtTime(0,fin-.05);
+      s.connect(gn); gn.connect(oc.destination);
+      s.start(0);
+    }
+    if(bufs.voz){
+      var sv=oc.createBufferSource(), gv=oc.createGain();
+      sv.buffer=bufs.voz;
+      gv.gain.setValueAtTime(1,0);
+      gv.gain.setValueAtTime(1,Math.max(v0,fin-1.2));
+      gv.gain.linearRampToValueAtTime(0,fin-.05);
+      sv.connect(gv); gv.connect(oc.destination);
+      /* La voz entra cuando ya se ve el título, no en el primer cuadro. */
+      sv.start(v0);
+    }
+    var hecho=false;
+    function listoUna(b){ if(hecho) return; hecho=true; listo(b||null); }
+    oc.oncomplete=function(e){ listoUna(e.renderedBuffer); };
+    try{
+      var p=oc.startRendering();
+      if(p && p.then) p.then(listoUna,function(){ listoUna(null); });
+    }catch(e){ listoUna(null); }
+  }
+}
+
+/* El sonido ya mezclado, codificado en pedacitos que se guardan hasta que
+   el video esté listo para recibirlos. */
+function codificarAudio(buf,cfg,listo){
+  var trozos=[], fallo=false;
+  var ae;
+  try{
+    ae=new AudioEncoder({output:function(ch,meta){ trozos.push([ch,meta]); },
+                         error:function(){ fallo=true; }});
+    ae.configure(cfg);
+  }catch(e){ listo(null); return; }
+  var L=buf.getChannelData(0), R=buf.numberOfChannels>1?buf.getChannelData(1):L;
+  var n=buf.length, SR=buf.sampleRate, B=Math.round(SR/10);
+  for(var p=0;p<n && !fallo;p+=B){
+    var m=Math.min(B,n-p), d=new Float32Array(m*2);
+    d.set(L.subarray(p,p+m),0); d.set(R.subarray(p,p+m),m);
+    try{
+      var ad=new AudioData({format:'f32-planar',sampleRate:SR,numberOfFrames:m,
+                            numberOfChannels:2,timestamp:Math.round(p*1e6/SR),data:d});
+      ae.encode(ad); ad.close();
+    }catch(e){ fallo=true; }
+  }
+  ae.flush().then(function(){
+    try{ ae.close(); }catch(e){}
+    listo(fallo||!trozos.length ? null : trozos);
+  },function(){ listo(null); });
+}
+
+/* Ceder el turno sin esperar los cuatro milésimos de un setTimeout. */
+var ceder=(function(){
+  try{
+    var canal=new MessageChannel(), cola=[];
+    canal.port1.onmessage=function(){ var f=cola.shift(); if(f) f(); };
+    return function(f){ cola.push(f); canal.port2.postMessage(0); };
+  }catch(e){ return function(f){ setTimeout(f,0); }; }
+})();
+
+/* ---- armar el video cuadro por cuadro ---- */
+function armarVideo(guion,VW,VH,cod,siFalla){
+  var total=guion.total, N=Math.round(total*FPS_VIDEO);
+  var comp=hacerCompositor(guion,VW,VH);
+  var fallo=null, acabado=false;
+  var vista=null, vg=null, barra=null;
+
+  avisoGrab('<canvas id="grab-vista" width="180" height="320"></canvas>'
+    +'<div class="barra-v"><i id="grab-barra"></i></div>','Preparando el sonido');
+  vista=document.getElementById('grab-vista'); vg=vista.getContext('2d');
+  barra=document.getElementById('grab-barra');
+  boton('CANCELAR','tenue',function(){ fallo=new Error('cancelado'); });
+
+  function terminar(bien,blob){
+    if(acabado) return;
+    acabado=true;
+    comp.salir();
+    GRABANDO=false;
+    if(bien){ ofrecerVideo(blob,NOMBRE_VIDEO+'.mp4','video/mp4'); return; }
+    if(fallo && fallo.message==='cancelado'){ cerrarGrab(); return; }
+    siFalla();
+  }
+
+  mezclarAudio(total,function(buf){
+    if(fallo){ terminar(false); return; }
+    if(buf && cod.audio) codificarAudio(buf,cod.audio,arrancar);
+    else arrancar(null);
+  });
+
+  function arrancar(trozosAudio){
+    if(fallo){ terminar(false); return; }
+    var target, muxer, ve;
+    try{
+      target=new Mp4Muxer.ArrayBufferTarget();
+      var op={target:target, fastStart:'in-memory',
+              video:{codec:cod.vcodec,width:VW,height:VH,frameRate:FPS_VIDEO}};
+      if(trozosAudio) op.audio={codec:cod.acodec,sampleRate:48000,numberOfChannels:2};
+      muxer=new Mp4Muxer.Muxer(op);
+      if(trozosAudio) trozosAudio.forEach(function(x){ muxer.addAudioChunk(x[0],x[1]); });
+      ve=new VideoEncoder({output:function(ch,meta){
+        try{ muxer.addVideoChunk(ch,meta); }catch(e){ fallo=e; }
+      },error:function(e){ fallo=e||new Error('codificador'); }});
+      ve.configure(cod.video);
+    }catch(e){ fallo=e; terminar(false); return; }
+
+    document.getElementById('grab-txt').textContent='Armando tu video · 0%';
+    comp.entrar();
+    var i=0, t0=performance.now();
+    (function tanda(){
+      if(fallo){ try{ ve.close(); }catch(e){} terminar(false); return; }
+      /* Si el codificador va atrasado, se le espera: así no se llena la
+         memoria de cuadros sin procesar. */
+      if(ve.encodeQueueSize>4){ setTimeout(tanda,6); return; }
+      var hasta=Math.min(N,i+2);
+      for(;i<hasta;i++){
+        comp.cuadro(i/FPS_VIDEO, i?60/FPS_VIDEO:0);
+        var vf=null;
+        try{
+          vf=new VideoFrame(comp.lienzo,{timestamp:Math.round(i*1e6/FPS_VIDEO),
+                                         duration:Math.round(1e6/FPS_VIDEO)});
+          ve.encode(vf,{keyFrame:i%(FPS_VIDEO*2)===0});
+        }catch(e){ fallo=e; }
+        if(vf) vf.close();
+        if(fallo) break;
+      }
+      if(i%6===0 || i>=N){
+        var pc=Math.floor(i*100/N);
+        document.getElementById('grab-txt').textContent='Armando tu video · '+pc+'%';
+        barra.style.width=pc+'%';
+        vg.drawImage(comp.lienzo,0,0,vista.width,vista.height);
+      }
+      if(i<N){ ceder(tanda); return; }
+      document.getElementById('grab-txt').textContent='Terminando tu video';
+      ve.flush().then(function(){
+        if(fallo){ terminar(false); return; }
+        try{ ve.close(); }catch(e){}
+        var blob;
+        try{ muxer.finalize(); blob=new Blob([target.buffer],{type:'video/mp4'}); }
+        catch(e){ fallo=e; terminar(false); return; }
+        window.__ruwayVideo={seg:(performance.now()-t0)/1000,cuadros:N,ancho:VW,
+                             video:cod.vcodec,audio:trozosAudio?cod.acodec:'',
+                             fotos:guion.fotos.length,total:total};
+        terminar(true,blob);
+      },function(e){ fallo=e; terminar(false); });
+    })();
+  }
+}
+
+/* ---- el camino de siempre, en vivo, para los teléfonos que no saben armar
+   video cuadro por cuadro. Igual que antes pero sin dibujar la pantalla a la
+   vez (que era la mitad del esfuerzo), en 720 y con el mismo guion. */
 function prepararSonido(ctx,audios,listo){
   var son={ctx:ctx, cancion:null, voz:null};
   var pend=0, ya=false;
@@ -1837,276 +3232,148 @@ function prepararSonido(ctx,audios,listo){
         if(p && p.then) p.then(ok,mal);
       });
     }).then(function(b){ son[cual]=b; fin(); })
-      .catch(function(){ fin(); });
+      ['catch'](function(){ fin(); });
   });
   if(!pend){ ya=true; listo(null); }
 }
 
-/* El guion del video. Un universo girando sin más no vende: lo que emociona
-   es ver cada foto con lo que se escribió para ella. Así que el video hace
-   tres cosas seguidas: abre con el universo girando despacio, después va
-   trayendo una por una las fotos con su frase, y cierra volviendo al universo. */
-function armarGuion(){
-  var fotos=[];
-  for(var i=0;i<ramos.length && fotos.length<8;i++){
-    var o=ramos[i];
-    if(!o.foto) continue;
-    var im=IMGS[o.k];
-    if(im && im.complete && im.naturalWidth) fotos.push({im:im, txt:o.txt||''});
-  }
-  var entrada=4, salida=2.5, tope=27;   /* WhatsApp corta los estados en 30 s */
-  /* con muchas fotos se acorta cada una, pero nunca por debajo de 2,2 segundos,
-     que es lo que tarda alguien en leer una frase corta */
-  var por = fotos.length
-    ? Math.min(3.4, Math.max(2.2, (tope-entrada-salida)/fotos.length)) : 0;
-  return { fotos:fotos, entrada:entrada, por:por, salida:salida,
-           total: entrada + fotos.length*por + salida };
-}
+function grabarEnVivo(guion,mezclador){
+  var falta=[];
+  if(DATOS.cancionId) falta.push('cancion');
+  if(DATOS.vozId) falta.push('voz');
+  if(!falta.length || !mezclador){ grabar(null); return; }
+  var listos={};
+  avisoGrab('<div class="pun"></div>','Preparando el sonido');
+  (function uno(i){
+    if(i>=falta.length){ prepararSonido(mezclador,listos,grabar); return; }
+    var cual=falta[i];
+    traerAudio(cual,function(hecho,total){
+      if(total>1) avisoGrab('<div class="pun"></div>',
+        (cual==='voz'?'Preparando tu mensaje':'Preparando la canción')+' · '+hecho+' de '+total);
+    },function(r){ listos[cual]=r; uno(i+1); },
+      /* Si uno no llega se sigue con el otro: vale más un video con la voz
+         sola, o con la canción sola, que uno mudo. */
+      function(){ uno(i+1); });
+  })(0);
 
-function grabarUniverso(sonido,mezclador){
-  /* Sin nada que sonar, el mezclador sobra: se cierra para no dejarlo
-     ocupando el audio del teléfono. */
-  if(!sonido && mezclador){ try{ mezclador.close(); }catch(e){} mezclador=null; }
-  var origen=document.getElementById('uni');
-  var guion=armarGuion();
-  /* El tamaño del video se elige según lo que este aparato viene aguantando.
-     NIVEL lo lleva el vigilante de fluidez mientras el universo gira: si ya
-     tuvo que bajar la calidad dos escalones, grabar a 720 sería pedirle algo
-     que no puede dar, y el resultado es un video a tirones. Más vale un video
-     algo más pequeño pero fluido: a tirones se ve mal aunque tenga más píxeles. */
-  /* 1080 si el teléfono va fluido, 720 si ya tuvo que aflojar un escalón,
-     540 si va justo. Todo el dibujo del video está hecho en proporción (E),
-     así que el diseño sale igual a cualquier tamaño, solo que más nítido. */
-  var VW = NIVEL===0 ? 1080 : (NIVEL===1 ? 720 : 540), VH = Math.round(VW*16/9), E = VW/720;
-  var BPS = VW===1080 ? 10000000 : (VW===720 ? 6000000 : 3500000);
-  var lienzo=document.createElement('canvas');
-  lienzo.width=VW; lienzo.height=VH;
-  var lg=lienzo.getContext('2d');
-
-  var titulo=(document.getElementById('txtTit')||{}).textContent||'';
-  var trozos=[], rec, parar=null;
-
-  /* captureStream(0) deja que seamos nosotros quienes decimos cuándo hay
-     cuadro nuevo. Con captureStream(30) el navegador va a buscar treinta
-     cuadros por segundo aunque no hayan cambiado, y en un celular que además
-     está dibujando el universo eso es justo lo que produce el tirón. */
-  var pista=null, son=null;
-  try{
-    var flujo=lienzo.captureStream(0);
-    pista=flujo.getVideoTracks()[0];
-    if(!pista || typeof pista.requestFrame!=='function'){
-      pista=null; flujo=lienzo.captureStream(25);
-    }
-
-    /* El sonido del video: la canción de fondo y la voz encima, mezcladas
-       y enchufadas al video en vez de a los parlantes. Así el cliente no oye
-       dos cosas a la vez mientras se graba, y el video sí lleva las dos.
-       Con voz, la canción baja a un tercio para que se entienda lo que dice.
-       Si algo de esto falla se graba mudo: el video sigue sirviendo. */
-    if(sonido && mezclador){
-      try{
-        son={ctx:mezclador, fuentes:[]};
-        son.destino=mezclador.createMediaStreamDestination();
-        if(sonido.cancion){
-          var fc=mezclador.createBufferSource(), gc=mezclador.createGain();
-          fc.buffer=sonido.cancion; fc.loop=true;
-          gc.gain.value = sonido.voz ? 0.32 : 0.9;
-          fc.connect(gc); gc.connect(son.destino);
-          son.fuentes.push({f:fc, retraso:0});
-        }
-        if(sonido.voz){
-          var fv=mezclador.createBufferSource(), gv=mezclador.createGain();
-          fv.buffer=sonido.voz; gv.gain.value=1;
-          fv.connect(gv); gv.connect(son.destino);
-          /* La voz entra cuando ya se ve el título, no en el primer cuadro. */
-          son.fuentes.push({f:fv, retraso:1.2});
-        }
-        son.destino.stream.getAudioTracks().forEach(function(t){ flujo.addTrack(t); });
-      }catch(e){ son=null; }
-    }
-
-    rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond:BPS,
-                                 audioBitsPerSecond:160000});
-  }catch(err){
-    document.getElementById('ayuda').classList.remove('oculto');
-    return;
-  }
-
-  function callarSon(){
-    if(!son) return;
-    (son.fuentes||[]).forEach(function(x){ try{ x.f.stop(); }catch(e){} });
-    try{ son.ctx.close(); }catch(e){}
-    son=null;
-  }
-  lg.imageSmoothingEnabled=true;
-  try{ lg.imageSmoothingQuality='high'; }catch(e){}
-
-  /* Mientras se graba, la capa de brillo baja de resolución. Es la parte más
-     cara de dibujar y en el video apenas se nota, pero libera al teléfono
-     para que el universo siga girando suave y el codificador no se ahogue. */
-  var escAntes=ESC;
-  /* En Full HD el brillo se nota: se afloja menos. */
-  ESC=Math.min(ESC, VW===1080 ? .75 : .5); size();
-
-  rec.ondataavailable=function(ev){ if(ev.data && ev.data.size) trozos.push(ev.data); };
-  rec.onerror=function(){
-    GRABANDO=false; ESC=escAntes; size(); cancelAnimationFrame(parar); callarSon(); cerrarGrab();
-    document.getElementById('ayuda').classList.remove('oculto');
-  };
-  rec.onstop=function(){
-    GRABANDO=false;
-    cancelAnimationFrame(parar);
-    avisoGrab('<div class="pun"></div>','Preparando tu video');
-    setTimeout(function(){
-      var tipo=(rec.mimeType||'video/webm').split(';')[0];
-      var ext=tipo.indexOf('mp4')>=0?'mp4':'webm';
-      var blob=new Blob(trozos,{type:tipo});
-      if(!blob.size){ cerrarGrab();
-        document.getElementById('ayuda').classList.remove('oculto'); return; }
-      ofrecerVideo(blob,'Mi universo Ruway.'+ext,tipo);
-    },200);
-  };
-
-  /* Media vuelta en todo el video, no una vuelta entera: antes iba tan rápido
-     que las fotos pasaban como un borrón. */
-  var t0=performance.now(), ry0=ry;
-  GRABANDO=true;
-
-  function fondo(){
-    var cw=origen.width, ch=origen.height;
-    var k=Math.max(VW/cw,VH/ch);
-    var dw=cw*k, dh=ch*k;
-    lg.fillStyle='#03040a'; lg.fillRect(0,0,VW,VH);
-    lg.drawImage(origen,(VW-dw)/2,(VH-dh)/2,dw,dh);
-  }
-
-  function rotulo(alfa){
-    if(!titulo||alfa<=0.01) return;
-    lg.save(); lg.globalAlpha=alfa;
-    lg.textAlign='center';
-    lg.shadowColor='rgba(0,0,0,.7)'; lg.shadowBlur=16*E;
-    lg.fillStyle=HX2;
-    lg.font="700 "+Math.round(44*E)+"px 'Dancing Script', cursive";
-    var l=partirTexto(lg,titulo,600*E);
-    for(var i=0;i<l.length && i<2;i++) lg.fillText(l[i],VW/2,(118+i*52)*E);
-    lg.restore();
-  }
-
-  /* Si en Ajustes hay un Instagram puesto, sale en el cierre: es lo que
-     convierte el estado de un cliente en un cliente nuevo. */
-  var contacto=(DATOS&&DATOS.marca)?String(DATOS.marca).trim():'';
-  if(contacto==='-----'||contacto==='—') contacto='';
-
-  function marca(cierre){
-    lg.save();
-    lg.textAlign='center';
-    lg.font="800 "+Math.round(17*E)+"px 'Baloo 2', sans-serif";
-    lg.fillStyle='rgba(234,223,200,.62)';
-    lg.fillText('R U W A Y',VW/2,(contacto&&cierre?1198:1222)*E);
-    if(contacto&&cierre){
-      lg.font="600 "+Math.round(15*E)+"px 'Baloo 2', sans-serif";
-      lg.fillStyle='rgba(255,233,168,'+(0.55*cierre).toFixed(2)+')';
-      lg.fillText(contacto,VW/2,1228*E);
-    }
-    lg.restore();
-  }
-
-  /* Una foto en grande, con su frase debajo, entrando y saliendo suave. */
-  function escenaFoto(f,u){
-    var alfa = u<.16 ? u/.16 : u>.86 ? Math.max(0,(1-u)/.14) : 1;
-    if(alfa<=0.01) return;
-    var acerca = 1 + .05*u;                      /* se acerca despacio */
-
-    lg.save();
-    lg.globalAlpha=alfa*.74;
-    lg.fillStyle='#03040a'; lg.fillRect(0,0,VW,VH);
-    lg.restore();
-
-    /* En el video las fotos también van todas iguales y cuadradas, con el
-       mismo marco del universo. Si en el universo se ven de una manera y en
-       el video de otra, parecen dos productos distintos. */
-    var im=f.im;
-    var lado=620*E*acerca;
-    var cx=VW/2, cy=(f.txt?520:620)*E;
-    pintarFoto(lg, im, cx, cy, lado, alfa);
-    var w=lado, h=lado, m=Math.max(1.2,lado*0.022);
-
-    if(f.txt){
-      lg.textAlign='center';
-      lg.font="700 "+Math.round(40*E)+"px 'Dancing Script', cursive";
-      lg.shadowColor='rgba(0,0,0,.85)'; lg.shadowBlur=18*E;
-      lg.fillStyle='#FFF6E2';
-      var l=partirTexto(lg,f.txt,580*E), y=cy+h/2+m+58*E;
-      for(var i=0;i<l.length && i<3;i++){ lg.fillText(l[i],VW/2,y); y+=48*E; }
-    }
-    lg.restore();
-  }
-
-  var ultimo=0;
-  function cuadro(){
-    if(!GRABANDO) return;
-    var ahora=performance.now();
-    /* veinticinco cuadros por segundo: el ojo no distingue más en un estado,
-       y cada cuadro que no se compone es trabajo que se ahorra el teléfono */
-    if(ahora-ultimo < (VW===1080 ? 33 : 41)){ parar=requestAnimationFrame(cuadro); return; }
-    ultimo=ahora;
-    var t=(ahora-t0)/1000;
-    var avance=Math.min(1,t/guion.total);
-    ry=ry0+avance*3.14; camara();          /* media vuelta, despacio */
-
-    fondo();
-
-    var cierre=0;
-    if(t < guion.entrada){
-      rotulo(Math.min(1,t/1.2));
-    } else if(t < guion.total-guion.salida && guion.fotos.length){
-      var k=Math.floor((t-guion.entrada)/guion.por);
-      if(k>=guion.fotos.length) k=guion.fotos.length-1;
-      var u=((t-guion.entrada)-k*guion.por)/guion.por;
-      escenaFoto(guion.fotos[k],u);
-    } else {
-      var q=(t-(guion.total-guion.salida))/1.2;
-      cierre=Math.min(1,Math.max(0,q));
-      rotulo(cierre);
-    }
-    marca(cierre);
-
-    var n=document.getElementById('grab-n');
-    if(n) n.textContent=Math.max(1,Math.ceil(guion.total-t));
-
-    if(pista) pista.requestFrame();
-
-    if(t>=guion.total){
-      GRABANDO=false; ESC=escAntes; size();
-      callarSon();
-      try{rec.stop();}catch(e){}
+  function grabar(sonido){
+    GRABANDO=true;
+    if(!sonido && mezclador){ try{ mezclador.close(); }catch(e){} mezclador=null; }
+    var VW=NIVEL>=2?540:720, VH=Math.round(VW*16/9);
+    var BPS=VW===720?6000000:3500000;
+    var comp=hacerCompositor(guion,VW,VH);
+    var trozos=[], rec, parar=null, pista=null, son=null, flujo;
+    try{
+      /* captureStream(0) deja que seamos nosotros quienes decimos cuándo hay
+         cuadro nuevo: sin cuadros repetidos ni saltados. */
+      flujo=comp.lienzo.captureStream(0);
+      pista=flujo.getVideoTracks()[0];
+      if(!pista || typeof pista.requestFrame!=='function'){
+        pista=null; flujo=comp.lienzo.captureStream(30);
+      }
+      if(sonido && mezclador){
+        try{
+          son={ctx:mezclador, fuentes:[]};
+          son.destino=mezclador.createMediaStreamDestination();
+          if(sonido.cancion){
+            var fc=mezclador.createBufferSource(), gc=mezclador.createGain();
+            fc.buffer=sonido.cancion; fc.loop=true;
+            gc.gain.value = sonido.voz ? 0.32 : 0.85;
+            fc.connect(gc); gc.connect(son.destino);
+            son.fuentes.push({f:fc, retraso:0, g:gc});
+          }
+          if(sonido.voz){
+            var fv=mezclador.createBufferSource(), gv=mezclador.createGain();
+            fv.buffer=sonido.voz; gv.gain.value=1;
+            fv.connect(gv); gv.connect(son.destino);
+            son.fuentes.push({f:fv, retraso:1.2});
+          }
+          son.destino.stream.getAudioTracks().forEach(function(t){ flujo.addTrack(t); });
+        }catch(e){ son=null; }
+      }
+      rec=new MediaRecorder(flujo,{mimeType:formatoVideo(),videoBitsPerSecond:BPS,
+                                   audioBitsPerSecond:160000});
+    }catch(err){
+      GRABANDO=false; cerrarGrab();
+      document.getElementById('ayuda').classList.remove('oculto');
       return;
     }
+    function callarSon(){
+      if(!son) return;
+      (son.fuentes||[]).forEach(function(x){ try{ x.f.stop(); }catch(e){} });
+      try{ son.ctx.close(); }catch(e){}
+      son=null;
+    }
+    rec.ondataavailable=function(ev){ if(ev.data && ev.data.size) trozos.push(ev.data); };
+    rec.onerror=function(){
+      GRABANDO=false; comp.salir(); cancelAnimationFrame(parar); callarSon(); cerrarGrab();
+      document.getElementById('ayuda').classList.remove('oculto');
+    };
+    rec.onstop=function(){
+      GRABANDO=false;
+      cancelAnimationFrame(parar);
+      comp.salir();
+      avisoGrab('<div class="pun"></div>','Preparando tu video');
+      setTimeout(function(){
+        var tipo=(rec.mimeType||'video/webm').split(';')[0];
+        var ext=tipo.indexOf('mp4')>=0?'mp4':'webm';
+        var blob=new Blob(trozos,{type:tipo});
+        if(!blob.size){ cerrarGrab(); document.getElementById('ayuda').classList.remove('oculto'); return; }
+        ofrecerVideo(blob,NOMBRE_VIDEO+'.'+ext,tipo);
+      },200);
+    };
+
+    avisoGrab('<div class="n" id="grab-n">'+Math.ceil(guion.total)+'</div>',
+              'Grabando tu video · déjalo terminar');
+    /* La música de la pantalla se calla mientras se graba: si no, el cliente
+       oye la canción dos veces, desfasada, y suena a error. Vuelve al acabar. */
+    var mus=document.getElementById('audio'), musSonaba=mus && !mus.paused && !mus.muted && mus.src!==SILENCIO;
+    if(musSonaba) mus.pause();
+    var seguir=function(){ if(musSonaba) mus.play()['catch'](function(){}); };
+    rec.addEventListener('stop',seguir);
+    rec.addEventListener('error',seguir);
+
+    comp.entrar();
+    var t0=0, previo=0;
+    function cuadro(){
+      if(!GRABANDO) return;
+      var ahora=performance.now();
+      if(!t0){ t0=ahora; previo=ahora; }
+      /* treinta cuadros por segundo como mucho */
+      if(ahora-previo<30 && ahora!==t0){ parar=requestAnimationFrame(cuadro); return; }
+      var t=(ahora-t0)/1000, pasos=(ahora-previo)/16.667;
+      previo=ahora;
+      comp.cuadro(Math.min(t,guion.total), Math.min(4,pasos));
+      var n=document.getElementById('grab-n');
+      if(n) n.textContent=Math.max(1,Math.ceil(guion.total-t));
+      if(pista) pista.requestFrame();
+      if(t>=guion.total){
+        GRABANDO=false;
+        callarSon();
+        try{ rec.stop(); }catch(e){}
+        return;
+      }
+      parar=requestAnimationFrame(cuadro);
+    }
+    if(son){
+      /* El mezclador ya está despierto desde el toque; se arrancan las fuentes
+         todas contra el mismo reloj para que la voz caiga siempre a su hora. */
+      try{ if(son.ctx.resume) son.ctx.resume(); }catch(e){}
+      var t=son.ctx.currentTime+0.05;
+      son.fuentes.forEach(function(x){ try{ x.f.start(t+x.retraso); }catch(e){} });
+      /* Mientras habla la voz la canción va bajita; al terminar, sube. */
+      var fc2=son.fuentes[0];
+      if(sonido.cancion && sonido.voz && fc2 && fc2.g){
+        var fin=t+1.2+sonido.voz.duration;
+        if(fin+1<t+guion.total-2){
+          fc2.g.gain.setValueAtTime(.32,fin);
+          fc2.g.gain.linearRampToValueAtTime(.85,fin+.8);
+        }
+      }
+    }
+    rec.start();
     parar=requestAnimationFrame(cuadro);
   }
-
-  avisoGrab('<div class="n" id="grab-n">'+Math.ceil(guion.total)+'</div>',
-            'Grabando tu video · déjalo terminar');
-
-  /* La música de la pantalla se calla mientras se graba: si no, el cliente
-     oye la canción dos veces, desfasada, y suena a error. Vuelve al acabar. */
-  var mus=document.getElementById('audio'), musSonaba=mus && !mus.paused;
-  if(musSonaba) mus.pause();
-
-  if(son){
-    /* El mezclador ya está despierto desde el toque; se arrancan las fuentes
-       todas contra el mismo reloj para que la voz caiga siempre a su hora. */
-    try{ son.ctx.resume&&son.ctx.resume(); }catch(e){}
-    var t=son.ctx.currentTime+0.05;
-    son.fuentes.forEach(function(x){ try{ x.f.start(t+x.retraso); }catch(e){} });
-  }
-
-  var seguir=function(){ if(musSonaba) mus.play().catch(function(){}); };
-  rec.addEventListener('stop',seguir);
-  rec.addEventListener('error',seguir);
-
-  rec.start();
-  parar=requestAnimationFrame(cuadro);
 }
 
 function partirTexto(ctx,txt,ancho){
@@ -2138,7 +3405,7 @@ function ofrecerVideo(blob,nombre,tipo){
     + '<button id="b-cerr" class="tenue">CERRAR</button>';
 
   if(puede) document.getElementById('b-comp').onclick=function(){
-    navigator.share({files:[archivo],title:'Mi universo Ruway'})
+    navigator.share({files:[archivo],title:NOMBRE_VIDEO})
       .then(cerrarGrab).catch(function(){});
   };
   document.getElementById('b-desc').onclick=function(){ descargarVideo(blob,nombre); };
@@ -2157,7 +3424,12 @@ function descargarVideo(blob,nombre){
 
 /* ---------- controles ---------- */
 var abiertoEn=0;
-function cerrarGlobo(){document.getElementById('globo').classList.remove('on');}
+/* Al cerrar una foto, el árbol enciende su esfera: por eso avisa. */
+function cerrarGlobo(){
+  var gb=document.getElementById('globo'), estaba=gb.classList.contains('on');
+  gb.classList.remove('on');
+  if(estaba && ESCENA && ESCENA.alCerrar) ESCENA.alCerrar();
+}
 /* En el celular, al levantar el dedo el navegador dispara además un "clic"
    medio segundo después, y ese clic caía sobre la foto recién abierta y la
    cerraba de inmediato. Se ignoran los toques de los primeros 450 ms. */
@@ -2188,9 +3460,19 @@ function tocar(px,py){
 }
 
 var drag=false,lx=0,ly=0,pinch=0,movio=0,px0=0,py0=0;
-c.addEventListener('pointerdown',function(e){drag=true;lx=e.clientX;ly=e.clientY;
- px0=e.clientX;py0=e.clientY;movio=0;c.setPointerCapture(e.pointerId);});
-c.addEventListener('pointermove',function(e){if(!drag)return;
+/* El árbol y la vela no giran: el dedo se lo pasan a su escena (apretar la
+   mecha, tocar una esfera). */
+function enLienzo(e){ var r=c.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+function bajar(e,id){drag=true;lx=e.clientX;ly=e.clientY;
+ px0=e.clientX;py0=e.clientY;movio=0;
+ if(id!=null){ try{ c.setPointerCapture(id); }catch(err){} }
+ if(TIPO!=='universo' && ESCENA.abajo){ var q=enLienzo(e); ESCENA.abajo(q.x,q.y); }}
+function mover(e){if(!drag)return;
+ if(TIPO!=='universo'){
+   var d0=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0); if(d0>movio) movio=d0;
+   if(ESCENA.mueve){ var q=enLienzo(e); ESCENA.mueve(q.x,q.y); }
+   return;
+ }
  ry+=(e.clientX-lx)*.006;rx+=(e.clientY-ly)*.005;
  if(rx>1.15)rx=1.15;if(rx<-1.15)rx=-1.15;lx=e.clientX;ly=e.clientY;
  /* Cuánto se apartó del punto donde empezó, NO la suma de cada temblor:
@@ -2198,15 +3480,38 @@ c.addEventListener('pointermove',function(e){if(!drag)return;
     que estabas arrastrando. Por eso en el celular no se abrían las fotos. */
  var d=Math.abs(e.clientX-px0)+Math.abs(e.clientY-py0);
  if(d>movio) movio=d;
- camara();});
-c.addEventListener('pointerup',function(e){
+ camara();}
+function subir(e){
  drag=false;
- if(movio<16){var r=c.getBoundingClientRect();
-  if(!tocar(e.clientX-r.left,e.clientY-r.top)) cerrarGlobo();}});
-c.addEventListener('pointercancel',function(){drag=false;});
-c.addEventListener('wheel',function(e){e.preventDefault();
+ if(TIPO!=='universo' && ESCENA.arriba) ESCENA.arriba();
+ if(movio<16){var q=enLienzo(e);
+  var toco=(TIPO==='universo') ? tocar(q.x,q.y) : !!(ESCENA.tocar && ESCENA.tocar(q.x,q.y));
+  if(!toco) cerrarGlobo();}}
+function soltar(){drag=false; if(TIPO!=='universo' && ESCENA.arriba) ESCENA.arriba();}
+if(window.PointerEvent){
+  c.addEventListener('pointerdown',function(e){ bajar(e,e.pointerId); });
+  c.addEventListener('pointermove',mover);
+  c.addEventListener('pointerup',subir);
+  c.addEventListener('pointercancel',soltar);
+} else {
+  /* Los iPhone con iOS 12 o anterior no conocen estos toques: ahí se usan los
+     de siempre. Sin esto, en esos teléfonos la vela no se encendía nunca y el
+     árbol no se podía terminar. El ratón también, pero no justo después de un
+     toque: el navegador lo imita y se contaría dos veces. */
+  var ultimoToque=0;
+  c.addEventListener('touchstart',function(e){ ultimoToque=Date.now();
+    if(e.touches.length===1) bajar(e.touches[0],null); else soltar(); },{passive:true});
+  c.addEventListener('touchmove',function(e){ if(e.touches.length===1) mover(e.touches[0]); },{passive:true});
+  c.addEventListener('touchend',function(e){ ultimoToque=Date.now();
+    if(drag && e.changedTouches && e.changedTouches.length) subir(e.changedTouches[0]); });
+  c.addEventListener('touchcancel',function(){ ultimoToque=Date.now(); soltar(); });
+  c.addEventListener('mousedown',function(e){ if(Date.now()-ultimoToque>800) bajar(e,null); });
+  addEventListener('mousemove',function(e){ if(drag && Date.now()-ultimoToque>800) mover(e); });
+  addEventListener('mouseup',function(e){ if(drag && Date.now()-ultimoToque>800) subir(e); });
+}
+c.addEventListener('wheel',function(e){e.preventDefault(); if(TIPO!=='universo') return;
  zoom*=e.deltaY<0?1.12:.89;if(zoom<.3)zoom=.3;if(zoom>3.4)zoom=3.4;},{passive:false});
-c.addEventListener('touchmove',function(e){if(e.touches.length===2){e.preventDefault();
+c.addEventListener('touchmove',function(e){if(TIPO==='universo' && e.touches.length===2){e.preventDefault();
  var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
  if(pinch){zoom*=d/pinch;if(zoom<.3)zoom=.3;if(zoom>3.4)zoom=3.4;}pinch=d;}},{passive:false});
 c.addEventListener('touchend',function(){pinch=0;});
@@ -2214,6 +3519,8 @@ c.addEventListener('touchend',function(){pinch=0;});
 /* Lo único que el HTML llama por su nombre. Como ahora todo vive dentro de
    encender(), hay que sacarlo afuera a mano. */
 window.compartirUniverso=compartirUniverso;
+window.mandarCorazon=mandarCorazon;
+window.cerrarRegala=cerrarRegala;
 window.tocarGlobo=tocarGlobo;
 window.tocarVoz=tocarVoz;
 /* El cargador la llama en cuanto ramos.js termina de bajar, que puede ser
@@ -2227,12 +3534,117 @@ if(velo){ velo.classList.add('fuera'); setTimeout(function(){ velo.remove(); },7
 
 /* El dueño revisando un universo que para todos los demás sigue cerrado:
    que se note, para no confundirlo con lo que verá el cliente hoy. */
-if(DATOS && DATOS.vistaPrevia && DATOS.abre){
+/* La vista previa (la del taller o la de quien lo regaló) dice si ya lo
+   abrieron y cuántos corazones mandaron. La que está cerrada hasta una
+   fecha, desde cuándo se abre. */
+if(DATOS && DATOS.vistaPrevia){
+  var txtPv='';
+  if(DATOS.abierto){
+    var fa=new Date(DATOS.abierto), cu='';
+    try{ cu=fa.toLocaleString('es-PE',{timeZone:'America/Lima',weekday:'short',day:'numeric',month:'short',
+                                       hour:'numeric',minute:'2-digit'}); }catch(e){ cu=fa.toLocaleString(); }
+    txtPv='💌 Lo abrió el '+cu+(DATOS.corazones?' · '+(TIPO==='vela'?'🕯️ ':'❤️ ')+DATOS.corazones:'');
+  } else if(DATOS.abre && aperturaCerrada()){
+    txtPv='Vista previa · se abre el '+fechaBonita(DATOS.abre);
+  } else txtPv='Vista previa · todavía no lo abre';
   var pv=document.createElement('div');
   pv.id='previa';
-  pv.textContent='Vista previa · el cliente lo abre el '+fechaBonita(DATOS.abre);
+  pv.textContent=txtPv;
   document.body.appendChild(pv);
 }
+function aperturaCerrada(){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(DATOS.abre||''));
+  return !!m && Date.UTC(+m[1],+m[2]-1,+m[3],5)>Date.now();
+}
+
+/* ---- el corazón de vuelta y "regala uno tú también" ----
+   Solo para quien lo recibe: en una vista previa no salen. */
+function llamarApi(fn,args,ok,mal){
+  var d=DATOS; if(!d||!d.api){ mal&&mal(); return; }
+  var nombre='__api'+(++RESCATE.n), t=document.createElement('script');
+  var reloj=setTimeout(function(){limpiar();mal&&mal();},20000);
+  function limpiar(){ clearTimeout(reloj); try{delete window[nombre];}catch(e){window[nombre]=undefined;}
+    if(t.parentNode) t.parentNode.removeChild(t); }
+  window[nombre]=function(r){ limpiar(); if(r&&r.ok) ok&&ok(r.r); else mal&&mal(); };
+  t.onerror=function(){ limpiar(); mal&&mal(); };
+  t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')+'vista=api&rfn='+fn+'&rcb='+nombre
+    +'&rargs='+encodeURIComponent(JSON.stringify(args||[]));
+  document.head.appendChild(t);
+}
+var CORAZONES_MANDADOS=0;
+function mandarCorazon(){
+  var b=document.getElementById('corazon');
+  /* Unos corazoncitos que suben, para que se sienta que salió. */
+  for(var i=0;i<6;i++){
+    var h=document.createElement('div');
+    h.className='cor-vuela'; h.textContent=i%3?'❤️':'💛';
+    h.style.right=(24+Math.random()*30)+'px'; h.style.bottom=(60+Math.random()*20)+'px';
+    h.style.setProperty('--dx',(Math.random()*-120+20)+'px');
+    h.style.animationDelay=(i*90)+'ms';
+    document.getElementById('s3').appendChild(h);
+    setTimeout((function(x){return function(){ x.remove(); };})(h),2200);
+  }
+  if(CORAZONES_MANDADOS>=10){ decirCorazon('¡Ya le llegaron un montón! 💛'); return; }
+  CORAZONES_MANDADOS++;
+  llamarApi('corazon',[DATOS.codigo],function(){
+    /* Sin el nombre: "de" es la firma de la carta y puede ser una frase
+       ("Con todo mi amor"), que no pega en esta oración. */
+    decirCorazon('Le llegó tu corazón ❤️');
+  },function(){ decirCorazon('No se pudo mandar. Prueba otra vez.'); });
+}
+function decirCorazon(t){
+  var g=document.getElementById('cor-globo');
+  g.textContent=t; g.classList.remove('oculto');
+  clearTimeout(g._t); g._t=setTimeout(function(){ g.classList.add('oculto'); },3200);
+}
+function cerrarRegala(){
+  document.getElementById('regala').classList.add('oculto');
+  try{ localStorage.setItem('ruway:regala:'+DATOS.codigo,'1'); }catch(e){}
+}
+function urlPedirDesde(){
+  var cod='DE-'+String(DATOS.codigo||'').toUpperCase(), base='';
+  if(/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
+    var m=String(DATOS.base||'').match(/^(https:\/\/[^?#]*\/)[^\/?#]*(?:[?#].*)?$/);
+    base=m?m[1]:'';
+  } else base=location.origin+location.pathname.replace(/[^\/]*$/,'');
+  /* Quien entra desde un árbol o una vela llega con esa misma experiencia ya
+     elegida en el formulario. */
+  return base ? base+'?ref='+encodeURIComponent(cod)+(TIPO!=='universo'?'&x='+TIPO:'') : '';
+}
+(function(){
+  if(!DATOS || !DATOS.ok || DATOS.vistaPrevia || DATOS.bloqueado) return;
+  var entro=0;
+  document.getElementById('ver').addEventListener('click',function(){
+    if(entro) return; entro=Date.now();
+    /* El corazón aparece a los ocho segundos: primero que mire su universo.
+       En la vela no hay corazón: encenderla ya es la respuesta, y se cuenta. */
+    if(TIPO!=='vela') setTimeout(function(){
+      document.getElementById('corazon').classList.remove('oculto');
+      decirCorazon('Mándale un corazón de vuelta 💛');
+    },8000);
+    /* Y "regala uno tú también", a los cuarenta y cinco, una sola vez por
+       teléfono. Al final y con su ×: no puede sentirse como publicidad. En
+       la vela, más tarde y con otras palabras: es un momento de recuerdo. */
+    var ya=false; try{ ya=!!localStorage.getItem('ruway:regala:'+DATOS.codigo); }catch(e){}
+    var u=urlPedirDesde();
+    if(TIPO==='vela'){
+      document.querySelector('#regala b').textContent='🕯️ Una vela para quien extrañas';
+      document.querySelector('#regala span').textContent='Puedes encender una así para alguien que recuerdas.';
+      document.getElementById('regala-si').textContent='Quiero una';
+    } else if(TIPO==='arbol'){
+      document.querySelector('#regala b').textContent='¿Te gustó? 🎄';
+    }
+    if(!ya && u) setTimeout(function(){
+      if(GRABANDO || document.getElementById('s3').classList.contains('oculto')) return;
+      document.getElementById('regala-si').href=u;
+      document.getElementById('regala').classList.remove('oculto');
+    },TIPO==='vela'?75000:45000);
+  });
+  document.getElementById('regala-si').addEventListener('click',function(){
+    try{ localStorage.setItem('ruway:regala:'+DATOS.codigo,'1'); }catch(e){}
+    setTimeout(cerrarRegala,300);
+  });
+})();
 
 }   /* fin de encender() */
 

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Ruway · Grabar etiqueta NFC</title>
+<meta name="theme-color" content="#FFFBF4">
+<!-- GENERADO POR construir.js · NO EDITAR A MANO -->
+<style>
+:root{--verde:#5C6B4A;--vivo:#7C9A5E;--oro:#D2A877;--crema:#FFFBF4;--tinta:#23291E;--gris:#8A9280;--rojo:#B5553F}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--crema);color:var(--tinta);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;padding:26px 18px 40px}
+main{max-width:460px;margin:0 auto}
+h1{font-size:22px;color:var(--verde);margin-bottom:4px}
+.sub{color:var(--gris);font-size:13px;margin-bottom:18px}
+.caja{background:#fff;border:1px solid rgba(92,107,74,.14);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 8px 24px rgba(47,56,38,.07)}
+.enlace{font:12.5px/1.45 ui-monospace,Menlo,monospace;word-break:break-all;background:#F6F2E8;border-radius:10px;padding:10px 12px;color:#3F4B33}
+.que{font-weight:700;margin-bottom:8px}
+button{font:inherit;font-weight:800;border:0;border-radius:16px;padding:15px;width:100%;cursor:pointer}
+.ok{background:linear-gradient(135deg,var(--vivo),var(--verde));color:#fff;box-shadow:0 10px 22px rgba(92,107,74,.28)}
+.suave{background:#fff;color:var(--verde);border:1.5px solid rgba(92,107,74,.25);margin-top:10px}
+label.ch{display:flex;gap:10px;align-items:flex-start;margin:14px 2px 4px;font-size:13.5px}
+label.ch input{margin-top:3px;width:18px;height:18px;flex:none}
+#estado{margin-top:14px;padding:13px 14px;border-radius:14px;font-weight:700;display:none}
+#estado.espera{display:block;background:#FFF3D6;color:#7A5A1E}
+#estado.ok{display:block;background:#E6F0DC;color:#3D5A26}
+#estado.mal{display:block;background:#F8E1DA;color:var(--rojo)}
+.onda{display:inline-block;animation:late 1.2s ease-in-out infinite}
+@keyframes late{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+ol{padding-left:20px;font-size:13.5px}ol li{margin:5px 0}
+.nota{font-size:12.5px;color:var(--gris);margin-top:8px}
+.oculto{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>📲 Grabar etiqueta NFC</h1>
+  <p class="sub" id="rotulo">Para que se abra acercando el celular, sin escanear.</p>
+
+  <div class="caja">
+    <div class="que">Lo que va a abrir la etiqueta</div>
+    <div class="enlace" id="enlace">—</div>
+    <button class="suave" id="copiar" type="button">Copiar el enlace</button>
+  </div>
+
+  <div class="caja" id="conNfc">
+    <label class="ch"><input type="checkbox" id="bloquear" checked>
+      <span><b>Bloquearla al terminar</b> (recomendado). Así nadie la puede cambiar después.
+      Una etiqueta bloqueada ya no se puede volver a grabar.</span></label>
+    <button class="ok" id="grabar" type="button" style="margin-top:10px">Grabar la etiqueta</button>
+    <button class="suave" id="probar" type="button">Probar una etiqueta</button>
+    <div id="estado"></div>
+  </div>
+
+  <div class="caja oculto" id="sinNfc">
+    <div class="que">Desde este celular se graba con una app gratuita</div>
+    <ol>
+      <li>Instala <b>NFC Tools</b> (App Store o Play Store).</li>
+      <li>Copia el enlace con el botón de arriba.</li>
+      <li>En la app: <b>Escribir</b> → <b>Agregar un registro</b> → <b>URL / URI</b> → pega el enlace → <b>OK</b>.</li>
+      <li>Toca <b>Escribir</b> y acerca la etiqueta a la parte de arriba de tu iPhone (en Android, a la parte de atrás).</li>
+      <li>Para que nadie la cambie: <b>Otros</b> → <b>Bloquear la etiqueta</b>. Es para siempre.</li>
+    </ol>
+    <p class="nota">En Android con Chrome también se puede grabar desde acá mismo: abre esta página en Chrome.</p>
+  </div>
+
+  <div class="caja">
+    <div class="que">Consejos</div>
+    <ol>
+      <li>Usa etiquetas <b>NTAG213</b> (stickers redondos de 25 a 30 mm): las leen todos los celulares con NFC.</li>
+      <li>Pégala detrás de la tarjeta, justo donde dice «acerca tu celular».</li>
+      <li>Lejos del alambre de los limpiapipas y de cualquier metal: el metal apaga la señal.</li>
+      <li>Pruébala siempre con tu celular antes de entregar. El QR sigue en la tarjeta para quien no tenga NFC.</li>
+    </ol>
+  </div>
+</main>
+<script>
+(function(){
+  var h=new URLSearchParams(location.hash.replace(/^#/,''));
+  var URL_=String(h.get('u')||'');
+  var rot=String(h.get('t')||'');
+  /* Solo enlaces seguros (https): esta página no graba cualquier cosa. */
+  if(!/^https:\/\/[^\s"'<>]{4,300}$/.test(URL_)) URL_='';
+  var $=function(i){return document.getElementById(i);};
+  $('enlace').textContent=URL_||'Falta el enlace: ábrela desde la app de Ruway.';
+  /* Una etiqueta NTAG213 guarda unas 130 letras de enlace. Las tarjetas que
+     llevan la dedicatoria escrita en el enlace pasan de eso: se avisa antes
+     de intentarlo, que el error del celular no lo explica. */
+  var largo=0;
+  try{ largo=new TextEncoder().encode(URL_.replace(/^https:\/\/(www\.)?/,'')).length; }catch(e){ largo=URL_.length; }
+  if(largo>130){
+    var av=document.createElement('p'); av.className='nota';
+    av.style.color='#B5553F';
+    av.textContent='Este enlace es largo ('+largo+' letras): no entra en una NTAG213. Usa una NTAG215 o NTAG216, '
+      +'o arma la tarjeta con el código del universo, que es corto.';
+    $('enlace').parentNode.appendChild(av);
+  }
+  if(rot) $('rotulo').textContent=rot;
+  $('copiar').onclick=function(){
+    if(!URL_) return;
+    var hecho=function(){ $('copiar').textContent='✓ Copiado'; setTimeout(function(){ $('copiar').textContent='Copiar el enlace'; },1800); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(URL_).then(hecho,function(){});
+    else { var t=document.createElement('textarea'); t.value=URL_; document.body.appendChild(t); t.select();
+           try{ document.execCommand('copy'); hecho(); }catch(e){} t.remove(); }
+  };
+  var hay=('NDEFReader' in window);
+  if(!hay){ $('conNfc').classList.add('oculto'); $('sinNfc').classList.remove('oculto'); return; }
+  if(!URL_){ $('grabar').disabled=true; }
+
+  var corta=null;
+  function estado(t,clase){ var e=$('estado'); e.className=clase; e.innerHTML=t; }
+  function parar(){ if(corta){ try{ corta.abort(); }catch(e){} corta=null; } }
+  function explicar(e){
+    var n=(e&&e.name)||'';
+    if(n==='AbortError') return;
+    if(n==='NotAllowedError') estado('Chrome necesita permiso para usar el NFC. Vuelve a tocar el botón y dale «Permitir».','mal');
+    else if(n==='NotSupportedError') estado('Este celular no tiene NFC, o está apagado. Actívalo en Ajustes → Conexiones → NFC y vuelve a intentar.','mal');
+    else if(n==='NetworkError') estado('Se movió la etiqueta antes de terminar. Vuelve a intentar, sin moverla.','mal');
+    else estado('No se pudo: '+((e&&e.message)||'error desconocido'),'mal');
+  }
+
+  $('grabar').onclick=function(){
+    if(!URL_) return;
+    parar(); corta=new AbortController();
+    var nd=new NDEFReader(), senal=corta.signal;
+    estado('<span class="onda">📲</span> Acerca la etiqueta a la parte de atrás de tu celular y déjala quieta…','espera');
+    nd.write({records:[{recordType:'url',data:URL_}]},{overwrite:true,signal:senal}).then(function(){
+      if(!$('bloquear').checked || typeof nd.makeReadOnly!=='function'){
+        estado('✓ Grabada. Aléjala y vuelve a acercarla para probarla.','ok'); return;
+      }
+      estado('✓ Grabada. <b>No la muevas</b>: ahora se bloquea…','espera');
+      return nd.makeReadOnly({signal:senal}).then(function(){
+        estado('✓ Grabada y bloqueada. Ya nadie la puede cambiar.','ok');
+      });
+    })['catch'](explicar);
+  };
+
+  $('probar').onclick=function(){
+    parar(); corta=new AbortController();
+    var nd=new NDEFReader();
+    estado('<span class="onda">📲</span> Acerca la etiqueta para leerla…','espera');
+    nd.scan({signal:corta.signal}).then(function(){
+      nd.onreading=function(ev){
+        var leido='';
+        (ev.message.records||[]).forEach(function(r){
+          if(r.recordType==='url' && !leido){ try{ leido=new TextDecoder().decode(r.data); }catch(e){} }
+        });
+        parar();
+        if(!leido) estado('Esa etiqueta está vacía o tiene otra cosa.','mal');
+        else if(URL_ && leido===URL_) estado('✓ Esta etiqueta abre el enlace correcto.','ok');
+        else estado('Esta etiqueta abre otro enlace: '+leido.replace(/[<>&]/g,''),'mal');
+      };
+      nd.onreadingerror=function(){ estado('No se pudo leer. Acércala otra vez, sin moverla.','mal'); };
+    })['catch'](explicar);
+  };
+})();
+</script>
+</body>
+</html>
