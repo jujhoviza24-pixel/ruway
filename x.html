@@ -91,7 +91,7 @@ button:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
 .mu.on{border-color:#fff;box-shadow:0 0 0 2px var(--rosa)}
 .chip{border:1px solid var(--borde);background:var(--tarjeta);color:var(--crema);border-radius:999px;padding:6px 11px;font:700 12px Nunito,sans-serif}
 .chip.on{background:var(--rosa);color:#2A0716;border-color:var(--rosa)}
-#b-rec{position:fixed;left:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:6;height:40px;border-radius:999px;border:1px solid rgba(255,233,168,.35);
+#b-rec{position:fixed;left:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:11;height:40px;border-radius:999px;border:1px solid rgba(255,233,168,.35);
   background:rgba(20,11,38,.62);color:#FFF1DA;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;gap:7px;padding:0 14px;font:800 13px Nunito,sans-serif}
 #b-rec .punto{width:10px;height:10px;border-radius:50%;background:#FF4D5E;box-shadow:0 0 8px #FF4D5E}
 #b-rec.grabando{background:#E53935;border-color:#E53935;color:#fff}
@@ -290,6 +290,7 @@ function recuerdo(i,etiqueta,boton,luego){
   var f=FOTOS[i]||{};
   document.getElementById('r-et').textContent=etiqueta||'';
   fotoEn(document.getElementById('r-foto'),f);
+  document.getElementById('r-foto').setAttribute('data-cors',f.cors||'');   /* la dirección que deja grabarla en el video */
   document.getElementById('r-txt').textContent=f.txt||'';
   var b=document.getElementById('r-bt'); b.textContent=boton||'Seguir';
   document.getElementById('recuerdo').hidden=false; b.focus();
@@ -421,6 +422,7 @@ var Grabar=(function(){
     for(var i=0;i<l.length;i++){ try{ if(MediaRecorder.isTypeSupported(l[i])) return l[i]; }catch(e){} } return ''; }
   function poner(){
     if(btn || !soportado()) return;
+    setTimeout(precargar,1500);
     var caja=document.body;
     btn=document.createElement('button'); btn.id='b-rec'; btn.type='button'; btn.setAttribute('aria-label','Grabar un video para compartir');
     btn.innerHTML='<span class="punto"></span>Grabar'; caja.appendChild(btn);
@@ -436,7 +438,7 @@ var Grabar=(function(){
     try{ rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:4000000}:undefined); }catch(e){ try{ rec=new MediaRecorder(stream); mime=''; }catch(e2){ rec=null; aviso('Este teléfono no puede grabar'); return; } }
     trozos=[]; rec.ondataavailable=function(e){ if(e.data && e.data.size) trozos.push(e.data); };
     rec.onstop=terminar;
-    rec.start(500); t0=performance.now(); btn.classList.add('grabando'); nota(880,.12,'sine',.05);
+    precargar(); rec.start(500); t0=performance.now(); btn.classList.add('grabando'); nota(880,.12,'sine',.05);
     cuadro();
   }
   function parar(){ if(rec && rec.state!=='inactive') rec.stop(); cancelAnimationFrame(raf); }
@@ -464,9 +466,18 @@ var Grabar=(function(){
     var q=Math.max(0,Math.ceil(MAX-seg)); btn.innerHTML='<span class="punto"></span>0:'+(q<10?'0':'')+q;
     if(seg>=MAX) parar();
   }
+  /* Las fotos se cargan aparte, por la dirección "cors" (lh3). La que se ve
+     en pantalla viene de otra dirección que el navegador no deja copiar al
+     video: por eso salían los recuadros vacíos. Se cargan todas al empezar a
+     grabar, para que ya estén cuando se abra un regalo. */
+  var listas={};
+  function precargar(){ FOTOS.forEach(function(f){ var u=f.cors||''; if(!u || listas[u]) return;
+    var im=new Image(); im.crossOrigin='anonymous'; listas[u]={im:im,ok:false};
+    im.onload=function(){ listas[u].ok=true; }; im.onerror=function(){ delete listas[u]; }; im.src=u; }); }
   function polaroid(r){
-    var img=r.querySelector('#r-foto img'), src=img?img.getAttribute('src'):'';
-    if(src!==fotoSrc){ fotoSrc=src; fotoRec=null; if(src){ var im=new Image(); im.crossOrigin='anonymous'; im.onload=function(){ if(fotoSrc===src) fotoRec=im; }; im.src=src; } }
+    var caja=r.querySelector('#r-foto'), src=caja?(caja.getAttribute('data-cors')||''):'';
+    if(src && !listas[src]) precargar();
+    fotoRec=(src && listas[src] && listas[src].ok)?listas[src].im:null;
     var x=110, y=300, w=500; cx.save(); cx.translate(W/2,y+310); cx.rotate(-.035); cx.translate(-W/2,-(y+310));
     cx.shadowColor='rgba(0,0,0,.5)'; cx.shadowBlur=40; cx.fillStyle='#FFFDF6'; cx.fillRect(x,y,w,620); cx.shadowBlur=0;
     if(fotoRec){ var s=Math.min(fotoRec.width,fotoRec.height); cx.drawImage(fotoRec,(fotoRec.width-s)/2,(fotoRec.height-s)/2,s,s,x+20,y+20,w-40,w-40); }
