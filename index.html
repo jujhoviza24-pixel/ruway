@@ -1695,22 +1695,42 @@ function prender(){
       var hueco = MAX - fotos.length - enCola;
       if (hueco <= 0) { aviso('Ya tienes las ' + MAX + ' fotos'); return; }
       if (fs.length > hueco) aviso('Caben ' + hueco + ' fotos más; tomamos esas');
-      fs.slice(0, hueco).forEach(function (f) { enCola++; leerFoto(f); });
+      fs.slice(0, hueco).forEach(function (f) { enCola++; colaFotos.push(f); });
+      siguienteFoto();
     });
 
-    function leerFoto(file) {
+    /* Las fotos se leen DE UNA EN UNA. Leer las ocho a la vez era abrir ocho
+       fotos de doce megapíxeles juntas —casi medio giga de memoria— y el
+       navegador del celular, sin sitio, soltaba casi todas: el cliente elegía
+       ocho y solo entraban dos. Una por una, cada foto se achica y se suelta
+       antes de abrir la siguiente. */
+    var colaFotos = [], leyendoFoto = false;
+    function siguienteFoto() {
+      if (leyendoFoto || !colaFotos.length) return;
+      leyendoFoto = true;
+      leerFoto(colaFotos.shift(), function () {
+        leyendoFoto = false;
+        setTimeout(siguienteFoto, 30);      /* un respiro para que el celular libere la anterior */
+      });
+    }
+
+    function leerFoto(file, fin) {
       /* Una foto que no se puede leer tiene que DECIRLO. Antes desaparecía en
          silencio: el cliente elegía ocho, veía seis y no entendía nada. Pasa
          con los HEIC del iPhone que el navegador no sabe abrir, y con
-         cualquier archivo a medio copiar. */
+         cualquier archivo a medio copiar. Antes de rendirse se prueba una vez
+         más, que en un celular justo de memoria muchas veces basta. */
+      var intento = 0, dir = '';
+      function soltar() { if (dir) { try { URL.revokeObjectURL(dir); } catch (e) {} dir = ''; } }
       function malaFoto() {
+        soltar();
+        if (++intento < 2) { setTimeout(abrir, 400); return; }
         enCola = Math.max(0, enCola - 1);
         aviso('No pudimos leer una de tus fotos; prueba con otra');
         pintar();
+        fin();
       }
-      var lec = new FileReader();
-      lec.onerror = malaFoto;
-      lec.onload = function (e) {
+      function abrir() {
         var img = new Image();
         img.onerror = malaFoto;
         img.onload = function () {
@@ -1719,11 +1739,12 @@ function prender(){
             var cv = document.createElement('canvas');
             cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
             var g2 = cv.getContext('2d');
-            /* En un Android justo de memoria, con ocho fotos grandes, el
-               lienzo se queda sin sitio y esto devuelve null. */
             if (!g2) { malaFoto(); return; }
             g2.drawImage(img, 0, 0, cv.width, cv.height);
             var url = cv.toDataURL('image/jpeg', 0.78);
+            /* soltar la foto grande ya; sin los avisos, que vaciar la imagen
+               dispara onerror y eso la volvía a leer: entraba dos veces */
+            img.onload = img.onerror = null; cv.width = cv.height = 0; img.src = ''; soltar();
             var id = BOR.id++;
             var b64 = url.split(',')[1];
             enCola = Math.max(0, enCola - 1);
@@ -1731,11 +1752,20 @@ function prender(){
             borPoner('foto:' + id, { b64: b64 });
             guardarEstado();
             pintar();
+            fin();
           } catch (err) { malaFoto(); }
         };
-        img.src = e.target.result;
-      };
-      lec.readAsDataURL(file);
+        /* Un enlace al archivo, no el archivo copiado en texto: la copia en
+           texto ocupaba un tercio más y duplicaba lo que había en memoria. */
+        try { dir = URL.createObjectURL(file); img.src = dir; }
+        catch (e) {
+          var lec = new FileReader();
+          lec.onerror = malaFoto;
+          lec.onload = function (ev) { img.src = ev.target.result; };
+          lec.readAsDataURL(file);
+        }
+      }
+      abrir();
     }
 
     /* ================= preparar los audios =================
