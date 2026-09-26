@@ -858,16 +858,39 @@ function esperarApertura(d){
   }
 }
 
+/* Cuántas veces se abre y cuánto rato se queda quien lo recibió.
+   Una marca al entrar y el tiempo al salir (o al cambiar de app). Va con
+   sendBeacon: el teléfono lo manda aunque la página ya se esté cerrando.
+   Las vistas previas del taller no cuentan. */
+var Visita=(function(){
+  var cod='', t0=0;
+  function mandar(nueva,seg){
+    if(typeof API!=='string' || !API) return;
+    var cuerpo=JSON.stringify({fn:'visita',args:[cod,seg,nueva]});
+    try{ if(navigator.sendBeacon && navigator.sendBeacon(API,new Blob([cuerpo],{type:'text/plain;charset=utf-8'}))) return; }catch(e){}
+    try{ fetch(API,{method:'POST',body:cuerpo,mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'}}); }catch(e){}
+  }
+  function cortar(){ if(!t0) return; var s=Math.round((Date.now()-t0)/1000); t0=0; if(s>=2) mandar(0,Math.min(s,1800)); }
+  function empezar(d){
+    if(cod || !d || !d.ok || d.vistaPrevia || d.bloqueado || window.__DEMO) return;
+    if(!/^[A-Z0-9]{4,10}$/.test(String(d.codigo||''))) return;
+    cod=d.codigo; t0=Date.now(); mandar(1,0);
+    document.addEventListener('visibilitychange',function(){ if(document.hidden) cortar(); else if(!t0) t0=Date.now(); });
+    addEventListener('pagehide',cortar);
+  }
+  return {empezar:empezar};
+})();
 function encender(){
 if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
 /* Las experiencias del llavero (juegos, planeta, bitácora, cartas…) viven en
    x.html, al lado de esta página en GitHub. Se llega con el mismo enlace del
    QR o del NFC y los mismos datos, que ya quedaron guardados en el teléfono. */
-if(DATOS && /^(constelaciones|planeta|laberinto|carrito|bitacora|cartas)$/.test(String(DATOS.tipo||''))
+if(DATOS && /^(constelaciones|planeta|laberinto|carrito|isla|corre|bitacora|cartas)$/.test(String(DATOS.tipo||''))
    && !/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
   location.replace('x.html'+location.search);
   return;
 }
+if(DATOS) Visita.empezar(DATOS);
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir
@@ -1070,6 +1093,20 @@ function guardarAudio(cual,blob){
         });
     })['catch'](function(){});
   }catch(e){}
+}
+
+/* ---- una foto en base64, por JSONP (el plan B de las fotos) ---- */
+function fotoPorApi(n,ok,mal){
+  var d=DATOS;
+  if(!d||!d.api||!d.codigo){ mal&&mal(); return; }
+  var nombre='__foto'+n+'_'+Date.now(), t=document.createElement('script'), hecho=false;
+  var reloj=setTimeout(function(){ fin(); mal&&mal(); },20000);
+  function fin(){ if(hecho) return false; hecho=true; clearTimeout(reloj); try{delete window[nombre];}catch(e){window[nombre]=undefined;} if(t.parentNode) t.parentNode.removeChild(t); return true; }
+  window[nombre]=function(r){ if(!fin()) return; if(r&&r.ok&&r.r&&r.r.b64) ok(r.r.b64); else mal&&mal(); };
+  t.onerror=function(){ if(fin()) mal&&mal(); };
+  t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')+'vista=api&rfn=foto&rcb='+nombre
+    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,n,d.ver||'']));
+  document.head.appendChild(t);
 }
 
 /* ---- un pedazo, por JSONP ---- */
@@ -1708,16 +1745,30 @@ function cargarFotos(){
   for(var i=0;i<n;i++){
     var im=new Image();
     im.crossOrigin='anonymous';
-    (function(f,imagen){
-      imagen.onerror=function(){
-        var alt=new Image();
-        alt.src=f.url;
+    /* Tres caminos, en orden: lh3 con permiso para grabar (hasta 8 s), la
+       foto en base64 por la API de Ruway (también se puede grabar) y, solo
+       si todo falla, la miniatura de Drive, que se ve pero mancha el video.
+       Antes se saltaba directo a la miniatura y el video no se podía armar. */
+    (function(f,imagen,n){
+      var listo=false;
+      function poner(nueva,manchada){
+        if(listo) return; listo=true; clearTimeout(reloj);
         var pos=IMGS.indexOf(imagen);
-        if(pos>=0) IMGS[pos]=alt;
-        MANCHADO=true;
-        pintarBotonCompartir();
-      };
-    })(FOTOS[i],im);
+        if(pos>=0) IMGS[pos]=nueva;
+        if(manchada){ MANCHADO=true; pintarBotonCompartir(); }
+      }
+      function miniatura(){ if(listo) return; var alt=new Image(); alt.src=f.url; poner(alt,true); }
+      function porApi(){
+        if(listo) return;
+        fotoPorApi(n,function(b64){
+          if(listo) return;
+          var ok=new Image(); ok.onload=function(){ poner(ok,false); }; ok.onerror=miniatura; ok.src=b64;
+        },miniatura);
+      }
+      imagen.onload=function(){ listo=true; clearTimeout(reloj); };
+      imagen.onerror=porApi;
+      var reloj=setTimeout(function(){ if(!imagen.complete || !imagen.naturalWidth) porApi(); },8000);
+    })(FOTOS[i],im,i);
     im.src=FOTOS[i].cors||FOTOS[i].url;
     IMGS.push(im);
     /* Cada foto trae su propio sitio, no ocupa uno de los decorativos. Antes
@@ -2835,9 +2886,42 @@ function compartirUniverso(){
     document.getElementById('ayuda').classList.remove('oculto');
     return;
   }
-  var fotos=fotosDelUniverso();
-  if(fotos.length>MAX_FOTOS_VIDEO) elegirFotos(fotos,empezarVideo);
-  else empezarVideo(fotos);
+  /* El mezclador de sonido se despierta YA, dentro del toque (el iPhone no
+     deja hacerlo después), aunque haya que esperar a las fotos. */
+  PRE_MEZ=null;
+  try{ var CA0=window.AudioContext||window.webkitAudioContext; if(CA0){ PRE_MEZ=new CA0(); if(PRE_MEZ.resume) PRE_MEZ.resume(); } }catch(e){ PRE_MEZ=null; }
+  esperarFotos(function(){
+    var fotos=fotosDelUniverso();
+    if(fotos.length>MAX_FOTOS_VIDEO){ cerrarGrab(); elegirFotos(fotos,empezarVideo); }
+    else empezarVideo(fotos);
+  });
+}
+
+/* Antes de armar el video, las fotos tienen que estar cargadas Y listas para
+   dibujarse. Con la red lenta salía un video sin fotos (solo con el audio);
+   y en iPhone una foto cargada pero sin "decodificar" se dibujaba en blanco:
+   el marco sin nada adentro. Se espera hasta 10 s y se decodifica cada una. */
+var PRE_MEZ=null;
+function fotosPendientes(){
+  var n=0;
+  for(var i=0;i<ramos.length;i++){ var o=ramos[i]; if(!o.foto) continue; var im=IMGS[o.k]; if(!im || !im.complete || !im.naturalWidth) n++; }
+  return n;
+}
+function esperarFotos(listo){
+  var t0=Date.now();
+  function decodificar(){
+    var l=[];
+    fotosDelUniverso().forEach(function(f){ if(f.im.decode) l.push(f.im.decode()['catch'](function(){})); });
+    if(!l.length || !window.Promise){ listo(); return; }
+    var hecho=false; function sigue(){ if(!hecho){ hecho=true; listo(); } }
+    Promise.all(l).then(sigue,sigue); setTimeout(sigue,4000);
+  }
+  if(!fotosPendientes()){ decodificar(); return; }
+  avisoGrab('<div class="pun"></div>','Cargando tus fotos');
+  (function mirar(){
+    if(!fotosPendientes() || Date.now()-t0>10000) decodificar();
+    else setTimeout(mirar,300);
+  })();
 }
 
 function empezarVideo(fotos){
@@ -2846,8 +2930,8 @@ function empezarVideo(fotos){
      dentro del toque: el iPhone no deja despertarlo después, y el video
      saldría mudo. Si al final el video se arma cuadro por cuadro, no se usa
      y se cierra. */
-  var mezclador=null;
-  try{
+  var mezclador=PRE_MEZ; PRE_MEZ=null;
+  if(!mezclador) try{
     var CA=window.AudioContext||window.webkitAudioContext;
     if(CA){ mezclador=new CA(); if(mezclador.resume) mezclador.resume(); }
   }catch(e){ mezclador=null; }
@@ -3190,7 +3274,7 @@ function armarVideo(guion,VW,VH,cod,siFalla){
       if(ve.encodeQueueSize>4){ setTimeout(tanda,6); return; }
       var hasta=Math.min(N,i+2);
       for(;i<hasta;i++){
-        comp.cuadro(i/FPS_VIDEO, i?60/FPS_VIDEO:0);
+        try{ comp.cuadro(i/FPS_VIDEO, i?60/FPS_VIDEO:0); }catch(e){ fallo=e; break; }   /* y se intenta en vivo */
         var vf=null;
         try{
           vf=new VideoFrame(comp.lienzo,{timestamp:Math.round(i*1e6/FPS_VIDEO),
@@ -3351,7 +3435,10 @@ function grabarEnVivo(guion,mezclador){
       if(ahora-previo<30 && ahora!==t0){ parar=requestAnimationFrame(cuadro); return; }
       var t=(ahora-t0)/1000, pasos=(ahora-previo)/16.667;
       previo=ahora;
-      comp.cuadro(Math.min(t,guion.total), Math.min(4,pasos));
+      /* Un tropiezo al dibujar (en iPhone, casi siempre falta de memoria) ya
+         no deja el video colgado para siempre: se corta lo grabado hasta ahí. */
+      try{ comp.cuadro(Math.min(t,guion.total), Math.min(4,pasos)); }
+      catch(e){ GRABANDO=false; callarSon(); try{ rec.stop(); }catch(e2){} return; }
       var n=document.getElementById('grab-n');
       if(n) n.textContent=Math.max(1,Math.ceil(guion.total-t));
       if(pista) pista.requestFrame();
