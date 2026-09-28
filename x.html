@@ -150,6 +150,11 @@ a.suave{cursor:pointer}
 #bajo-agua.on{opacity:1}
 .isla-ui #b-constr.on{background:#7FD6A0}
 .isla-ui #b-mis{right:12px;top:calc(10px + env(safe-area-inset-top,0px));width:44px;height:44px;background:rgba(255,241,218,.9);font-size:20px}
+.isla-ui #b-baile{position:fixed;z-index:6;left:36px;bottom:calc(222px + env(safe-area-inset-bottom,0px));width:54px;height:54px;border:none;border-radius:50%;background:#FFF1DA;font-size:24px;box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.isla-ui #b-baile.on{background:#FFC531}
+.isla-ui #bailes{position:fixed;z-index:8;left:12px;bottom:calc(284px + env(safe-area-inset-bottom,0px));display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px;border-radius:18px;background:rgba(255,251,244,.96);box-shadow:0 10px 28px rgba(0,0,0,.35);width:236px}
+.isla-ui #bailes button{border:none;border-radius:12px;padding:9px 6px;background:#fff;box-shadow:0 2px 0 #D2A877;font:800 13px "Baloo 2",Fredoka,sans-serif;color:#23291E}
+.isla-ui #bailes button:active{transform:translateY(1px)}
 .isla-ui #accion{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(146px + env(safe-area-inset-bottom,0px));z-index:7;border:none;border-radius:999px;
   padding:13px 22px;background:#FFF1DA;color:#3A2140;font:700 16px Fredoka,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.35);animation:lateC 1.6s ease-in-out infinite;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
 @keyframes lateC{50%{transform:translateX(-50%) scale(1.06)}}
@@ -1534,14 +1539,15 @@ function laberinto(){
     var ultimaCel='';
     function llegar(){
       regalos.forEach(function(r){ if(!r.abierto && Math.hypot(r.cel.c+.5-yx,r.cel.f+.5-yz)<.38){ r.abierto=true; abiertos++; H0.puntos(abiertos);
-        H0.sub(abiertos>=nR?'¡Ve al corazón!':'Recuerdos: '+abiertos+' de '+nR); jugando=false; vx=vz=0; r.obj.visible=false;
+        H0.sub(abiertos>=nR?'¡Ve al corazón!':'Recuerdos: '+abiertos+' de '+nR); jugando=false; vx=vz=0; r.obj.visible=false; if(MU&&MU.accion) MU.accion('recoger',{vel:1.3});
         for(var i=0;i<24;i++) chispa(r.cel.c+.5,r.cel.f+.5);
         setTimeout(function(){ recuerdo(r.n,'Recuerdo '+abiertos+' de '+nR,abiertos>=nR?'Ir al corazón':'Seguir buscando',function(){ jugando=true; }); },350); } });
       if(abiertos>=nR){ mCor.color.set('#FF5C8F'); mCor.emissive.set('#FF3D7F'); mCor.emissiveIntensity=.5; }
       var k=celDe(yx,yz), cc=k?k.c+','+k.f:'';
       if(k && k===meta && cc!==ultimaCel){
         if(abiertos>=nR){ jugando=false; vx=vz=0; for(var i=0;i<60;i++) chispa(meta.c+.5,meta.f+.5);
-          setTimeout(function(){ final('Lo encontraste todo','Jugar otro laberinto',function(){ location.reload(); }); },900); }
+          var festeja=MU&&MU.accion&&MU.accion('hiphop'); if(festeja) mira=0;       /* baila de frente a la cámara antes del final */
+          setTimeout(function(){ final('Lo encontraste todo','Jugar otro laberinto',function(){ location.reload(); }); },festeja?3200:900); }
         else pista('Te faltan '+(nR-abiertos)+(nR-abiertos===1?' recuerdo':' recuerdos')+' para abrir el corazón');
       }
       ultimaCel=cc;
@@ -1601,7 +1607,21 @@ function laberinto(){
    al lado de x.html en GitHub y se baja solo si alguien lo elige.
    Ruway se mueve por sus huesos (la ropa y el pelo van pegados a ellos), así
    que no hace falta ninguna librería de VRM: basta el cargador de glTF. */
-var RUWAY_GLB='ruway-avatar.glb', RUWAY_JS='GLTFLoader.js';
+var RUWAY_GLB='ruway-avatar.glb', RUWAY_JS='GLTFLoader.js', RUWAY_MOVS='ruway-movs.json';
+/* ---- los movimientos de Mixamo (ya pasados al esqueleto de VRoid y comprimidos en ruway-movs.json).
+   Sirven para cualquier avatar hecho en VRoid: los huesos se llaman igual. Si no cargan, queda el
+   movimiento hecho a mano de siempre. ---- */
+var MOVS=null, _movsEspera=[];
+function cargarMovs(cb){ if(MOVS){ if(cb) cb(MOVS); return; } if(cb) _movsEspera.push(cb); if(cargarMovs.pidio) return; cargarMovs.pidio=1;
+  try{ fetch(RUWAY_MOVS).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(j){ MOVS=leerMovs(j); var l=_movsEspera; _movsEspera=[]; l.forEach(function(f){ try{ f(MOVS); }catch(e){} }); },function(){}); }catch(e){} }
+function leerMovs(j){ var out={};
+  Object.keys(j.clips||{}).forEach(function(nom){ var c=j.clips[nom], bin=atob(c.d), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
+    var a=new Int16Array(u.buffer), o=0, hs=[];
+    j.huesos.forEach(function(nb,bi){ var fijo=c.fijo.charAt(bi)==='1', k=fijo?1:c.n, q=new Float32Array(k*4); for(var m=0;m<k*4;m++) q[m]=a[o++]/32767; hs.push({n:nb,fijo:fijo,q:q}); });
+    var p=new Float32Array(c.n*3); for(var m=0;m<c.n*3;m++) p[m]=a[o++]/1000;
+    out[nom]={n:c.n,fps:c.fps,loop:!!c.loop,dur:(c.n-1)/c.fps,h:hs,p:p}; });
+  return out; }
+var BAILES=['hiphop','hiphop2','loco','rumba'];
 function cargarRuway(listo,rw){
   var hecho=false; function fin(M){ if(hecho) return; hecho=true; listo(M); }
   var reloj=setTimeout(function(){ fin(null); },25000);
@@ -1616,10 +1636,10 @@ function cargarRuway(listo,rw){
    A los dos segundos quietos empiezan un gesto (saludar, bailar, sacar una
    flor o mandar besos con corazones), lo terminan, descansan y siguen con
    otro. Apenas se mueven, lo dejan. */
-function gestos(){ var qt=0, g=null, gt=0, orden=['saluda','baila','flor','besos'], k=(Math.random()*4)|0;
+function gestos(){ var qt=0, g=null, gt=0, dura=3.6, orden=['saluda','baila','flor','estira','besos','baila'], k=(Math.random()*6)|0;
   return function(dt,modo){ if(modo!=='quieto'){ qt=0; g=null; return {m:modo,t:0}; }
-    qt+=dt; if(!g && qt>2.2){ g=orden[k++%4]; gt=0; }
-    if(g){ gt+=dt; if(gt>3.6){ g=null; qt=.9; return {m:'quieto',t:0}; } return {m:g,t:gt}; }
+    qt+=dt; if(!g && qt>2.2){ g=orden[k++%orden.length]; if(g==='estira' && !MOVS) g='saluda'; gt=0; dura=g==='estira'?4.4:(g==='baila'&&MOVS?4.5:3.6); }
+    if(g){ gt+=dt; if(gt>dura){ g=null; qt=.9; return {m:'quieto',t:0}; } return {m:g,t:gt}; }
     return {m:'quieto',t:0}; }; }
 var _texBeso=null;
 function texBeso(){ if(_texBeso) return _texBeso; var c=document.createElement('canvas'); c.width=c.height=64; var x=c.getContext('2d');
@@ -1705,11 +1725,48 @@ function armarRuway(escena,rw){
   var cadera0=H.C_Hips?H.C_Hips.position.y:0, caderaY=cadera0;
   var fase=0, parpa=2, t=0, e=new THREE.Euler(), q=new THREE.Quaternion(), ges=gestos(), bs=besos(g), flor=florMano(), yaSolto=0, andar=0, trote=0, primera=true;
   var ramo=ramoFlores(); if(H.C_Chest){ H.C_Chest.add(ramo); ramo.position.set(0,.02,.34); ramo.rotation.x=-.5; }
+  var cadX0=H.C_Hips?H.C_Hips.position.x:0, cadZ0=H.C_Hips?H.C_Hips.position.z:0;
+  /* ---- movimientos de Mixamo: una capa que se mezcla encima de lo hecho a mano ----
+     capa.nom: el que suena; w: cuánto manda (sube y baja suave, sin saltos entre uno y otro). */
+  var capa={nom:'',c:null,t:0,vel:1,w:0,sale:false,acc:null,cola:null,fin:null,soloPose:false}, qc=new THREE.Quaternion(), qc2=new THREE.Quaternion();
+  var CLIP_DE={corre:'correr',salta:'saltar',nada:'nadar',flota:'nadar'}, SOLO_POSE={saltar:1,saltoCorre:1,caer:1,trepar:1,clavado:1,nadar:1};
+  cargarMovs();
+  function sonar(nom,op){ op=op||{}; var c=MOVS&&MOVS[nom]; if(!c) return false;
+    if(capa.nom===nom && !capa.sale && !op.otraVez){ capa.vel=op.vel||capa.vel; return true; }
+    capa.nom=nom; capa.c=c; capa.t=(op.desde||0); capa.vel=op.vel||1; capa.sale=false; capa.soloPose=!!SOLO_POSE[nom]; return true; }
+  /* una acción: suena una vez (o una lista seguida) y después vuelve a lo que estaba haciendo */
+  function accion(nom,op){ op=op||{}; var lista=Array.isArray(nom)?nom.slice():[nom], p=lista.shift();
+    if(!MOVS||!MOVS[p]){ if(op.fin) op.fin(); return false; }
+    capa.acc=p; capa.cola=lista; capa.fin=op.fin||null; sonar(p,{vel:op.vel,desde:op.desde,otraVez:1}); return true; }
+  function capaCuadro(dt,modo,vel){
+    if(!MOVS){ capa.w=Math.max(0,capa.w-dt*6); return; }
+    var quiere=null, opv=1;
+    if(capa.acc) quiere=capa.acc;
+    else { quiere=(M.clipDe&&M.clipDe[modo])||CLIP_DE[modo]||(MOVS[modo]?modo:null);
+      if(modo==='baila'){ if(!capa.baile) capa.baile=BAILES[(Math.random()*BAILES.length)|0]; quiere=capa.baile; } else capa.baile=null;
+      if(modo==='corre') opv=Math.max(.6,Math.min(1.6,vel||1)); if(modo==='flota') opv=.45; }
+    if(quiere){ if(capa.nom!==quiere || capa.sale) sonar(quiere,{vel:opv,otraVez:modo==='salta'}); else if(!capa.acc) capa.vel=opv; }
+    else if(capa.c) capa.sale=true;
+    var c=capa.c; if(!c){ capa.w=0; return; }
+    capa.t+=dt*capa.vel;
+    if(capa.t>=c.dur){ if(c.loop && !capa.acc) capa.t%=c.dur;
+      else if(capa.acc){ var sig=capa.cola&&capa.cola.shift(); if(sig && MOVS[sig]){ capa.acc=sig; sonar(sig,{otraVez:1}); c=capa.c; }
+        else { capa.acc=null; capa.t=c.dur; capa.sale=true; var f=capa.fin; capa.fin=null; if(f) setTimeout(f,0); } }
+      else capa.t=c.dur; }
+    capa.w+=((capa.sale?0:1)-capa.w)*Math.min(1,dt*(capa.sale?7:10)); if(capa.sale && capa.w<.01){ capa.w=0; capa.c=null; capa.nom=''; return; }
+    var x=Math.min(capa.t,c.dur)*c.fps, i=Math.min(c.n-1,Math.floor(x)), j=Math.min(c.n-1,i+1), f=x-i, w=capa.w;
+    if(c.loop && i===c.n-1) j=0;
+    c.h.forEach(function(b){ if(!meta[b.n]) return; var q=b.q, o1=b.fijo?0:i*4, o2=b.fijo?0:j*4;
+      qc.set(q[o1],q[o1+1],q[o1+2],q[o1+3]); if(!b.fijo){ qc2.set(q[o2],q[o2+1],q[o2+2],q[o2+3]); qc.slerp(qc2,f); } qc.normalize();
+      meta[b.n].slerp(qc,w); });
+    var p=c.p, y=p[i*3+1]+(p[j*3+1]-p[i*3+1])*f; if(capa.soloPose) y=Math.max(-.35,Math.min(.02,y));
+    capa.y=y*w; capa.x=(p[i*3]+(p[j*3]-p[i*3])*f)*w; capa.z=(p[i*3+2]+(p[j*3+2]-p[i*3+2])*f)*w; }
   if(H.R_Hand){ H.R_Hand.add(flor); flor.position.set(-.07,.02,.03); flor.rotation.set(0,0,Math.PI/2); }
   /* cada hueso va hacia su pose SUAVEMENTE (sin saltos de una pose a otra): eso es lo que quitaba lo "robótico" */
   function rot(n,x,y,z){ if(!H[n]) return; e.set(x||0,y||0,z||0); meta[n].copy(base[n]).multiply(q.setFromEuler(e)); }
   function pose(dt,modo0,vel){
     t+=dt; var G=ges(dt,modo0), modo=G.m, gt=G.t, corre=modo==='corre', anda=modo==='anda'||corre;
+    Object.keys(meta).forEach(function(n){ meta[n].copy(base[n]); });
     /* cuánto está caminando / corriendo, con inercia */
     andar+=((anda?1:0)-andar)*Math.min(1,dt*6); trote+=((corre?1:0)-trote)*Math.min(1,dt*5);
     var paso=(7+4*trote)*(vel||1); fase+=dt*paso*Math.max(.001,andar);
@@ -1756,17 +1813,30 @@ function armarRuway(escena,rw){
       rot('L_UpperLeg',.25+Math.sin(t*3)*.08,0,0); rot('R_UpperLeg',.25-Math.sin(t*3)*.08,0,0); rot('L_LowerLeg',.35,0,0); rot('R_LowerLeg',.25,0,0);
       rot('C_Hips',0,0,0); rot('C_Spine',0,0,0); rot('C_Neck',-.45,0,0); sonrisa=1; }
     else if(modo==='agacha'){ rot('L_UpperLeg',-1.5,0,0); rot('R_UpperLeg',-1.5,0,0); rot('L_LowerLeg',2.2,0,0); rot('R_LowerLeg',2.2,0,0); rot('C_Spine',.4,0,0); arriba=-.42; }
-    /* mezcla suave hacia la pose */
-    var kq=primera?1:1-Math.exp(-dt*(anda?16:11)); primera=false;
+    /* los movimientos de Mixamo, encima */
+    capaCuadro(dt,modo,vel); var wc=capa.c?capa.w:0;
+    if(wc>0 && (modo==='baila'||capa.nom===modo||capa.acc)) flor.visible=false;
+    /* mezcla suave hacia la pose (con la capa entera manda la capa, sin retraso) */
+    var kq=primera?1:1-Math.exp(-dt*(anda?16:11)); kq+=(1-kq)*wc*.85; primera=false;
     Object.keys(meta).forEach(function(n){ H[n].quaternion.slerp(meta[n],kq); });
-    caderaY+=(cadera0+arriba-caderaY)*Math.min(1,dt*14); if(H.C_Hips) H.C_Hips.position.y=caderaY;
+    caderaY+=(cadera0+arriba*(1-wc)+(wc?capa.y:0)-caderaY)*Math.min(1,dt*(wc>.5?30:14));
+    if(H.C_Hips){ H.C_Hips.position.y=caderaY; H.C_Hips.position.x=cadX0+(wc?capa.x:0); H.C_Hips.position.z=cadZ0+(wc?capa.z:0); }
     bs.mover(dt);
     /* parpadea solo, y sonríe */
     if(cara){ parpa-=dt; var bl=0; if(parpa<.14) bl=Math.sin(Math.max(0,parpa)/.14*Math.PI); if(parpa<=0) parpa=2+Math.random()*3;
       if(modo==='abraza') bl=.85;
       cara.morphTargetInfluences[0]=bl; cara.morphTargetInfluences[1]+=((corre?.7:sonrisa)-cara.morphTargetInfluences[1])*Math.min(1,dt*6); cara.morphTargetInfluences[2]=corre?.25:boca; }
   }
-  var M={g:g,alto:1.82,pose:pose,ruway:true,huesos:H,mallas:mallas,cara:cara};
+  /* la antorcha (para los túneles): un palo con fuego y su luz, en la mano izquierda */
+  var antor=null;
+  function antorcha(on){ if(on && !antor && H.L_Hand){ antor=new THREE.Group(); var palo=new THREE.Mesh(new THREE.CylinderGeometry(.018,.022,.36,8),new THREE.MeshStandardMaterial({color:'#6B4428',roughness:.9})); palo.position.y=.1; antor.add(palo);
+      var fu=new THREE.Mesh(new THREE.ConeGeometry(.05,.16,10),new THREE.MeshBasicMaterial({color:'#FFB347'})); fu.position.y=.34; antor.add(fu);
+      var fu2=new THREE.Mesh(new THREE.ConeGeometry(.03,.1,8),new THREE.MeshBasicMaterial({color:'#FFF1A8'})); fu2.position.y=.31; antor.add(fu2);
+      var luz=new THREE.PointLight('#FFB060',1.6,7,1.6); luz.position.y=.4; antor.add(luz); antor.userData={fu:fu,luz:luz};
+      antor.position.set(.05,-.01,0); antor.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(.25,-.15,.95).normalize()); H.L_Hand.add(antor); }   /* hacia arriba con la mano como la pone la animación de la antorcha */
+    if(antor){ antor.visible=!!on; if(on){ var k=.85+Math.sin(t*23)*.08+Math.sin(t*37)*.07; antor.userData.fu.scale.set(1,k,1); antor.userData.luz.intensity=1.4*k; } } }
+  var M={g:g,alto:1.82,pose:pose,ruway:true,huesos:H,mallas:mallas,cara:cara,accion:accion,antorcha:antorcha,clipDe:null,
+    haciendo:function(){ return capa.acc; },parar:function(){ if(capa.acc){ capa.acc=null; capa.cola=null; capa.fin=null; capa.sale=true; } },movs:function(){ return !!MOVS; },capa:function(){ return {nom:capa.nom,w:capa.w,t:capa.t,acc:capa.acc}; }};
   vestirRuway(M,rw);
   pose(0,'quieto');
   return M;
@@ -1942,6 +2012,7 @@ function isla(){
     +'<button id="bajar" aria-label="Bajar" hidden>⤵</button>'
     +'<div id="bajo-agua"></div>'
     +'<button id="b-mis" aria-label="Misiones">📜</button>'
+    +'<button id="b-baile" aria-label="Bailar" hidden>💃</button><div id="bailes" hidden></div>'
     +'<span id="sinc"></span>'
     +'<div id="inv" hidden></div>';
   document.body.appendChild(ui);
@@ -2342,6 +2413,8 @@ function isla(){
     var yo={x:INICIO.x,y:suelo(INICIO.x,INICIO.z),z:INICIO.z,vy:0,piso:true,rot:0}, RADIO=.3, ALTOJ=1.45;
     function choca(px,py,pz){ for(var x=Math.floor(px-RADIO);x<=Math.floor(px+RADIO-1e-4);x++) for(var y=Math.floor(py);y<=Math.floor(py+ALTOJ-1e-4);y++)
       for(var z=Math.floor(pz-RADIO);z<=Math.floor(pz+RADIO-1e-4);z++) if(solido(x,y,z)) return true; return false; }
+    var quieto=0, antesNada=false, caida=0;
+    var BAILE_DE={hiphop:1,hiphop2:1,loco:1,rumba:1,break1:1,break2:1,break3:1,estira:1,guardia:1};
     var yaw=Math.PI, pitch=.36, dist=9, jx=0, jy=0, teclas={}, saltoPedido=false, subir=false, bajarB=false, modo='quieto', volando=false, nadando=false, golpe=0;
     /* moverse: caminar, nadar (en el agua se flota y se bucea) y volar */
     function mover(dt){
@@ -2349,11 +2422,14 @@ function isla(){
       var ix=jx+((teclas.d||teclas.ArrowRight)?1:0)-((teclas.a||teclas.ArrowLeft)?1:0), iy=jy+((teclas.w||teclas.ArrowUp)?1:0)-((teclas.s||teclas.ArrowDown)?1:0);
       var l=Math.hypot(ix,iy); if(l>1){ ix/=l; iy/=l; l=1; }
       nadando=!volando && (enAgua(yo.x,yo.y+.7,yo.z) || enAgua(yo.x,yo.y+.25,yo.z));
+      /* se tira de clavado cuando entra al agua corriendo o cayendo */
+      if(nadando && !antesNada && YO.accion && (Math.hypot(yo.svx||0,yo.svz||0)>2.5 || yo.vy<-4)) YO.accion('clavado',{desde:.3,vel:1.4});
+      antesNada=nadando;
       var vel=volando?7:nadando?2.8:4.2, vx=(fx*iy+rx*ix)*vel, vz=(fz*iy+rz*ix)*vel;
       function eje(dx,dz){ var nx=yo.x+dx, nz=yo.z+dz; if(!choca(nx,yo.y,nz)){ yo.x=nx; yo.z=nz; return; }
         if(yo.piso && !choca(nx,yo.y+1.02,nz) && !choca(yo.x,yo.y+1.02,yo.z)){ yo.y=Math.floor(yo.y)+1.001; yo.x=nx; yo.z=nz; return; }
         /* nadando se trepa a la orilla aunque quede un poco más alta (antes costaba salir del agua) */
-        if(nadando) for(var s=1;s<=2;s++){ var ty=Math.floor(yo.y)+s+.001; if(!choca(nx,ty,nz) && !choca(yo.x,ty,yo.z)){ yo.y=ty; yo.x=nx; yo.z=nz; yo.vy=Math.max(yo.vy,0); return; } } }
+        if(nadando) for(var s=1;s<=2;s++){ var ty=Math.floor(yo.y)+s+.001; if(!choca(nx,ty,nz) && !choca(yo.x,ty,yo.z)){ yo.y=ty; yo.x=nx; yo.z=nz; yo.vy=Math.max(yo.vy,0); if(YO.accion) YO.accion('trepar',{vel:2.4,desde:1.1}); return; } } }
       /* arranca y frena con un poquito de inercia (no de golpe) */
       var ka=Math.min(1,dt*(l>.05?9:12)); yo.svx=(yo.svx||0)+(vx-(yo.svx||0))*ka; yo.svz=(yo.svz||0)+(vz-(yo.svz||0))*ka;
       var ls=Math.hypot(yo.svx,yo.svz);
@@ -2375,11 +2451,11 @@ function isla(){
         if(arriba && !enAgua(yo.x,yo.y+1.2,yo.z)) yo.vy=Math.max(yo.vy,6.5);
       } else {
         if((saltoPedido||arriba) && yo.piso){ yo.vy=7.6; yo.piso=false; yo.doble=false; nota(520,.08,'triangle',.04); }
-        else if(saltoPedido && !yo.piso && !yo.doble){ yo.vy=7.2; yo.doble=true; nota(780,.08,'triangle',.04); for(var ch=0;ch<10;ch++) chispa(yo.x,yo.y+.1,yo.z,'#FFFFFF'); }   /* doble salto */
+        else if(saltoPedido && !yo.piso && !yo.doble){ yo.vy=7.2; yo.doble=true; if(YO.accion) YO.accion('saltoCorre',{desde:.15,vel:1.2}); nota(780,.08,'triangle',.04); for(var ch=0;ch<10;ch++) chispa(yo.x,yo.y+.1,yo.z,'#FFFFFF'); }   /* doble salto */
         saltoPedido=false;
         yo.vy-=22*dt; if(yo.vy<-20) yo.vy=-20; }
       var ny=yo.y+yo.vy*dt;
-      if(yo.vy<=0 && choca(yo.x,ny,yo.z)){ yo.y=Math.floor(ny)+1; yo.vy=0; yo.piso=true; yo.doble=false; }
+      if(yo.vy<=0 && choca(yo.x,ny,yo.z)){ if(yo.vy<-12 && !yo.piso && YO.accion) YO.accion('caer',{vel:1.4}); yo.y=Math.floor(ny)+1; yo.vy=0; yo.piso=true; yo.doble=false; }
       else if(yo.vy>0 && choca(yo.x,ny,yo.z)){ yo.vy=0; }
       else { yo.y=ny; yo.piso=false; }
       if(yo.y<-4){ yo.x=INICIO.x; yo.z=INICIO.z; yo.y=suelo(yo.x,yo.z)+1; yo.vy=0; }
@@ -2560,6 +2636,14 @@ function isla(){
     bBajar.addEventListener('pointerdown',function(e){ e.preventDefault(); bajarB=true; try{ bBajar.setPointerCapture(e.pointerId); }catch(er){} });
     ['pointerup','pointercancel'].forEach(function(n){ bBajar.addEventListener(n,function(){ bajarB=false; }); });
     bVolar.onclick=function(){ volar(!volando); };
+    /* bailes y poses (solo con los movimientos de verdad) */
+    var bBaile=document.getElementById('b-baile'), menuB=document.getElementById('bailes');
+    var LISTA_B=[['hiphop','🕺 Hip hop'],['hiphop2','🎧 Hip hop 2'],['loco','🤪 Baile loco'],['rumba','💃 Rumba'],[['break1','break2','break3'],'🌀 Breakdance'],['estira','🙆 Estirarse'],['guardia','🥊 Calentar'],['','✖️ Cerrar']];
+    menuB.innerHTML=LISTA_B.map(function(b,i){ return '<button type="button" data-i="'+i+'">'+b[1]+'</button>'; }).join('');
+    cargarMovs(function(){ if(YO.accion) bBaile.hidden=false; });
+    bBaile.onclick=function(){ menuB.hidden=!menuB.hidden; bBaile.classList.toggle('on',!menuB.hidden); };
+    menuB.onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var it=LISTA_B[+b.dataset.i]; menuB.hidden=true; bBaile.classList.remove('on');
+      if(!it[0] || volando || nadando || !YO.accion) return; jx=jy=0; YO.accion(it[0],{vel:1}); nota(660,.06,'triangle',.04); };
     var dedos={}, pinza=0;
     cv.addEventListener('pointerdown',function(e){ dedos[e.pointerId]={x:e.clientX,y:e.clientY,x0:e.clientX,y0:e.clientY,t:performance.now()};
       var ks=Object.keys(dedos); if(ks.length===2){ var a=dedos[ks[0]], b=dedos[ks[1]]; pinza=Math.hypot(a.x-b.x,a.y-b.y); } });
@@ -2580,11 +2664,16 @@ function isla(){
     window.__isla={base:base,tuneles:TUNELES,tunel:TUNEL,parcelas:PARCELAS,doble:function(){ return !!yo.doble; },saltar:function(){ saltoPedido=true; },volar:volar,romper:function(x,y,z){ romperEn({x:x,y:y,z:z,n:[0,1,0]}); },plantilla:armarPlantilla,enAgua:enAgua,fondo:fondo,marcos:MARCOS,casa:CASA,lago:LAGO,estado:function(){ return {volando:volando,nadando:nadando,bajoAgua:bajoAgua,modo:modo}; },info:function(){ return R3.info.render; },escena:E,mu:YO,yo:yo,G:G,I:I,cambiar:cambiar,tocar:tocar,modo:function(){ return construyendo; },est:EST,pend:PEND,srv:function(){ return SRV; },corazones:CORS,pareja:PAREJA,jardin:JAR,suelo:suelo,camara:function(y,p,d){ yaw=y; pitch=p; dist=d; }};
     pista(EST.pareja?'':'Busca a '+nomDe+': cruza el puente del gran cañón 🌉');
     (function cuadro(){ requestAnimationFrame(cuadro); var dt=Math.min(.05,reloj3.getDelta()), t=reloj3.elapsedTime;
-      if(!ocupado) mover(dt);
+      if(quieto>0){ quieto-=dt; if(YO.haciendo && !YO.haciendo()) quieto=0; }
+      if(!ocupado && !(quieto>0)) mover(dt);
       if(golpe>0) golpe-=dt;
-      var mv=ocupado?'quieto':modo, mpose={golpe:'salta',nada:'corre',flota:'anda',vuela:'vuela'}[mv]||mv;
-      YO.g.position.set(yo.x,yo.y+(nadando?.2+Math.sin(t*3)*.05:0)+(volando?Math.sin(t*2.5)*.12:0),yo.z); YO.g.rotation.y=yo.rot;
-      var inclina=((volando&&(Math.abs(jx)+Math.abs(jy)>.1||teclas.w))||(nadando&&modo==='nada'))?.9:0;
+      var mv=ocupado?'quieto':modo, conMovs=YO.ruway&&YO.movs&&YO.movs(), mpose=(conMovs?{golpe:'salta'}:{golpe:'salta',nada:'corre',flota:'anda',vuela:'vuela'})[mv]||mv;
+      /* bajo tierra (en un túnel) saca su antorcha */
+      var fx0=Math.floor(yo.x), fy0=Math.floor(yo.y), fz0=Math.floor(yo.z), enTunel=!volando && !nadando && yo.y<5.2 && (solido(fx0,fy0+2,fz0)||solido(fx0,fy0+3,fz0));
+      if(YO.antorcha){ YO.antorcha(enTunel && conMovs); if(enTunel && conMovs) mpose={quieto:'antorcha',anda:'antorchaAnda',corre:'antorchaCorre'}[mpose]||mpose; }
+      if(conMovs && YO.haciendo() && (modo==='anda' || modo==='corre' || nadando || volando) && BAILE_DE[YO.haciendo()]) YO.parar();
+      YO.g.position.set(yo.x,yo.y+(nadando?(conMovs?1.1:.2)+Math.sin(t*3)*.05:0)+(volando?Math.sin(t*2.5)*.12:0),yo.z); YO.g.rotation.y=yo.rot;
+      var inclina=((volando&&(Math.abs(jx)+Math.abs(jy)>.1||teclas.w))||(nadando&&modo==='nada'&&!conMovs))?.9:0;
       YO.g.rotation.x+=(inclina-YO.g.rotation.x)*Math.min(1,dt*6);
       YO.pose(dt,mpose);
       if(bajoAgua && Math.random()<.2) chispa(yo.x,yo.y+1.4,yo.z,'#CFF1FF');
@@ -2604,13 +2693,13 @@ function isla(){
       /* corazones */
       corazones.forEach(function(g,i){ if(!g.visible) return; g.rotation.y=t*1.5+i; g.position.y=g.userData.y+Math.sin(t*2+i)*.12;
         if(!ocupado && Math.hypot(g.position.x-yo.x,g.position.z-yo.z)<1.1 && Math.abs(g.userData.y-.95-yo.y)<1.6){
-          g.visible=false; EST.cor.push(i); guardarEst(); for(var k=0;k<36;k++) chispa(g.position.x,g.position.y,g.position.z); campanita([784,988,1175]);
+          g.visible=false; if(YO.accion) YO.accion('recoger',{vel:1.3}); EST.cor.push(i); guardarEst(); for(var k=0;k<36;k++) chispa(g.position.x,g.position.y,g.position.z); campanita([784,988,1175]);
           var n=EST.cor.length; setTimeout(function(){ abrirCorazon(n); },300); } });
       /* la flor */
       if(aura){ aura.children.forEach(function(c){ if(!c.userData.a && c.userData.a!==0) return; var a=c.userData.a+t*.8; c.position.set(Math.cos(a)*1.3,1.6+Math.sin(t*2+a)*.25,Math.sin(a)*1.3); c.rotation.y=t*2; }); }
       var dF=Math.hypot(flor.position.x-yo.x,flor.position.z-yo.z), dentro=yo.x>CASA.x0+.2&&yo.x<CASA.x1+.8&&yo.z>CASA.z0+.2&&yo.z<CASA.z1+.8&&yo.y>=5.9&&yo.y<10;
       if(ocupado) ponerAccion(null);
-      else if(dF<2.2 && !EST.plant) ponerAccion('🌱 Plantar su flor',function(){ EST.plant=true; guardarEst(); crecer(); misiones(); for(var i=0;i<24;i++) chispa(flor.position.x,flor.position.y+.4,flor.position.z,'#7ED36A'); campanita([523,659,784]); pista(EST.cor.length<6?'Cada corazón que encuentres la hará crecer':''); });
+      else if(dF<2.2 && !EST.plant) ponerAccion('🌱 Plantar su flor',function(){ EST.plant=true; guardarEst(); if(YO.accion){ yo.rot=Math.atan2(flor.position.x-yo.x,flor.position.z-yo.z); quieto=5.4; YO.accion('plantar',{fin:function(){ crecer(); campanita([659,784,988]); }}); } else crecer(); misiones(); for(var i=0;i<24;i++) chispa(flor.position.x,flor.position.y+.4,flor.position.z,'#7ED36A'); campanita([523,659,784]); pista(EST.cor.length<6?'Cada corazón que encuentres la hará crecer':''); });
       else if(dF<2.4 && etapa===5 && EST.pareja) ponerAccion(EST.fin?'🌸 Ver su flor':'💐 Ver la flor de los dos',laFlor);
       else if(dF<2.2 && EST.plant && etapa<5) ponerAccion('💧 Regar',function(){ for(var i=0;i<16;i++) chispa(flor.position.x,flor.position.y+.8,flor.position.z,'#8FD3FF'); nota(880,.1,'sine',.04); pista('Crecerá con cada corazón que encuentren ('+EST.cor.length+' de 6)'); });
       else if(dentro) ponerAccion('🏠 Casa de los recuerdos',casa);
@@ -2879,6 +2968,7 @@ function corre(){
       YO.g.position.set(yo.x,yo.y,yoZ); YO.g.rotation.z=(CARR[yo.c]-yo.x)*-.12;
       YO.g.visible=invul>0?(Math.floor(t*14)%2===0):true; if(invul>0) invul-=dt;
       if(escena===3) YO.tieneRamo=te<1.3;
+      if(YO.ruway){ YO.clipDe=YO.clipDe||{}; YO.clipDe.corre='trote'; YO.clipDe.salta='saltoCorre'; YO.clipDe.anda=escena===2?'caja':null; }   /* trota como en cinta; salta en carrera; llega con el ramo en las manos */
       YO.pose(dt,escena===4?'abraza':escena===3?(te<1.3?'da':'quieto'):escena===2?'anda':(!mueve?'quieto':(yo.y>.05?'salta':(yo.agacha>0?'agacha':'corre'))),escena===1?Math.max(.4,vel/13):escena===2?.7:vel/13);
       if(fin){ (window.__conf||[]).forEach(function(p){ p.position.y-=p.userData.v*dt; p.rotation.x+=dt*4; p.rotation.y+=dt*3; if(p.position.y<0) p.position.y=4; }); }
       for(var hq=cors.length-1;hq>=0;hq--){ var hs=cors[hq]; hs.userData.v-=dt*.5; hs.position.y+=dt*.8; hs.material.opacity=Math.max(0,hs.userData.v); if(hs.userData.v<=0){ E.remove(hs); hs.material.dispose(); cors.splice(hq,1); } }
