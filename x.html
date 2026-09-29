@@ -2017,7 +2017,7 @@ var BAILES=['hiphop','hiphop2','loco','rumba'];
 /* Los avatares hechos en VRoid: Ruway y Killa. Tienen los mismos huesos, así que comparten
    todo: poses, gestos, movimientos de Mixamo, ramo, antorcha. Solo Ruway se viste (su ropa
    está pintada por zonas conocidas). */
-var AVATARES={ruway:{glb:window.__GLB_RUWAY||RUWAY_GLB,nom:'Ruway'},killa:{glb:window.__GLB_KILLA||'killa-avatar.glb',nom:'Killa'}};   /* __GLB_*: solo en la muestra */
+var AVATARES={ruway:{glb:window.__GLB_RUWAY||RUWAY_GLB,nom:'Ruway'},killa:{glb:window.__GLB_KILLA||'killa-avatar.glb',nom:'Killa',cabeza:.7}};   /* cabeza: su cabeza viene más grande que la de Ruway; al 70 % quedan iguales */   /* __GLB_*: solo en la muestra */
 function esVRM(id){ return !!AVATARES[id]; }
 function cargarRuway(listo,rw){ cargarAvatar('ruway',listo,rw); }
 function cargarAvatar(id,listo,rw){
@@ -2160,6 +2160,13 @@ function armarRuway(escena,rw,id){
      Gorras, coronas y el casco se miden con esto, no con la estatura. En el Ruway de 1,82 era ,5265 */
   escena.updateMatrixWorld(true);
   var kCab=H.C_Head?(caja.max.y-H.C_Head.getWorldPosition(new THREE.Vector3()).y)/.5265:kA; kCab=Math.min(3,Math.max(.15,kCab||kA));
+  /* Killa trae la cabeza más grande que Ruway (para su estatura): se achica desde el cuello
+     para que, parados juntos, las dos cabezas sean del mismo tamaño. Su estatura se vuelve a
+     medir con la cabeza ya achicada (todo lo que se escala con M.alto la usa). Lo que cuelga
+     de la cabeza (accesorios, casco) se achica con ella solo, por ser su hijo. */
+  var kCabeza=(AVATARES[id]&&AVATARES[id].cabeza)||1;
+  if(kCabeza!==1 && H.C_Head){ var hy0=H.C_Head.getWorldPosition(new THREE.Vector3()).y;
+    H.C_Head.scale.setScalar(kCabeza); altoM=(hy0-caja.min.y)+(caja.max.y-hy0)*kCabeza; kA=altoM/1.82; escena.updateMatrixWorld(true); }
   var base={}, meta={}; Object.keys(H).forEach(function(k){ base[k]=H[k].quaternion.clone(); meta[k]=H[k].quaternion.clone(); });
   var cadera0=H.C_Hips?H.C_Hips.position.y:0, caderaY=cadera0, kC=cadera0?cadera0/.663:1;   /* los movimientos se midieron en Ruway */
   var fase=0, parpa=2, t=0, e=new THREE.Euler(), q=new THREE.Quaternion(), ges=gestos(), bs=besos(g), flor=florMano(), yaSolto=0, andar=0, trote=0, primera=true;
