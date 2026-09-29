@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+<meta name="ruway-version" content="v38">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -854,6 +855,8 @@ function traer(par, ok, mal) {
     o=o||{}; D=o.datos||{}; var c=String(D.codigo||'').trim().toUpperCase();
     cod=/^[A-Z0-9]{4,10}$/.test(c)?c:'DEMO'; clave='ruway:prog:'+cod; api=typeof o.api==='string'?o.api:''; previa=!!(D.vistaPrevia||window.__DEMO);
     fotosFn=o.fotos||null; personaje=o.personaje||''; P=leer(); exp=EXPS[o.exp]?o.exp:(EXPS[D.tipo]?D.tipo:''); PASE=paseDe(D);
+    TEMP=(D.temporada&&AMB[D.temporada.id])?{id:D.temporada.id,ic:String(D.temporada.ic||'').slice(0,4),nom:String(D.temporada.nom||'').slice(0,30)}:null;
+    if(o.ambiente!==false) ambiente(o.ambienteZ);
     var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
     guardar(); if(P.dias.length>=2) logro('vuelve'); if(P.dias.length>=5) logro('fiel');
     if(o.boton!==false) N.boton(o.dentro||null);
@@ -895,6 +898,50 @@ function traer(par, ok, mal) {
     try{ if(navigator.sendBeacon && navigator.sendBeacon(api,new Blob([cuerpo],{type:'text/plain;charset=utf-8'}))) return; }catch(e){}
     try{ fetch(api,{method:'POST',body:cuerpo,mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'}}); }catch(e){} }
   addEventListener('pagehide',function(){ if(envioT){ clearTimeout(envioT); envioT=0; enviar(); } });
+
+  /* ======================= el ambiente de temporada =======================
+     El regalo creado en Navidad trae nieve; en San Valentín, corazones que suben; en el
+     Día de la Madre, pétalos; en el del Padre y del Maestro, estrellas; en graduaciones,
+     confeti. Es una capa liviana encima del juego (unas 20–30 figuritas, a 30 cuadros por
+     segundo, que no se tocan ni estorban) y un sello de "Edición" en la portada. La
+     edición la decide el servidor al crear el regalo; la vela nunca la lleva. */
+  var AMB={navidad:{f:'nieve',c:['#FFFFFF','#EAF6FF','#FFFFFF'],n:34},
+    sanvalentin:{f:'corazon',c:['#FF5C84','#FF8FAB','#E8285A','#FFC2D1'],n:16},
+    madre:{f:'petalo',c:['#F7A1C4','#F9C4DA','#D9B3F0','#FFD6E5'],n:22},
+    padre:{f:'estrella',c:['#FFD76A','#FFE9A8','#FFFFFF'],n:22},
+    maestro:{f:'estrella',c:['#FFD76A','#BFE3FF','#FFFFFF'],n:18},
+    graduacion:{f:'confeti',c:['#FFC531','#7FD6A0','#6D8BFF','#FF7AA8','#B79CFF'],n:30}};
+  var TEMP=null, ambCv=null;
+  function ambiente(z){ if(ambCv||!TEMP||!AMB[TEMP.id]||exp==='vela') return;
+    try{ if(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return; }catch(e){}
+    var A=AMB[TEMP.id], cv=document.createElement('canvas'), g=cv.getContext('2d'), pr=Math.min(window.devicePixelRatio||1,1.5), W=0, H=0, P=[], t0=0, ult=0;
+    cv.className='rn-amb'; cv.setAttribute('aria-hidden','true'); cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:'+(z||9);
+    document.body.appendChild(cv); ambCv=cv; document.body.classList.add('rn-temp-'+TEMP.id);
+    function medir(){ W=innerWidth; H=innerHeight; cv.width=Math.round(W*pr); cv.height=Math.round(H*pr); g.setTransform(pr,0,0,pr,0,0); }
+    function nueva(arriba){ var sube=A.f==='corazon', tam=A.f==='nieve'?2+Math.random()*3.5:A.f==='confeti'?5+Math.random()*4:A.f==='estrella'?3+Math.random()*4:8+Math.random()*7;
+      return {x:Math.random()*W, y:arriba?(sube?H+20:-20):Math.random()*H, v:(sube?-1:1)*(A.f==='nieve'?22+Math.random()*28:A.f==='estrella'?8+Math.random()*10:26+Math.random()*30),
+        s:tam, c:A.c[(Math.random()*A.c.length)|0], r:Math.random()*6.28, vr:(Math.random()-.5)*2.4, f:Math.random()*6.28, a:.55+Math.random()*.4}; }
+    function corazon(s){ g.beginPath(); g.moveTo(0,s*.3); g.bezierCurveTo(-s*.9,-s*.25,-s*.45,-s*.95,0,-s*.45); g.bezierCurveTo(s*.45,-s*.95,s*.9,-s*.25,0,s*.3); g.fill(); }
+    function estrella(s,brillo){ g.beginPath(); for(var i=0;i<8;i++){ var r=i%2?s*.28:s, a=i*Math.PI/4; g.lineTo(Math.cos(a)*r,Math.sin(a)*r); } g.closePath(); g.globalAlpha*=brillo; g.fill(); }
+    medir(); addEventListener('resize',medir); for(var i=0;i<A.n;i++) P.push(nueva(false));
+    (function cuadro(ahora){ if(!cv.isConnected) return; requestAnimationFrame(cuadro); if(document.hidden) { ult=0; return; }
+      if(ult && ahora-ult<30) return; var dt=ult?Math.min(.1,(ahora-ult)/1000):0; ult=ahora; t0+=dt;
+      g.clearRect(0,0,W,H);
+      P.forEach(function(p,i){ p.y+=p.v*dt; p.x+=Math.sin(t0*1.2+p.f)*(A.f==='nieve'?14:22)*dt; p.r+=p.vr*dt;
+        if(p.y>H+24||p.y<-24||p.x<-30||p.x>W+30){ P[i]=nueva(true); return; }
+        g.save(); g.translate(p.x,p.y); g.globalAlpha=p.a; g.fillStyle=p.c;
+        if(A.f==='nieve'){ g.beginPath(); g.arc(0,0,p.s,0,6.283); g.fill(); }
+        else if(A.f==='corazon'){ g.rotate(Math.sin(t0+p.f)*.35); corazon(p.s); }
+        else if(A.f==='petalo'){ g.rotate(p.r); g.scale(1,.55+.45*Math.sin(t0*2+p.f)); g.beginPath(); g.ellipse(0,0,p.s*.55,p.s,0,0,6.283); g.fill(); }
+        else if(A.f==='estrella'){ g.rotate(p.r*.3); estrella(p.s,.45+.55*Math.abs(Math.sin(t0*2.2+p.f))); }
+        else { g.rotate(p.r); g.scale(1,Math.sin(t0*4+p.f)); g.fillRect(-p.s/2,-p.s/4,p.s,p.s/2); }
+        g.restore(); }); })(0);
+  }
+  /* el sello de la edición, donde la página diga (la portada, el sobre) */
+  N.sello=function(dentro,antes){ if(!TEMP||exp==='vela'||!dentro) return null; estilos(); var v=dentro.querySelector('.rn-sello'); if(v) return v;
+    var d=document.createElement('div'); d.className='rn-sello rn-sello-'+TEMP.id; d.textContent=TEMP.ic+' Edición '+TEMP.nom;
+    if(antes&&antes.parentNode===dentro) dentro.insertBefore(d,antes); else dentro.insertBefore(d,dentro.firstChild); return d; };
+  N.temporada=function(){ return TEMP?{id:TEMP.id,ic:TEMP.ic,nom:TEMP.nom}:null; };
 
   /* ======================= el audio: una sola manera de traerlo =======================
      La canción y la nota de voz viven en Drive. Se piden por pedazos (JSONP), con un refuerzo
@@ -1054,6 +1101,9 @@ function traer(par, ok, mal) {
    +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
    +'.rn-ver{position:fixed;inset:0;z-index:70;background:rgba(10,8,6,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}.rn-ver img{max-width:100%;max-height:70vh;border-radius:16px}.rn-ver p{color:#FFF1DA;font:600 22px "Dancing Script",cursive;text-align:center}'
    +'.rn-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-120%);z-index:80;display:flex;gap:10px;align-items:center;background:var(--rn-crema);border-radius:18px;padding:10px 14px;box-shadow:0 12px 30px rgba(0,0,0,.35);transition:transform .45s cubic-bezier(.2,.9,.3,1.3);max-width:calc(100vw - 24px);font-family:Nunito,sans-serif;color:var(--rn-tinta)}'
+   +'.rn-sello{display:inline-block;margin:0 auto 8px;padding:5px 14px;border-radius:99px;font:800 12px "Baloo 2",Nunito,sans-serif;letter-spacing:.02em;color:#fff;background:linear-gradient(120deg,#C2476B,#E8285A);box-shadow:0 6px 16px rgba(0,0,0,.18);animation:rnS .5s}'
+   +'.rn-sello-navidad{background:linear-gradient(120deg,#2E7D4F,#C23B3B)}.rn-sello-madre{background:linear-gradient(120deg,#D96C9B,#B08BDB)}'
+   +'.rn-sello-padre,.rn-sello-maestro{background:linear-gradient(120deg,#34518F,#C99A2E)}.rn-sello-graduacion{background:linear-gradient(120deg,#5B3E91,#E0A526)}'
    +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}';
   function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -1246,8 +1296,10 @@ if(DATOS && /^(constelaciones|planeta|laberinto|carrito|isla|corre|match|bitacor
   return;
 }
 if(DATOS) Visita.empezar(DATOS);
-if(DATOS && DATOS.ok!==false) nucleo(function(N){ N.iniciar({datos:DATOS,api:(typeof API==='string'?API:''),boton:false,
+if(DATOS && DATOS.ok!==false) nucleo(function(N){ N.iniciar({datos:DATOS,api:(typeof API==='string'?API:''),boton:false,ambienteZ:5,
   fotos:function(){ var r=[]; if(typeof ramos==='undefined') return r; for(var i=0;i<ramos.length;i++){ var o=ramos[i]; if(!o.foto) continue; var im=IMGS[o.k]; r.push({src:(im&&im.src)||'',txt:o.txt||'',clave:o.k}); } return r; }}); });
+/* la edición de temporada (🎄 Edición Navidad…), sobre el botón del sobre */
+nucleo(function(N){ var ab=document.getElementById('abrir'); if(ab) N.sello(ab.parentNode,ab); });
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir
