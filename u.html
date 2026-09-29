@@ -769,7 +769,355 @@ function traer(par, ok, mal) {
      página como si fuera código, y todo se cae. -->
 
 <script>
+/* ======================= EL NÚCLEO DE RUWAY =======================
+   Lo que TODAS las experiencias comparten, en un solo archivo que cargan
+   las dos páginas (u.html: universo, árbol, vela; x.html: los juegos, el
+   planeta, la bitácora, las cartas). La experiencia número 20 ya nace con
+   todo esto sin escribir nada nuevo:
 
+   · Progreso del regalo: qué recuerdos ya vio, si llegó al final, cuántos
+     días distintos lo abrió. Por código de regalo, en el teléfono.
+   · Colección (inventario): corazones, estrellas, flores, besos y regalos
+     que se juntan en cualquier juego y se suman en la misma mochila.
+   · Logros y desbloqueos: la carta secreta se abre al ver todos los
+     recuerdos; el álbum se va llenando con lo que se descubre.
+   · La mochila 🎒: una sola pantalla para ver el álbum, la carta, la
+     colección y los logros, igual en todas las experiencias.
+   · El avance llega al servidor (a la misma hoja de Universos) para que la
+     app muestre qué experiencias se terminan y cuáles gustan más.
+   · El audio: la canción y la nota de voz se traen igual en todas (por
+     pedazos, con refuerzo) y quedan guardadas: la segunda vez suenan al
+     instante.
+   · El video: el mismo formato, la misma hoja de "tu video está listo" y el
+     mismo grabador de 30 segundos para los estados.
+   · Fluidez: si un juego 3D va lento en ese teléfono, baja la resolución
+     sola hasta que corra suave.
+
+   construir.js lo mete DENTRO de cada página (u.html, x.html y el universo de
+   Apps Script, como Nucleo.html): no es un archivo aparte que pueda no llegar,
+   y hay un solo original, este. Las páginas lo llaman con
+   nucleo(function(N){ ... }). */
+(function(){
+  if(window.Nucleo) return;
+  var N={}, D={}, cod='', clave='', P=null, api='', previa=false, fotosFn=null, personaje='', envioT=0, boton=null, cuentaEl=null, exp='', PASE=[], paseEl=null;
+  var ITEMS={corazon:['❤️','Corazones'],estrella:['⭐','Estrellas'],flor:['🌸','Flores'],beso:['💋','Besos'],regalo:['🎁','Regalos']};
+  var LOGROS=[
+    {id:'primero',ic:'📸',nom:'Primer recuerdo',txt:'Abriste tu primer recuerdo'},
+    {id:'todos',ic:'💌',nom:'Todos los recuerdos',txt:'Viste todas las fotos y se abrió la carta secreta'},
+    {id:'coleccion',ic:'🧺',nom:'Coleccionista',txt:'Juntaste 20 cosas lindas en tu mochila'},
+    {id:'fin',ic:'🏁',nom:'Hasta el final',txt:'Llegaste al final de la experiencia'},
+    {id:'vuelve',ic:'🔁',nom:'Volviste',txt:'Lo abriste en dos días distintos'},
+    {id:'fiel',ic:'💞',nom:'Siempre vuelves',txt:'Lo abriste en cinco días distintos'}];
+  function hoy(){ var d=new Date(); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+  /* las experiencias, para nombrarlas en el Pase Ruway (las de u.html se abren allá; las demás en x.html) */
+  var EXPS={universo:['🌌','Universo'],arbol:['🎄','Árbol que se enciende'],vela:['🕯️','Vela que no se apaga'],constelaciones:['✨','Constelaciones'],
+    planeta:['🪐','Planeta propio'],laberinto:['🧸','Laberinto 3D'],carrito:['🏁','La gran carrera'],isla:['🏝️','Nuestra isla'],match:['💕','El regalo secreto'],
+    corre:['🏃','Corre hasta mí'],bitacora:['📖','Nuestra bitácora'],cartas:['💌','Cartas para abrir cuando…']};
+  var EN_U=/^(universo|arbol|vela)$/;
+  function vacio(){ return {v:1,vistos:{},inv:{},logros:{},fin:0,dias:[],hechas:{},ev:{}}; }
+  /* Lo guardado se revisa: un valor raro vuelve a cero en vez de romper la mochila. */
+  function leer(){ var p=vacio();
+    try{ var x=JSON.parse(localStorage.getItem(clave)||'null'); if(!x||typeof x!=='object') return p;
+      if(x.vistos&&typeof x.vistos==='object') Object.keys(x.vistos).slice(0,40).forEach(function(k){ if(/^[\w:\/.\-?=&%]{1,300}$/.test(k)) p.vistos[k]=1; });
+      if(x.inv&&typeof x.inv==='object') Object.keys(ITEMS).forEach(function(k){ var n=+x.inv[k]; if(n>0) p.inv[k]=Math.min(9999,Math.floor(n)); });
+      if(x.logros&&typeof x.logros==='object') LOGROS.forEach(function(l){ var t=+x.logros[l.id]; if(t>0) p.logros[l.id]=t; });
+      p.fin=x.fin?1:0;
+      if(Array.isArray(x.dias)) p.dias=x.dias.filter(function(d){ return d===(d|0)&&d>20200101&&d<21000101; }).slice(-30);
+      if(x.hechas&&typeof x.hechas==='object') Object.keys(x.hechas).forEach(function(k){ if(EXPS[k]) p.hechas[k]=1; });
+      if(x.ev&&typeof x.ev==='object') Object.keys(x.ev).forEach(function(k){ if(!EXPS[k]||!x.ev[k]||typeof x.ev[k]!=='object') return; p.ev[k]={};
+        Object.keys(x.ev[k]).slice(0,40).forEach(function(j){ if(/^[\w:\/.\-?=&%]{1,300}$/.test(j)) p.ev[k][j]=1; }); });
+    }catch(e){}
+    return p; }
+  /* ---- Pase Ruway: varias experiencias con el mismo código, que se abren una tras otra ---- */
+  function paseDe(d){ var l=[]; (Array.isArray(d&&d.pase)?d.pase:[]).forEach(function(x){ x=String(x||''); if(EXPS[x] && l.indexOf(x)<0 && l.length<4) l.push(x); }); return l.length>1?l:[]; }
+  function abierta(l,h,i,d){ return i===0 || !!h[l[i-1]] || !!(d&&(d.vistaPrevia||window.__DEMO)); }
+  function hecha(){ if(!P||!exp||P.hechas[exp]) return; P.hechas[exp]=1; guardar();
+    var i=PASE.indexOf(exp), sig=i>=0?PASE[i+1]:null;
+    if(sig) setTimeout(function(){ toast('🔓','¡Se abrió '+EXPS[sig][1]+'!','Tu Pase Ruway sigue: tócalo en 🎟️'); latir(paseEl); },1800); }
+  function guardar(){ if(!P) return; try{ localStorage.setItem(clave,JSON.stringify(P)); }catch(e){} programarEnvio(); pintarBoton(); }
+  function totalFotos(){ try{ return (fotosFn&&fotosFn()||[]).length; }catch(e){ return 0; } }
+  function vistos(){ return P?Object.keys(P.vistos).length:0; }
+  function objetos(){ var s=0; if(P) Object.keys(P.inv).forEach(function(k){ s+=P.inv[k]; }); return s; }
+
+  /* ---- el sonidito y el aviso de los desbloqueos ---- */
+  var ac=null;
+  function tin(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); [784,988,1319].forEach(function(f,i){ var o=ac.createOscillator(), v=ac.createGain(), t=ac.currentTime+i*.09;
+      o.type='sine'; o.frequency.value=f; v.gain.setValueAtTime(.06,t); v.gain.exponentialRampToValueAtTime(.0001,t+.35); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t+.36); }); }catch(e){} }
+  function toast(ic,t,sub){ estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
+    d.querySelector('i').textContent=ic; d.querySelector('b').textContent=t; d.querySelector('small').textContent=sub||''; document.body.appendChild(d);
+    requestAnimationFrame(function(){ d.classList.add('on'); }); setTimeout(function(){ d.classList.remove('on'); setTimeout(function(){ d.remove(); },500); },3200); tin(); }
+  function logro(id){ if(!P||P.logros[id]) return; var l=LOGROS.filter(function(x){ return x.id===id; })[0]; if(!l) return;
+    P.logros[id]=Date.now(); guardar(); toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',l.txt); }
+
+  /* ---- lo que llaman las experiencias ---- */
+  N.iniciar=function(o){
+    o=o||{}; D=o.datos||{}; var c=String(D.codigo||'').trim().toUpperCase();
+    cod=/^[A-Z0-9]{4,10}$/.test(c)?c:'DEMO'; clave='ruway:prog:'+cod; api=typeof o.api==='string'?o.api:''; previa=!!(D.vistaPrevia||window.__DEMO);
+    fotosFn=o.fotos||null; personaje=o.personaje||''; P=leer(); exp=EXPS[o.exp]?o.exp:(EXPS[D.tipo]?D.tipo:''); PASE=paseDe(D);
+    var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
+    guardar(); if(P.dias.length>=2) logro('vuelve'); if(P.dias.length>=5) logro('fiel');
+    if(o.boton!==false) N.boton(o.dentro||null);
+  };
+  /* un recuerdo que se vio (la clave es la que use la página: el número o la dirección de la foto) */
+  N.vio=function(k){ if(!P||k==null) return; k=String(k).slice(0,300);
+    /* en un Pase, cada experiencia lleva su cuenta: ver todos sus recuerdos también la termina */
+    if(exp){ var e=P.ev[exp]=P.ev[exp]||{}; if(!e[k]){ e[k]=1; var te=totalFotos(); if(te && Object.keys(e).length>=te) hecha(); guardar(); } }
+    if(P.vistos[k]) return; P.vistos[k]=1; guardar();
+    var n=vistos(), t=totalFotos(); if(n===1) logro('primero'); if(t&&n>=t) logro('todos'); };
+  /* algo que se juntó en un juego: corazon, estrella, flor, beso o regalo */
+  N.visto=function(k){ return !!(P && P.vistos[String(k)]); };
+  N.gano=function(item,k){ if(!P||!ITEMS[item]) return; P.inv[item]=Math.min(9999,(P.inv[item]||0)+(k||1)); guardar(); latir();
+    if(objetos()>=20) logro('coleccion'); };
+  N.termino=function(){ if(!P) return; if(!P.fin){ P.fin=1; guardar(); } logro('fin'); hecha(); };
+  N.estado=function(){ return {cod:cod,vistos:vistos(),total:totalFotos(),objetos:objetos(),inv:P?JSON.parse(JSON.stringify(P.inv)):{},logros:P?Object.keys(P.logros):[],fin:P?P.fin:0,dias:P?P.dias.length:0,
+    exp:exp,pase:N.pase.lista()}; };
+  N.pase={
+    /* las del pase, con si ya se terminó y si ya se puede abrir */
+    lista:function(){ var h=P?P.hechas:{}; return PASE.map(function(x,i){ return {id:x,ic:EXPS[x][0],nom:EXPS[x][1],hecha:!!h[x],abierta:abierta(PASE,h,i,D),actual:x===exp}; }); },
+    /* ANTES de iniciar: qué experiencia toca mostrar al abrir el enlace. La pedida (?x=) si ya se
+       desbloqueó; si no, la primera que falta terminar. Sin pase, null. */
+    destino:function(datos,pedida){ var l=paseDe(datos); if(!l.length) return null; var c=String((datos&&datos.codigo)||'').trim().toUpperCase(), h={};
+      try{ var x=JSON.parse(localStorage.getItem('ruway:prog:'+(/^[A-Z0-9]{4,10}$/.test(c)?c:'DEMO'))||'null'); if(x&&x.hechas) Object.keys(x.hechas).forEach(function(k){ h[k]=1; }); }catch(e){}
+      var i=l.indexOf(String(pedida||'')); if(i>=0 && abierta(l,h,i,datos)) return l[i];
+      for(var j=0;j<l.length;j++) if(!h[l[j]]) return l[j];
+      return l[0]; },
+    /* la dirección de una experiencia del pase: misma página del regalo, con ?x= */
+    url:function(id){ try{ var u=new URL(location.href); u.pathname=u.pathname.replace(/[^\/]*$/,EN_U.test(id)?'u.html':'x.html'); u.searchParams.set('x',id); return u.href; }catch(e){ return ''; } },
+    enU:function(id){ return EN_U.test(id); },
+    ir:function(id){ var u=N.pase.url(id); if(u) location.href=u; },
+    siguiente:function(){ var i=PASE.indexOf(exp), s=i>=0?PASE[i+1]:null; return s && P && P.hechas[exp] ? {id:s,ic:EXPS[s][0],nom:EXPS[s][1]} : null; } };
+
+  /* ---- el avance, al servidor: la misma hoja de Universos (columna Avance) ---- */
+  function programarEnvio(){ if(previa||!api||cod==='DEMO') return; clearTimeout(envioT); envioT=setTimeout(enviar,4000); }
+  function enviar(){ if(!P) return; var av={v:vistos(),n:totalFotos(),f:P.fin?1:0,o:Math.min(9999,objetos()),d:P.dias.length};
+    if(PASE.length){ av.pt=PASE.length; av.ph=PASE.filter(function(x){ return P.hechas[x]; }).length; }
+    var cuerpo=JSON.stringify({fn:'visita',args:[cod,0,0,av]});
+    try{ if(navigator.sendBeacon && navigator.sendBeacon(api,new Blob([cuerpo],{type:'text/plain;charset=utf-8'}))) return; }catch(e){}
+    try{ fetch(api,{method:'POST',body:cuerpo,mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'}}); }catch(e){} }
+  addEventListener('pagehide',function(){ if(envioT){ clearTimeout(envioT); envioT=0; enviar(); } });
+
+  /* ======================= el audio: una sola manera de traerlo =======================
+     La canción y la nota de voz viven en Drive. Se piden por pedazos (JSONP), con un refuerzo
+     si Google está despertando, se arman en el teléfono y quedan guardadas en una caja: la
+     segunda vez suenan al instante, aunque haya poca señal. El universo, el árbol, la vela y
+     todos los juegos usan esto mismo. */
+  var CAJA='ruway-audio-1', TRAIDOS={}, TRAYENDO={}, nJ=0;
+  /* medio instante de silencio hecho acá: despierta un reproductor en el toque (el iPhone lo exige) */
+  var SILENCIO=(function(){ try{ var n=480, b=new Uint8Array(44+n), v=new DataView(b.buffer);
+      function tx(o,t){ for(var i=0;i<t.length;i++) b[o+i]=t.charCodeAt(i); }
+      tx(0,'RIFF'); v.setUint32(4,36+n,true); tx(8,'WAVEfmt '); v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
+      v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true); v.setUint16(34,8,true); tx(36,'data'); v.setUint32(40,n,true);
+      for(var i=44;i<b.length;i++) b[i]=128; return URL.createObjectURL(new Blob([b],{type:'audio/wav'})); }catch(e){ return ''; } })();
+  /* La llave lleva el archivo de Drive: si el cliente cambia la canción, lo guardado ya no sirve. */
+  function llaveA(cual){ var id=cual==='voz'?D.vozId:D.cancionId; if(!id||!D.codigo) return '';
+    try{ return new URL('/__audio/'+encodeURIComponent(D.codigo)+'/'+cual+'/'+encodeURIComponent(id),location.href).href; }catch(e){ return ''; } }
+  function guardadoA(cual,listo){ var k=llaveA(cual), hecho=false; function fin(x){ if(hecho) return; hecho=true; clearTimeout(t); listo(x); }
+    var t=setTimeout(function(){ fin(null); },1500);        /* si la caja no contesta rápido, se sigue sin ella */
+    if(!k||!window.caches){ fin(null); return; }
+    try{ caches.open(CAJA).then(function(c){ return c.match(k); }).then(function(r){ return r?r.blob():null; })
+      .then(function(b){ fin(b&&b.size>500?{url:URL.createObjectURL(b),mime:b.type||'audio/mpeg',blob:b}:null); })['catch'](function(){ fin(null); }); }catch(e){ fin(null); } }
+  function guardarA(cual,blob){ var k=llaveA(cual); if(!k||!window.caches||!blob) return;
+    try{ caches.open(CAJA).then(function(c){ return c.put(k,new Response(blob,{headers:{'Content-Type':blob.type||'audio/mpeg'}})).then(function(){ return c.keys(); })
+      .then(function(ks){ for(var i=0;i<ks.length-8;i++) c['delete'](ks[i]); }); })['catch'](function(){}); }catch(e){} }   /* los últimos ocho regalos, nada más */
+  /* un pedazo por JSONP; `mal(true)` es un no del servidor que no se arregla reintentando */
+  function pedirTrozo(cual,parte,ok,mal){ var a=api||D.api||'';
+    if(!a||(cual==='voz'?!D.vozId:!D.cancionId)){ mal(true); return; }
+    var nom='__rnSon'+(++nJ), t=document.createElement('script'), reloj=setTimeout(function(){ limpiar(); mal(false); },40000);
+    function limpiar(){ clearTimeout(reloj); try{ delete window[nom]; }catch(e){ window[nom]=undefined; } if(t.parentNode) t.parentNode.removeChild(t); }
+    window[nom]=function(r){ limpiar(); if(r&&r.ok&&r.r&&r.r.b64) ok(r.r); else mal(!!(r&&r.ok===false&&r.error)); };
+    t.onerror=function(){ limpiar(); mal(false); };
+    t.src=a+(a.indexOf('?')>=0?'&':'?')+'vista=api&rfn=cancion&rcb='+nom+'&rargs='+encodeURIComponent(JSON.stringify([D.codigo,parte,cual,D.ver||'']));
+    document.head.appendChild(t); }
+  /* sin rendirse a la primera: a los siete segundos sale otro igual por detrás; si los dos fallan, otra vuelta al rato */
+  function pedirTrozoFuerte(cual,parte,ok,mal){ var hecho=false, vivos=0, muertos=0, vuelta=0, refuerzo=null;
+    function uno(){ vivos++;
+      pedirTrozo(cual,parte,function(r){ if(hecho) return; hecho=true; clearTimeout(refuerzo); ok(r); },
+        function(fijo){ if(hecho) return; muertos++;
+          if(fijo){ hecho=true; clearTimeout(refuerzo); mal(); return; }
+          if(muertos<vivos) return; clearTimeout(refuerzo);
+          if(++vuelta>2){ hecho=true; mal(); return; } setTimeout(ronda,vuelta*1500); }); }
+    function ronda(){ if(hecho) return; uno(); refuerzo=setTimeout(function(){ if(!hecho) uno(); },7000); }
+    ronda(); }
+  /* Trae un audio entero: guardado → pedazos (el primero dice cuántos son; los demás de a tres) → armado → guardado.
+     `avisa(hechos,total)` sirve para contar por pantalla. Si ya se está trayendo, se espera a ese. */
+  function traerA(cual,avisa,ok,mal){
+    if(TRAIDOS[cual]){ ok(TRAIDOS[cual]); return; }
+    if(TRAYENDO[cual]){ TRAYENDO[cual].push([ok,mal,avisa]); return; }
+    var esperan=TRAYENDO[cual]=[[ok,mal,avisa]];
+    function acabar(r){ delete TRAYENDO[cual]; esperan.forEach(function(x){ try{ if(r) x[0](r); else if(x[1]) x[1](); }catch(e){} }); }
+    guardadoA(cual,function(g){ if(g){ TRAIDOS[cual]=g; acabar(g); return; }
+      var partes=[], total=0, hechos=0, mime='', roto=false;
+      function uno(i,listo){ pedirTrozoFuerte(cual,i,function(r){ if(roto) return;
+          if(partes[r.parte]==null) hechos++; partes[r.parte]=r.b64; mime=r.mime||mime||'audio/mpeg'; total=r.total;
+          esperan.forEach(function(x){ if(x[2]) try{ x[2](hechos,total); }catch(e){} }); listo(); },
+        function(){ if(roto) return; roto=true; acabar(null); }); }
+      uno(0,function(){ if(total<=1){ armar(); return; } var sig=1, vuelo=0;
+        (function lanzar(){ while(vuelo<3 && sig<total){ vuelo++; uno(sig++,function(){ vuelo--; if(hechos>=total) armar(); else lanzar(); }); } })(); });
+      function armar(){ if(roto) return;
+        try{ var bin=atob(partes.join('')), n=bin.length, u=new Uint8Array(n); for(var k=0;k<n;k++) u[k]=bin.charCodeAt(k);
+          var blob=new Blob([u],{type:mime}); TRAIDOS[cual]={url:URL.createObjectURL(blob),mime:mime,blob:blob}; guardarA(cual,blob); acabar(TRAIDOS[cual]); }
+        catch(e){ acabar(null); } } }); }
+  N.audio={silencio:SILENCIO,guardado:guardadoA,guardar:guardarA,traer:traerA,traido:function(cual){ return TRAIDOS[cual]||null; }};
+
+  /* ======================= el video: grabar y compartir en el estado =======================
+     El formato (mp4 primero: es lo único que WhatsApp e Instagram reproducen en cualquier
+     teléfono), la hoja de "tu video está listo" y un grabador de lo que se ve en pantalla. */
+  function formatoV(){ if(!window.MediaRecorder) return '';
+    var t=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+    for(var i=0;i<t.length;i++){ try{ if(MediaRecorder.isTypeSupported(t[i])) return t[i]; }catch(e){} } return ''; }
+  /* El menú de compartir del iPhone tiene que salir de un toque: por eso el video no se comparte
+     solo al terminar, se ofrece con un botón. */
+  function ofrecerV(blob,nombre,tipo,o){ o=o||{}; estilos(); var archivo=null; try{ archivo=new File([blob],nombre,{type:tipo}); }catch(e){}
+    var puede=!!(archivo&&navigator.canShare&&navigator.canShare({files:[archivo]})), url=URL.createObjectURL(blob), vieja=document.getElementById('video-listo');
+    if(vieja) vieja.remove();
+    var c=document.createElement('div'); c.className='rn-capa rn-video'; c.id='video-listo';
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Tu video"><h2>🎬 Tu video está listo</h2><p class="rn-sub"></p><video playsinline controls loop></video>'
+      +(puede?'<button type="button" class="rn-cerrar" id="b-comp">Compartir</button>':'')
+      +'<button type="button" class="rn-cerrar'+(puede?' rn-suave':'')+'" id="b-desc">Descargar al teléfono</button>'
+      +'<button type="button" class="rn-cerrar rn-suave" id="b-cerr">'+esc(o.cerrar||'Cerrar')+'</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
+    var sub=c.querySelector('.rn-sub'); sub.textContent='Compártelo en tu estado de WhatsApp o guárdalo en tu galería.';
+    document.body.appendChild(c); var v=c.querySelector('video'); v.src=url; try{ var pp=v.play(); if(pp&&pp.catch) pp.catch(function(){}); }catch(e){}
+    function cerrar(){ try{ v.pause(); }catch(e){} c.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },60000); if(o.alCerrar) o.alCerrar(); }
+    if(puede) c.querySelector('#b-comp').onclick=function(){ navigator.share({files:[archivo],title:o.titulo||'Mi regalo Ruway'}).then(function(){ if(o.alCompartir) o.alCompartir(); })['catch'](function(){}); };
+    c.querySelector('#b-desc').onclick=function(){ var a=document.createElement('a'); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
+      sub.textContent='Descargado. Búscalo en tus archivos o en la galería y súbelo a tu estado.'; };
+    c.querySelector('#b-cerr').onclick=cerrar; c.addEventListener('click',function(e){ if(e.target===c) cerrar(); });
+    return c; }
+  /* Graba 30 segundos de lo que la página dibuja (o.dibujar(cx,W,H,seg)) con la pista de sonido que dé
+     (o.pista()), en vertical para los estados. Pone su botón ● Grabar con la cuenta regresiva. */
+  function grabador(o){ o=o||{}; var MAX=o.max||30, W=o.ancho||720, H=o.alto||1280, btn=null, rec=null, trozos=[], t0=0, raf=0, lz=null, cx=null, mime='';
+    var avisar=o.aviso||function(t){ toast('🎬',t); };
+    function soportado(){ return !!(window.MediaRecorder && window.HTMLCanvasElement && HTMLCanvasElement.prototype.captureStream); }
+    function poner(){ if(btn||!soportado()) return null; btn=document.createElement('button'); btn.id='b-rec'; btn.type='button'; btn.setAttribute('aria-label','Grabar un video para compartir');
+      btn.innerHTML='<span class="punto"></span>Grabar'; (o.dentro||document.body).appendChild(btn); btn.onclick=function(){ if(rec) parar(); else empezar(); }; return btn; }
+    function empezar(){ if(o.puede && !o.puede()){ avisar('Primero entra al juego'); return; }
+      lz=document.createElement('canvas'); lz.width=W; lz.height=H; cx=lz.getContext('2d');
+      var stream; try{ stream=lz.captureStream(30); }catch(e){ avisar('Este teléfono no puede grabar'); return; }
+      var au=null; try{ au=o.pista&&o.pista(); }catch(e){} if(au) au.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
+      mime=formatoV();
+      try{ rec=new MediaRecorder(stream,mime?{mimeType:mime,videoBitsPerSecond:4000000}:undefined); }
+      catch(e){ try{ rec=new MediaRecorder(stream); mime=''; }catch(e2){ rec=null; avisar('Este teléfono no puede grabar'); return; } }
+      trozos=[]; rec.ondataavailable=function(e){ if(e.data && e.data.size) trozos.push(e.data); }; rec.onstop=terminar;
+      rec.start(500); t0=performance.now(); btn.classList.add('grabando'); if(o.alEmpezar) try{ o.alEmpezar(); }catch(e){}
+      cuadro(); }
+    function parar(){ if(rec && rec.state!=='inactive') rec.stop(); cancelAnimationFrame(raf); }
+    function cuadro(){ raf=requestAnimationFrame(cuadro); var seg=(performance.now()-t0)/1000;
+      cx.fillStyle='#140B26'; cx.fillRect(0,0,W,H); try{ o.dibujar&&o.dibujar(cx,W,H,seg); }catch(e){}
+      cx.font='700 24px Nunito, sans-serif'; cx.fillStyle='rgba(255,241,218,.85)'; cx.textAlign='center'; cx.shadowColor='rgba(0,0,0,.6)'; cx.shadowBlur=8; cx.fillText('hecho con amor · R U W A Y',W/2,H-60); cx.shadowBlur=0;
+      var q=Math.max(0,Math.ceil(MAX-seg)); btn.innerHTML='<span class="punto"></span>0:'+(q<10?'0':'')+q;
+      if(seg>=MAX) parar(); }
+    function terminar(){ btn.classList.remove('grabando'); btn.innerHTML='<span class="punto"></span>Grabar';
+      var tipo=(mime||(trozos[0]&&trozos[0].type)||'video/webm').split(';')[0], ext=/mp4/.test(tipo)?'mp4':'webm';
+      var blob=new Blob(trozos,{type:tipo}); rec=null; trozos=[];
+      if(!blob.size){ avisar('No se grabó nada, prueba otra vez'); return; }
+      ofrecerV(blob,(o.nombre||'ruway-regalo')+'.'+ext,tipo,{cerrar:o.cerrar||'Seguir jugando',titulo:o.titulo}); }
+    return {poner:poner,parar:parar,grabando:function(){ return !!rec; }}; }
+  N.video={formato:formatoV,ofrecer:ofrecerV,grabador:grabador};
+
+  /* ---- fluidez: si el 3D va lento en este teléfono, menos píxeles (nunca menos de 0,85) ---- */
+  N.fluido=function(R){ if(!R||R.__fluido) return; R.__fluido=1; var t0=0, n=0, orig=R.render;
+    R.render=function(a,b){ var ahora=performance.now();
+      if(!t0 || ahora-t0>3000){ t0=ahora; n=0; }
+      else if(++n>=40){ var fps=n*1000/(ahora-t0); t0=ahora; n=0; var pr=R.getPixelRatio();
+        if(fps<40 && pr>.9){ var nuevo=Math.max(.85,pr-.25), W=R.domElement.clientWidth, H=R.domElement.clientHeight; R.setPixelRatio(nuevo); if(W&&H) R.setSize(W,H,false); N.bajadas=(N.bajadas||0)+1; } }
+      return orig.call(R,a,b); }; };
+
+  /* ======================= la mochila ======================= */
+  var CSS=':root{--rn-verde:#5C6B4A;--rn-crema:#FFFBF4;--rn-oro:#D2A877;--rn-sol:#FFC531;--rn-tinta:#23291E;--rn-rojo:#C2705F}'
+   +'.rn-bot{position:fixed;left:12px;top:calc(62px + env(safe-area-inset-top,0px));z-index:30;border:none;border-radius:999px;background:rgba(255,251,244,.94);color:var(--rn-tinta);font:800 13px "Baloo 2",Nunito,sans-serif;padding:6px 11px 5px 9px;box-shadow:0 6px 16px rgba(0,0,0,.3);display:flex;align-items:center;gap:5px;pointer-events:auto;cursor:pointer}'
+   +'.rn-bot.en-hud{position:static;margin-top:8px;padding:4px 10px 3px 8px;font-size:12px}'
+   +'.rn-bot i{font-style:normal;font-size:16px;line-height:1}.rn-bot.late{animation:rnLat .5s}'
+   +'.rn-bot.rn-pase{top:calc(102px + env(safe-area-inset-top,0px))}.rn-bot.rn-pase.en-hud{margin-left:6px}'
+   +'.rn-exp{display:flex;gap:12px;align-items:center;width:100%;text-align:left;border:none;border-radius:16px;background:#fff;padding:12px;margin-bottom:8px;font-family:Nunito,sans-serif;color:var(--rn-tinta);box-shadow:0 2px 0 #EADBC6}'
+   +'.rn-exp i{font-style:normal;font-size:28px}.rn-exp b{display:block;font:800 15px "Baloo 2",sans-serif}.rn-exp small{color:#8A7A66;font-size:12px}'
+   +'.rn-exp.aqui{outline:2px solid var(--rn-sol)}.rn-exp.bloq{opacity:.55;filter:grayscale(.7)}'
+   +'@keyframes rnLat{40%{transform:scale(1.18)}}'
+   +'.rn-capa{position:fixed;inset:0;z-index:60;background:rgba(35,41,30,.55);display:flex;align-items:flex-end;justify-content:center;animation:rnF .2s}'
+   +'@keyframes rnF{from{opacity:0}}'
+   +'.rn-hoja{background:var(--rn-crema);width:100%;max-width:460px;max-height:88vh;overflow:auto;border-radius:26px 26px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));font-family:Nunito,sans-serif;color:var(--rn-tinta);animation:rnS .28s cubic-bezier(.2,.9,.3,1.2)}'
+   +'@keyframes rnS{from{transform:translateY(40px)}}'
+   +'.rn-hoja h2{margin:0;font:800 24px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-hoja .rn-sub{margin:0 0 12px;color:#8A7A66;font-size:13px}'
+   +'.rn-tabs{display:flex;gap:6px;margin-bottom:12px}.rn-tabs button{flex:1;border:none;border-radius:999px;padding:8px 4px;background:#F1E8DA;font:800 13px "Baloo 2",sans-serif;color:var(--rn-tinta)}'
+   +'.rn-tabs button.on{background:var(--rn-verde);color:#fff}'
+   +'.rn-carta{border-radius:18px;padding:14px;margin-bottom:12px;background:linear-gradient(135deg,#FFE9D6,#FFF6E8);border:1.5px dashed var(--rn-oro)}'
+   +'.rn-carta b{font:800 16px "Baloo 2",sans-serif}.rn-carta p{margin:6px 0 0;font:600 20px/1.35 "Dancing Script",cursive;white-space:pre-wrap}.rn-carta.cerrada p{font:600 13px Nunito,sans-serif;color:#8A7A66}'
+   +'.rn-alb{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.rn-foto{position:relative;aspect-ratio:1;border-radius:14px;overflow:hidden;background:#E9DFD0;border:none;padding:0}'
+   +'.rn-foto img{width:100%;height:100%;object-fit:cover;display:block}.rn-foto.bloq img{filter:blur(10px) grayscale(.6);transform:scale(1.15)}'
+   +'.rn-foto.bloq:after{content:"🔒";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;background:rgba(35,41,30,.25)}'
+   +'.rn-items{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.rn-it{background:#fff;border-radius:16px;padding:10px 2px;text-align:center;box-shadow:0 2px 0 #EADBC6}'
+   +'.rn-it i{font-style:normal;font-size:26px;display:block}.rn-it b{font:800 18px "Baloo 2",sans-serif;display:block}.rn-it small{font-size:10.5px;color:#8A7A66}'
+   +'.rn-barra{height:10px;border-radius:9px;background:#EADBC6;overflow:hidden;margin:12px 0 4px}.rn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--rn-sol),var(--rn-rojo))}'
+   +'.rn-log{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:#fff;margin-bottom:7px}.rn-log i{font-style:normal;font-size:24px}.rn-log.no{opacity:.45;filter:grayscale(1)}'
+   +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}'
+   +'.rn-cerrar{display:block;width:100%;margin-top:12px;border:none;border-radius:999px;padding:13px;background:var(--rn-verde);color:#fff;font:800 15px "Baloo 2",sans-serif}'
+   +'.rn-pie{text-align:center;color:#B3A58F;font-size:11px;margin-top:10px;letter-spacing:.2em}'
+   +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
+   +'.rn-ver{position:fixed;inset:0;z-index:70;background:rgba(10,8,6,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}.rn-ver img{max-width:100%;max-height:70vh;border-radius:16px}.rn-ver p{color:#FFF1DA;font:600 22px "Dancing Script",cursive;text-align:center}'
+   +'.rn-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-120%);z-index:80;display:flex;gap:10px;align-items:center;background:var(--rn-crema);border-radius:18px;padding:10px 14px;box-shadow:0 12px 30px rgba(0,0,0,.35);transition:transform .45s cubic-bezier(.2,.9,.3,1.3);max-width:calc(100vw - 24px);font-family:Nunito,sans-serif;color:var(--rn-tinta)}'
+   +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}';
+  function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); }
+  function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function pintarBoton(){ if(cuentaEl) cuentaEl.textContent=objetos()?String(objetos()):(vistos()+'/'+totalFotos());
+    if(paseEl){ var l=N.pase.lista(); paseEl.querySelector('span').textContent=l.filter(function(x){ return x.hecha; }).length+'/'+l.length; } }
+  function latir(el){ el=el||boton; if(!el) return; el.classList.remove('late'); void el.offsetWidth; el.classList.add('late'); }
+  N.boton=function(dentro){ estilos(); if(boton) boton.remove();
+    boton=document.createElement('button'); boton.type='button'; boton.className='rn-bot'+(dentro?' en-hud':''); boton.setAttribute('aria-label','Mi mochila');
+    boton.innerHTML='<i>🎒</i><span></span>'; cuentaEl=boton.querySelector('span');
+    boton.onclick=function(e){ e.stopPropagation(); N.mochila(); };
+    (dentro||document.body).appendChild(boton);
+    /* con Pase Ruway, al lado: 🎟️ cuántas terminó de cuántas */
+    if(paseEl){ paseEl.remove(); paseEl=null; }
+    if(PASE.length){ paseEl=document.createElement('button'); paseEl.type='button'; paseEl.className='rn-bot rn-pase'+(dentro?' en-hud':''); paseEl.setAttribute('aria-label','Mi Pase Ruway');
+      paseEl.innerHTML='<i>🎟️</i><span></span>'; paseEl.onclick=function(e){ e.stopPropagation(); N.mochila('pase'); };
+      if(dentro) (dentro).appendChild(paseEl); else document.body.appendChild(paseEl); }
+    pintarBoton(); return boton; };
+  N.mochila=function(pestana){ estilos(); if(!P) return; var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
+    var para=String(D.para||'').trim(), de=String(D.de||'').trim();
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Mi mochila"><h2>🎒 Mi mochila</h2><p class="rn-sub"></p>'
+      +'<div class="rn-tabs">'+(PASE.length?'<button data-p="pase">🎟️ Pase</button>':'')+'<button data-p="rec">Recuerdos</button><button data-p="col">Colección</button><button data-p="log">Logros</button></div><div class="rn-cuerpo"></div>'
+      +'<button class="rn-cerrar">Seguir</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
+    c.querySelector('.rn-sub').textContent=(para?'Para '+para:'Tu regalo')+(de?' · de '+de:'')+(personaje?' · juegas con '+personaje:'');
+    document.body.appendChild(c);
+    var cuerpo=c.querySelector('.rn-cuerpo');
+    function cerrar(){ c.remove(); }
+    c.addEventListener('click',function(e){ if(e.target===c) cerrar(); }); c.querySelector('.rn-cerrar').onclick=cerrar;
+    function ir(p){ c.querySelectorAll('.rn-tabs button').forEach(function(b){ b.classList.toggle('on',b.dataset.p===p); }); var h='';
+      if(p==='rec'){ var F=[]; try{ F=fotosFn?fotosFn():[]; }catch(e){}
+        var n=vistos(), t=F.length, abierta=(t&&n>=t)||P.fin;
+        h+='<div class="rn-carta'+(abierta?'':' cerrada')+'"><b>'+(abierta?'💌 La carta secreta':'🔒 La carta secreta')+'</b><p></p></div>';
+        h+='<div class="rn-alb">'+F.map(function(f,i){ var v=!!P.vistos[String(f.clave)]; return '<button type="button" class="rn-foto'+(v?'':' bloq')+'" data-i="'+i+'">'+(f.src?'<img alt="" src="'+esc(f.src)+'">':'')+'</button>'; }).join('')+'</div>';
+        cuerpo.innerHTML=h;
+        cuerpo.querySelector('.rn-carta p').textContent=abierta?(String(D.msg||'').trim()||'Gracias por existir.')+(de?'\n— '+de:''):'Mira todos los recuerdos para abrirla ('+n+' de '+t+')';
+        cuerpo.querySelectorAll('.rn-foto').forEach(function(b){ b.onclick=function(){ var f=F[+b.dataset.i]; if(!P.vistos[String(f.clave)]){ toast('🔎','Todavía escondido','Encuéntralo en el juego para verlo aquí'); return; }
+          var v=document.createElement('div'); v.className='rn-ver'; v.innerHTML='<img alt=""><p></p>'; v.querySelector('img').src=f.src; v.querySelector('p').textContent=f.txt||''; v.onclick=function(){ v.remove(); }; document.body.appendChild(v); }; });
+      } else if(p==='pase'){ var L=N.pase.lista();
+        h+='<p style="margin:0 0 10px;font-size:13px;color:#5E6655">Tu regalo trae '+L.length+' experiencias. Al terminar una, se abre la siguiente.</p>'
+          +L.map(function(x,i){ var est=x.hecha?'✓ Terminada':(x.abierta?(x.actual?'Estás aquí':'▶ Abrir'):'🔒 Se abre al terminar la anterior');
+            return '<button type="button" class="rn-exp'+(x.abierta?'':' bloq')+(x.actual?' aqui':'')+'" data-x="'+x.id+'"><i>'+x.ic+'</i><div><b>'+(i+1)+'. '+esc(x.nom)+'</b><small>'+est+'</small></div></button>'; }).join('');
+        cuerpo.innerHTML=h;
+        cuerpo.querySelectorAll('.rn-exp').forEach(function(b){ b.onclick=function(){ var x=L.filter(function(y){ return y.id===b.dataset.x; })[0]; if(!x) return;
+          if(!x.abierta){ toast('🔒','Todavía no','Termina la anterior y se abre sola'); return; }
+          if(x.actual){ cerrar(); return; } N.pase.ir(x.id); }; });
+      } else if(p==='col'){ var tot=objetos();
+        h+='<div class="rn-items">'+Object.keys(ITEMS).map(function(k){ return '<div class="rn-it"><i>'+ITEMS[k][0]+'</i><b>'+(P.inv[k]||0)+'</b><small>'+ITEMS[k][1]+'</small></div>'; }).join('')+'</div>'
+          +'<div class="rn-barra"><i style="width:'+Math.min(100,tot/20*100)+'%"></i></div><small style="color:#8A7A66">'+(tot>=20?'¡Eres coleccionista! 🧺':'Junta 20 para el logro Coleccionista ('+tot+' de 20)')+'</small>'
+          +'<p style="font-size:13px;color:#5E6655">Todo lo que juntas en los juegos se guarda aquí, en todas las experiencias de este regalo.</p>';
+        cuerpo.innerHTML=h;
+      } else { h+=LOGROS.map(function(l){ var si=!!P.logros[l.id]; return '<div class="rn-log'+(si?'':' no')+'"><i>'+l.ic+'</i><div><b>'+l.nom+'</b><small>'+(si?l.txt:'🔒 '+l.txt)+'</small></div></div>'; }).join('');
+        cuerpo.innerHTML=h; } }
+    c.querySelectorAll('.rn-tabs button').forEach(function(b){ b.onclick=function(){ ir(b.dataset.p); }; });
+    ir(pestana==='pase'&&!PASE.length?'rec':(pestana||'rec')); };
+
+  N.ITEMS=ITEMS; N.LOGROS=LOGROS; N.toast=toast;
+  window.Nucleo=N;
+  var cola=window.__nucleoCola||[]; window.__nucleoCola=[]; cola.forEach(function(f){ try{ f(N); }catch(e){} });
+})();
+
+</script>
+<script>
+/* El núcleo común de Ruway (progreso, mochila, logros, audio guardado): el mismo archivo
+   que usan los juegos. Si no llega, el universo sigue igual. */
+function nucleo(fn){ if(window.Nucleo){ try{ fn(window.Nucleo); }catch(e){} } else (window.__nucleoCola=window.__nucleoCola||[]).push(fn); }
 
 var FOTOS = [];
 
@@ -882,6 +1230,13 @@ var Visita=(function(){
 })();
 function encender(){
 if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
+/* Pase Ruway: el mismo código trae varias experiencias que se abren una tras otra. Se muestra
+   la que toca (o la pedida con ?x=, si ya se desbloqueó); si es un juego, vive en x.html. */
+if(DATOS && DATOS.ok!==false && window.Nucleo && !/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
+  var toca=Nucleo.pase.destino(DATOS,new URLSearchParams(location.search).get('x'));
+  if(toca && !Nucleo.pase.enU(toca)){ location.replace(Nucleo.pase.url(toca)); return; }
+  if(toca) DATOS=Object.assign({},DATOS,{tipo:toca});
+}
 /* Las experiencias del llavero (juegos, planeta, bitácora, cartas…) viven en
    x.html, al lado de esta página en GitHub. Se llega con el mismo enlace del
    QR o del NFC y los mismos datos, que ya quedaron guardados en el teléfono. */
@@ -891,6 +1246,8 @@ if(DATOS && /^(constelaciones|planeta|laberinto|carrito|isla|corre|match|bitacor
   return;
 }
 if(DATOS) Visita.empezar(DATOS);
+if(DATOS && DATOS.ok!==false) nucleo(function(N){ N.iniciar({datos:DATOS,api:(typeof API==='string'?API:''),boton:false,
+  fotos:function(){ var r=[]; if(typeof ramos==='undefined') return r; for(var i=0;i<ramos.length;i++){ var o=ramos[i]; if(!o.foto) continue; var im=IMGS[o.k]; r.push({src:(im&&im.src)||'',txt:o.txt||'',clave:o.k}); } return r; }}); });
 
 /* ---------------------- el tema de la campaña ----------------------
    Tres colores y unos textos. Todo lo que brilla se construye a partir
@@ -1010,24 +1367,11 @@ var MANCHADO=false;
    Y si aun así no llega, el botón ♪ no desaparece: se queda para reintentar. */
 var RESCATE={hecho:false,lista:false,n:0};
 var TRAIDOS={};     /* 'cancion' / 'voz'  ->  {url, mime, blob} ya armados acá */
-var TRAYENDO={};    /* quien espera a un audio que ya se está trayendo */
 var SON={quiere:false, fallo:false};
-var CAJA_AUDIO='ruway-audio-1';
 
 /* Un silencio de medio instante, hecho acá mismo. Sirve para despertar un
    reproductor en el toque cuando todavía no hay nada que tocar. */
-var SILENCIO=(function(){
-  try{
-    var n=480, b=new Uint8Array(44+n), v=new DataView(b.buffer);
-    function txt(o,t){ for(var i=0;i<t.length;i++) b[o+i]=t.charCodeAt(i); }
-    txt(0,'RIFF'); v.setUint32(4,36+n,true); txt(8,'WAVEfmt ');
-    v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true);
-    v.setUint32(24,8000,true); v.setUint32(28,8000,true); v.setUint16(32,1,true);
-    v.setUint16(34,8,true); txt(36,'data'); v.setUint32(40,n,true);
-    for(var i=44;i<b.length;i++) b[i]=128;
-    return URL.createObjectURL(new Blob([b],{type:'audio/wav'}));
-  }catch(e){ return ''; }
-})();
+var SILENCIO=Nucleo.audio.silencio;     /* el mismo de todas las experiencias (el núcleo) */
 function despertar(a){
   /* En el toque: si no tiene nada puesto, se le pone el silencio. */
   if(!a.getAttribute('src') && SILENCIO){ a.src=SILENCIO; }
@@ -1055,45 +1399,8 @@ function pistaDice(t,quedarse){
   if(!quedarse) p._t=setTimeout(function(){p.classList.add('oculto');},4000);
 }
 
-/* ---- lo guardado en el teléfono ----
-   La llave lleva el archivo de Drive: si el cliente cambia la canción, el
-   archivo es otro y lo guardado ya no sirve. */
-function llaveAudio(cual){
-  var d=DATOS||{}, id=cual==='voz'?d.vozId:d.cancionId;
-  if(!id||!d.codigo) return '';
-  try{ return new URL('/__audio/'+encodeURIComponent(d.codigo)+'/'+cual+'/'+encodeURIComponent(id),location.href).href; }
-  catch(e){ return ''; }
-}
-function audioGuardado(cual,listo){
-  var k=llaveAudio(cual), hecho=false;
-  function fin(x){ if(hecho) return; hecho=true; clearTimeout(t); listo(x); }
-  /* Si el almacenamiento no contesta rápido, se sigue sin él. */
-  var t=setTimeout(function(){ fin(null); },1500);
-  if(!k||!window.caches){ fin(null); return; }
-  try{
-    caches.open(CAJA_AUDIO).then(function(c){ return c.match(k); })
-      .then(function(r){ return r ? r.blob() : null; })
-      .then(function(b){
-        if(b && b.size>500) fin({url:URL.createObjectURL(b), mime:b.type||'audio/mpeg', blob:b});
-        else fin(null);
-      })['catch'](function(){ fin(null); });
-  }catch(e){ fin(null); }
-}
-function guardarAudio(cual,blob){
-  var k=llaveAudio(cual);
-  if(!k||!window.caches||!blob) return;
-  try{
-    caches.open(CAJA_AUDIO).then(function(c){
-      return c.put(k,new Response(blob,{headers:{'Content-Type':blob.type||'audio/mpeg'}}))
-        .then(function(){ return c.keys(); })
-        .then(function(ks){
-          /* Los últimos ocho, nada más: un teléfono no tiene por qué cargar con
-             todos los universos que abrió en su vida. */
-          for(var i=0;i<ks.length-8;i++) c['delete'](ks[i]);
-        });
-    })['catch'](function(){});
-  }catch(e){}
-}
+/* ---- lo guardado en el teléfono: la caja del núcleo, la misma de los juegos ---- */
+function audioGuardado(cual,listo){ Nucleo.audio.guardado(cual,listo); }
 
 /* ---- una foto en base64, por JSONP (el plan B de las fotos) ---- */
 function fotoPorApi(n,ok,mal){
@@ -1109,107 +1416,11 @@ function fotoPorApi(n,ok,mal){
   document.head.appendChild(t);
 }
 
-/* ---- un pedazo, por JSONP ---- */
-function pedirTrozo(cual,parte,ok,mal){
-  var d=DATOS;
-  if(!d||!d.api){ mal&&mal(true); return; }
-  if(cual==='voz' ? !d.vozId : !d.cancionId){ mal&&mal(true); return; }
-  var nombre='__son'+(++RESCATE.n);
-  var t=document.createElement('script');
-  var reloj=setTimeout(function(){limpiar();mal&&mal(false);},40000);
-  function limpiar(){
-    clearTimeout(reloj);
-    try{delete window[nombre];}catch(e){window[nombre]=undefined;}
-    if(t.parentNode) t.parentNode.removeChild(t);
-  }
-  window[nombre]=function(r){
-    limpiar();
-    if(r&&r.ok&&r.r&&r.r.b64) ok(r.r);
-    /* Lo que el servidor contesta a propósito ("todavía no se puede abrir")
-       no se arregla reintentando. */
-    else mal&&mal(!!(r&&r.ok===false&&r.error));
-  };
-  t.onerror=function(){limpiar();mal&&mal(false);};
-  t.src=d.api+(d.api.indexOf('?')>=0?'&':'?')
-    +'vista=api&rfn=cancion&rcb='+nombre
-    +'&rargs='+encodeURIComponent(JSON.stringify([d.codigo,parte,cual,d.ver||'']));
-  document.head.appendChild(t);
-}
-
-/* Un pedazo sin rendirse a la primera: si a los siete segundos no contestó,
-   sale otro igual por detrás (Google puede estar despertando); si los dos
-   fallan, una vuelta más al rato. */
-function pedirTrozoFuerte(cual,parte,ok,mal){
-  var hecho=false, vivos=0, muertos=0, vuelta=0, refuerzo=null;
-  function uno(){
-    vivos++;
-    pedirTrozo(cual,parte,function(r){
-      if(hecho) return; hecho=true; clearTimeout(refuerzo); ok(r);
-    },function(fijo){
-      if(hecho) return;
-      muertos++;
-      if(fijo){ hecho=true; clearTimeout(refuerzo); mal(); return; }
-      if(muertos<vivos) return;              /* otro sigue en camino */
-      clearTimeout(refuerzo);
-      if(++vuelta>2){ hecho=true; mal(); return; }
-      setTimeout(ronda,vuelta*1500);
-    });
-  }
-  function ronda(){
-    if(hecho) return;
-    uno();
-    refuerzo=setTimeout(function(){ if(!hecho) uno(); },7000);
-  }
-  ronda();
-}
-
-/* Trae un audio entero y lo deja listo como archivo de este teléfono.
-   `avisa(hecho,total)` sirve para ir contando por pantalla. */
+/* ---- traer un audio entero: el motor del núcleo (pedazos con refuerzo, guardado en el
+   teléfono, y si ya se está trayendo se espera a ese). `avisa(hecho,total)` cuenta por pantalla. */
 function traerAudio(cual,avisa,ok,mal){
   if(TRAIDOS[cual]){ ok(TRAIDOS[cual]); return; }
-  /* Si ya lo está trayendo otro (la canción por detrás y el video a la vez),
-     se espera a ese en vez de pedirlo dos veces. */
-  if(TRAYENDO[cual]){ TRAYENDO[cual].push([ok,mal,avisa]); return; }
-  var esperan=TRAYENDO[cual]=[[ok,mal,avisa]];
-  function acabar(r){
-    delete TRAYENDO[cual];
-    esperan.forEach(function(x){ try{ if(r) x[0](r); else if(x[1]) x[1](); }catch(e){} });
-  }
-  audioGuardado(cual,function(g){
-    if(g){ TRAIDOS[cual]=g; acabar(g); return; }
-    var partes=[], total=0, hechos=0, mime='', roto=false;
-    function uno(i,listo){
-      pedirTrozoFuerte(cual,i,function(r){
-        if(roto) return;
-        if(partes[r.parte]==null) hechos++;
-        partes[r.parte]=r.b64; mime=r.mime||mime||'audio/mpeg'; total=r.total;
-        esperan.forEach(function(x){ if(x[2]) x[2](hechos,total); });
-        listo();
-      },function(){ if(roto) return; roto=true; acabar(null); });
-    }
-    /* El primero dice cuántos son; los demás van a la vez, de a tres. */
-    uno(0,function(){
-      if(total<=1){ armar(); return; }
-      var sig=1, vuelo=0;
-      (function lanzar(){
-        while(vuelo<3 && sig<total){
-          vuelo++;
-          uno(sig++,function(){ vuelo--; if(hechos>=total) armar(); else lanzar(); });
-        }
-      })();
-    });
-    function armar(){
-      if(roto) return;
-      try{
-        var bin=atob(partes.join('')), n=bin.length, bytes=new Uint8Array(n);
-        for(var k=0;k<n;k++) bytes[k]=bin.charCodeAt(k);
-        var blob=new Blob([bytes],{type:mime});
-        TRAIDOS[cual]={url:URL.createObjectURL(blob),mime:mime,blob:blob};
-        guardarAudio(cual,blob);
-        acabar(TRAIDOS[cual]);
-      }catch(e){ acabar(null); }
-    }
-  });
+  Nucleo.audio.traer(cual,avisa,function(r){ TRAIDOS[cual]=r; ok(r); },mal);
 }
 
 /* ---- la canción ---- */
@@ -1373,6 +1584,7 @@ document.getElementById('abrir').addEventListener('click',function(){
 });
 document.getElementById('ver').addEventListener('click',function(){
   esconder(s2);ver(s3);vivo=true;size();
+  nucleo(function(N){ N.boton(); });
   /* el botón aparece unos segundos después: primero que vea su universo */
   setTimeout(function(){ if(typeof pintarBotonCompartir==='function') pintarBotonCompartir(); },4000);
   var a=document.getElementById('audio');
@@ -1427,6 +1639,7 @@ document.getElementById('son').addEventListener('click',function(){
 });
 document.getElementById('volver').addEventListener('click',function(){
   vivo=false;esconder(s3);ver(s1);cerrarGlobo();
+  var mb=document.querySelector('.rn-bot'); if(mb) mb.remove();
   var a=document.getElementById('audio'); if(a.src) a.pause();
   hoja.style.transform='translateY(20px) scale(.96)';
 });
@@ -2142,6 +2355,221 @@ function nombrePara(){
   return p.length<=24 ? p : '';
 }
 
+/* ====================== EL ÁRBOL Y LA VELA EN 3D ======================
+   Se arman con three.js (el mismo de los juegos) en un lienzo aparte, y cada
+   cuadro se copia sobre el lienzo de siempre. Así lo demás no cambia: el
+   video para los estados, la foto que se abre, la pista, el botón de
+   compartir. Lo que se toca (las esferas, la mecha) se calcula proyectando
+   el 3D a la pantalla, y las fotos de las esferas se pintan en 2D encima,
+   justo donde cae cada esfera: una foto que llegó sin permiso de copia no
+   se puede subir al 3D, pero en 2D sí se ve. Si three.js no baja (sin
+   señal), queda el dibujo 2D de antes. */
+var T3D={pidio:false,esperan:[]};
+function cargar3D(cb){
+  if(window.THREE){ cb(); return; }
+  T3D.esperan.push(cb); if(T3D.pidio) return; T3D.pidio=true;
+  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; s.async=true;
+  s.onload=function(){ var l=T3D.esperan; T3D.esperan=[]; l.forEach(function(f){ try{ f(); }catch(e){ if(window.console) console.log(e); } }); };
+  document.head.appendChild(s);
+}
+/* El motor: un solo renderizador que sigue el tamaño del lienzo (también
+   cuando el video lo cambia a 1080×1920 mientras graba). */
+function motor3D(){
+  var R=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+  R.outputEncoding=THREE.sRGBEncoding; R.toneMapping=THREE.ACESFilmicToneMapping; R.toneMappingExposure=1.15;
+  var w0=0,h0=0,d0=0, v=null;
+  return {R:R,
+    pintar:function(E,C){
+      var d=Math.min(DPR,2);
+      if(W!==w0||H!==h0||d!==d0){ w0=W; h0=H; d0=d; R.setPixelRatio(1); R.setSize(Math.max(1,Math.round(W*d)),Math.max(1,Math.round(H*d)),false); C.aspect=W/H; C.updateProjectionMatrix(); }
+      R.render(E,C); g.drawImage(R.domElement,0,0,W,H); },
+    pantalla:function(p,C){ v=v||new THREE.Vector3(); v.copy(p).project(C); return {x:(v.x+1)/2*W, y:(1-v.y)/2*H}; }};
+}
+function lienzoT(w,h,fn){ var c=document.createElement('canvas'); c.width=w; c.height=h; fn(c.getContext('2d'),w,h);
+  var t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; return t; }
+function brilloT(col){ return lienzoT(128,128,function(x,w,h){ var gr=x.createRadialGradient(64,64,0,64,64,64);
+  gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,col||'rgba(255,230,190,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,w,h); }); }
+function sprite3(tex,col,esc){ var s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,color:col||'#FFFFFF',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  s.scale.setScalar(esc||1); return s; }
+
+/* ---------------- el árbol ----------------
+   Un pino de verdad: cinco capas de ramas con puntas irregulares, luces en
+   espiral que se van prendiendo, la estrella arriba, regalos al pie, una
+   ventana con nieve atrás y copos cayendo. La cámara se mece despacio. */
+function arbol3D(S,sitio,NL){
+  var M=motor3D(), E=new THREE.Scene(), C=new THREE.PerspectiveCamera(36,W/H||.5,.1,60);
+  E.background=lienzoT(8,512,function(x,w,h){ var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#060a18'); gr.addColorStop(.6,'#0b1126'); gr.addColorStop(1,'#140d10'); x.fillStyle=gr; x.fillRect(0,0,w,h); });
+  E.fog=new THREE.Fog('#0a0f22',9,20);
+  E.add(new THREE.AmbientLight('#8894c8',.32));
+  var luna=new THREE.DirectionalLight('#9fb6ff',.45); luna.position.set(-3,5,-4); E.add(luna);
+  var calida=new THREE.PointLight(HX1,.4,9,1.6); calida.position.set(0,1.5,1.3); E.add(calida);
+  /* el cuarto: piso de madera, alfombra, la pared y la ventana con nieve */
+  var madera=lienzoT(256,256,function(x,w,h){ x.fillStyle='#2a1a12'; x.fillRect(0,0,w,h); for(var i=0;i<8;i++){ x.fillStyle=i%2?'#2f1d14':'#26170f'; x.fillRect(0,i*32,w,31); }
+    for(var k=0;k<400;k++){ x.fillStyle='rgba(0,0,0,.12)'; x.fillRect(Math.random()*w,Math.random()*h,20+Math.random()*40,1); } });
+  madera.wrapS=madera.wrapT=THREE.RepeatWrapping; madera.repeat.set(4,4);
+  var piso=new THREE.Mesh(new THREE.CircleGeometry(9,48),new THREE.MeshStandardMaterial({map:madera,roughness:.85})); piso.rotation.x=-Math.PI/2; E.add(piso);
+  var alfombra=new THREE.Mesh(new THREE.CircleGeometry(1.9,48),new THREE.MeshStandardMaterial({color:hex(mez(C3,[20,10,10],.55)),roughness:1})); alfombra.rotation.x=-Math.PI/2; alfombra.position.y=.01; E.add(alfombra);
+  var pared=new THREE.Mesh(new THREE.PlaneGeometry(20,9),new THREE.MeshStandardMaterial({color:'#1a2138',roughness:1})); pared.position.set(0,4,-4.2); E.add(pared);
+  var ventanaT=lienzoT(256,320,function(x,w,h){ var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#0e1f4a'); gr.addColorStop(1,'#2a3f78'); x.fillStyle=gr; x.fillRect(0,0,w,h);
+    x.fillStyle='#FFF4D6'; x.beginPath(); x.arc(190,60,22,0,6.3); x.fill();
+    for(var i=0;i<60;i++){ x.fillStyle='rgba(255,255,255,'+(.3+Math.random()*.6)+')'; x.fillRect(Math.random()*w,Math.random()*h*.7,1.5,1.5); }
+    x.fillStyle='#dfe8f7'; x.beginPath(); x.moveTo(0,h); x.lineTo(0,h*.78); x.quadraticCurveTo(w*.3,h*.7,w*.55,h*.8); x.quadraticCurveTo(w*.8,h*.72,w,h*.76); x.lineTo(w,h); x.fill();
+    x.fillStyle='#16324f'; [[40,.78],[90,.74],[210,.76]].forEach(function(p){ x.beginPath(); x.moveTo(p[0],h*p[1]-60); x.lineTo(p[0]-18,h*p[1]); x.lineTo(p[0]+18,h*p[1]); x.fill(); }); });
+  var ventana=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3),new THREE.MeshBasicMaterial({map:ventanaT,fog:false})); ventana.position.set(2.3,3.1,-4.15); E.add(ventana);
+  var marco=new THREE.MeshStandardMaterial({color:'#3a2a20',roughness:.8});
+  [[0,1.52,2.6,.12],[0,-1.52,2.6,.12],[-1.24,0,.12,3.1],[1.24,0,.12,3.1],[0,0,.07,3],[0,0,2.4,.07]].forEach(function(b){ var m=new THREE.Mesh(new THREE.BoxGeometry(b[2],b[3],.08),marco); m.position.set(2.3+b[0],3.1+b[1],-4.1); E.add(m); });
+  /* el pino */
+  var agujas=lienzoT(128,128,function(x,w,h){ x.fillStyle='#1c5a33'; x.fillRect(0,0,w,h);
+    for(var i=0;i<700;i++){ var a=Math.random()*6.3, l=4+Math.random()*7, px=Math.random()*w, py=Math.random()*h; x.strokeStyle=['#2a7443','#1b5230','#338649','#185030'][i%4]; x.lineWidth=1.6;
+      x.beginPath(); x.moveTo(px,py); x.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l*.4+l*.6); x.stroke(); } });
+  agujas.wrapS=agujas.wrapT=THREE.RepeatWrapping; agujas.repeat.set(3,1);
+  var verde=new THREE.MeshStandardMaterial({map:agujas,color:'#FFFFFF',roughness:.9,flatShading:true,side:THREE.DoubleSide});
+  var Y0=.55, Y1=3.35;                                  /* donde empiezan las ramas y la punta */
+  function radio(y){ return Math.max(.05,(Y1-y)/(Y1-Y0)*1.3); }
+  var arbol=new THREE.Group(); E.add(arbol);
+  var relleno=new THREE.Mesh(new THREE.ConeGeometry(1.08,Y1-Y0,24),new THREE.MeshStandardMaterial({color:'#0e3a20',roughness:1})); relleno.position.y=(Y0+Y1)/2-.05; arbol.add(relleno);
+  for(var k=0;k<5;k++){
+    var yb=Y0+k*.52, alto=1.12-k*.1, r=radio(yb)*1.12+.08, geo=new THREE.ConeGeometry(r,alto,30,3,true), p=geo.attributes.position;
+    for(var i=0;i<p.count;i++){ var vy=p.getY(i); if(vy>alto/2-.01) continue;   /* la punta queda en su sitio */
+      var f=1+(Math.random()-.5)*.2, abajo=vy<-alto/2+.01; p.setX(i,p.getX(i)*f); p.setZ(i,p.getZ(i)*f); if(abajo) p.setY(i,vy-(i%2?.07:0)-Math.random()*.04); }
+    geo.computeVertexNormals(); var capa=new THREE.Mesh(geo,verde); capa.position.y=yb+alto/2; capa.rotation.y=k*.7; arbol.add(capa);
+  }
+  var tronco=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.5,12),new THREE.MeshStandardMaterial({color:'#4a2f1c',roughness:.9})); tronco.position.y=.45; arbol.add(tronco);
+  var maceta=new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.42,28),new THREE.MeshStandardMaterial({color:hex(mez(C3,[0,0,0],.3)),roughness:.5,metalness:.1})); maceta.position.y=.21; arbol.add(maceta);
+  var aro=new THREE.Mesh(new THREE.TorusGeometry(.42,.025,8,40),new THREE.MeshStandardMaterial({color:'#D8B45A',metalness:.8,roughness:.3})); aro.rotation.x=Math.PI/2; aro.position.y=.4; arbol.add(aro);
+  /* regalos al pie, con cinta y moño */
+  [[-.95,.35,.34,C1,.4],[.9,.15,.28,C3,-.3],[-.45,.95,.24,C2,.2],[.55,.8,.3,[120,170,255],.9]].forEach(function(q){
+    var b=new THREE.Group(), s=q[2], col=hex(q[3]), cinta=new THREE.MeshStandardMaterial({color:hex(mez(q[3],BL,.65)),roughness:.4,metalness:.2});
+    var caja=new THREE.Mesh(new THREE.BoxGeometry(s,s*.8,s),new THREE.MeshStandardMaterial({color:col,roughness:.6})); caja.position.y=s*.4; b.add(caja);
+    var c1=new THREE.Mesh(new THREE.BoxGeometry(s*1.02,s*.82,s*.16),cinta); c1.position.y=s*.4; b.add(c1);
+    var c2=new THREE.Mesh(new THREE.BoxGeometry(s*.16,s*.82,s*1.02),cinta); c2.position.y=s*.4; b.add(c2);
+    [-1,1].forEach(function(l){ var mo=new THREE.Mesh(new THREE.TorusGeometry(s*.14,s*.045,8,16),cinta); mo.position.set(l*s*.12,s*.86,0); mo.rotation.set(0,Math.PI/2,l*.6); b.add(mo); });
+    b.position.set(q[0],0,q[1]); b.rotation.y=q[4]; E.add(b); });
+  /* las luces en espiral: foquitos y su brillo */
+  var COLS=[HX1,HX2,'#FF5A5A','#58D2FF','#FFD84D','#8CFF72',hex(mez(C1,BL,.4))].map(function(c){ return new THREE.Color(c); });
+  var PL=[], pg=new THREE.BufferGeometry(), pp=new Float32Array(NL*3), pc=new Float32Array(NL*3);
+  for(i=0;i<NL;i++){ var u=.06+.88*i/NL, yy=Y1-.15-u*(Y1-Y0-.2), an=u*Math.PI*2*3.3, rr=radio(yy)*1.06+.04;
+    PL.push({x:Math.sin(an)*rr,y:yy,z:Math.cos(an)*rr,c:COLS[i%COLS.length],f:Math.random()*6.3}); pp.set([PL[i].x,PL[i].y,PL[i].z],i*3); }
+  pg.setAttribute('position',new THREE.BufferAttribute(pp,3)); pg.setAttribute('color',new THREE.BufferAttribute(pc,3));
+  var brillos=new THREE.Points(pg,new THREE.PointsMaterial({size:.42,map:brilloT(),vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+  E.add(brillos);
+  var foco=new THREE.InstancedMesh(new THREE.SphereGeometry(.032,8,6),new THREE.MeshBasicMaterial({color:'#FFFFFF'}),NL), o3=new THREE.Object3D();
+  PL.forEach(function(L,i){ o3.position.set(L.x,L.y,L.z); o3.updateMatrix(); foco.setMatrixAt(i,o3.matrix); foco.setColorAt(i,new THREE.Color('#3a4a42')); }); E.add(foco);
+  /* las esferas: la bola de cristal de color va en 3D; la foto se pinta encima en 2D */
+  var bolas=[], matB=[new THREE.MeshStandardMaterial({color:HX1,metalness:.55,roughness:.22}),new THREE.MeshStandardMaterial({color:HX3,metalness:.55,roughness:.22})];
+  var capuchon=new THREE.MeshStandardMaterial({color:'#D8B45A',metalness:.85,roughness:.3});
+  function anclaDe(i,n){ var s=sitio(i,n), y=Y1-.35-s[0]*(Y1-Y0-.55), an=s[1]*1.9, rr=radio(y)+.2; return new THREE.Vector3(Math.sin(an)*rr,y,Math.cos(an)*rr); }
+  function bolasPara(n){ while(bolas.length<n){ var b=new THREE.Group(), m=new THREE.Mesh(new THREE.SphereGeometry(.21,24,18),matB[bolas.length%2]); b.add(m);
+      var cp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.07,12),capuchon); cp.position.y=.23; b.add(cp); E.add(b); bolas.push(b); }
+    bolas.forEach(function(b,i){ b.visible=i<n; }); }
+  /* la estrella */
+  var forma=new THREE.Shape(); for(i=0;i<10;i++){ var aa=Math.PI/2+i*Math.PI/5, ra=i%2?.1:.25; if(i) forma.lineTo(Math.cos(aa)*ra,Math.sin(aa)*ra); else forma.moveTo(Math.cos(aa)*ra,Math.sin(aa)*ra); }
+  var mEst=new THREE.MeshStandardMaterial({color:'#FFD45A',emissive:'#FFB020',emissiveIntensity:0,metalness:.6,roughness:.3});
+  var estrella=new THREE.Mesh(new THREE.ExtrudeGeometry(forma,{depth:.06,bevelEnabled:true,bevelSize:.02,bevelThickness:.02,bevelSegments:2}),mEst); estrella.position.set(0,Y1+.2,-.03); E.add(estrella);
+  var halo=sprite3(brilloT('rgba(255,210,120,.5)'),'#FFE3A0',2.4); halo.position.copy(estrella.position); E.add(halo);
+  var luzE=new THREE.PointLight('#FFD48A',0,6,1.5); luzE.position.copy(estrella.position); E.add(luzE);
+  /* los copos */
+  var NN=320, ng=new THREE.BufferGeometry(), np=new Float32Array(NN*3); for(i=0;i<NN;i++) np.set([(Math.random()-.5)*10,Math.random()*6,-4+Math.random()*6.5],i*3);
+  ng.setAttribute('position',new THREE.BufferAttribute(np,3));
+  var copos=new THREE.Points(ng,new THREE.PointsMaterial({size:.06,map:brilloT(),color:'#FFFFFF',transparent:true,opacity:.8,depthWrite:false})); E.add(copos);
+  var gris=new THREE.Color('#3a4a42'), tmp=new THREE.Color(), derecha=new THREE.Vector3();
+  function camara(t){ var d=Math.max(6.2,1.75/(Math.tan(18*Math.PI/180)*(W/H||.5))), a=Math.sin(t*.18)*.22;
+    C.position.set(Math.sin(a)*d,2.05,Math.cos(a)*d); C.lookAt(0,1.62,0); C.updateMatrixWorld(); }
+  camara(0);
+  return {
+    /* dónde cae cada esfera en la pantalla (x, y y su radio), para pintar la foto y para tocarla */
+    esferas:function(F){ var n=F.length, l=[]; bolasPara(n);
+      for(var i=0;i<n;i++){ var a=anclaDe(i,n); bolas[i].position.copy(a).add(new THREE.Vector3(0,-.02,0));
+        if(!F[i].lista) continue;
+        var p=M.pantalla(a,C); derecha.setFromMatrixColumn(C.matrixWorld,0).multiplyScalar(.19).add(a); var q=M.pantalla(derecha,C);
+        l.push({x:p.x,y:p.y,r:Math.max(14,Math.hypot(q.x-p.x,q.y-p.y)),f:F[i],i:F[i].j}); }
+      return l; },
+    estrellaEn:function(){ return M.pantalla(estrella.position,C); },
+    pintar:function(){ var t=S.t, pr=S.todo?1:S.prendido, es=S.todo?1:S.estrella;
+      camara(t);
+      var prendidas=Math.round(pr*NL);
+      for(var i=0;i<NL;i++){ var L=PL[i], on=i<prendidas, tw=.6+.4*Math.sin(t*3+L.f);
+        tmp.copy(L.c).multiplyScalar(on?tw*1.1:0); pc[i*3]=tmp.r; pc[i*3+1]=tmp.g; pc[i*3+2]=tmp.b;
+        foco.setColorAt(i,on?tmp.copy(L.c).lerp(new THREE.Color('#FFFFFF'),.35):gris); }
+      pg.attributes.color.needsUpdate=true; if(foco.instanceColor) foco.instanceColor.needsUpdate=true;
+      calida.intensity=.35+1.5*pr; mEst.emissiveIntensity=.1+1.6*es; luzE.intensity=2.2*es; halo.material.opacity=es; halo.scale.setScalar(1.6+1.2*es+Math.sin(t*2)*.1*es);
+      estrella.rotation.y=Math.sin(t*.8)*.35;
+      var a=ng.attributes.position.array; for(i=0;i<NN;i++){ a[i*3+1]-=.006; a[i*3]+=Math.sin(t+i)*.002; if(a[i*3+1]<0) a[i*3+1]=6; } ng.attributes.position.needsUpdate=true;
+      M.pintar(E,C); }
+  };
+}
+
+/* ---------------- la vela ----------------
+   Una vela de cera de verdad sobre un platito de bronce, en una mesa de
+   madera con pétalos, en un cuarto a oscuras. La llama son capas de luz que
+   tiemblan, y su luz alumbra la mesa y la pared. Apagada, sale un hilito
+   de humo de la mecha. */
+function vela3D(S){
+  var M=motor3D(), E=new THREE.Scene(), C=new THREE.PerspectiveCamera(34,W/H||.5,.05,40);
+  E.background=new THREE.Color('#040305'); E.fog=new THREE.Fog('#050406',6,14);
+  var amb=new THREE.AmbientLight('#6a74a0',.18); E.add(amb);
+  var luz=new THREE.PointLight('#FFB066',0,9,1.8); E.add(luz);
+  var madera=lienzoT(512,256,function(x,w,h){ x.fillStyle='#3a2416'; x.fillRect(0,0,w,h);
+    for(var i=0;i<140;i++){ var y=Math.random()*h; x.strokeStyle='rgba('+(i%2?'20,10,5':'90,55,30')+','+(.15+Math.random()*.25)+')'; x.lineWidth=1+Math.random()*2;
+      x.beginPath(); x.moveTo(0,y); for(var k=0;k<=8;k++) x.lineTo(k*w/8,y+Math.sin(k*1.3+i)*4); x.stroke(); } });
+  madera.wrapS=madera.wrapT=THREE.RepeatWrapping; madera.repeat.set(2,2);
+  var mesa=new THREE.Mesh(new THREE.PlaneGeometry(14,10),new THREE.MeshStandardMaterial({map:madera,roughness:.55,metalness:.05})); mesa.rotation.x=-Math.PI/2; E.add(mesa);
+  var pared=new THREE.Mesh(new THREE.PlaneGeometry(20,10),new THREE.MeshStandardMaterial({color:'#2a2220',roughness:1})); pared.position.set(0,4,-3.2); E.add(pared);
+  /* platito de bronce */
+  var bronce=new THREE.MeshStandardMaterial({color:'#B8894A',metalness:.85,roughness:.32});
+  var plato=new THREE.Mesh(new THREE.CylinderGeometry(.62,.55,.05,48),bronce); plato.position.y=.025; E.add(plato);
+  var borde=new THREE.Mesh(new THREE.TorusGeometry(.61,.025,10,48),bronce); borde.rotation.x=Math.PI/2; borde.position.y=.06; E.add(borde);
+  /* la vela: cera con la parte de arriba derretida y gotas por el costado */
+  var ALTO=1.15, R=.3;
+  var mCera=new THREE.MeshStandardMaterial({color:'#F6E6CC',roughness:.45,emissive:'#FF9A40',emissiveIntensity:0});
+  var cuerpo=new THREE.Mesh(new THREE.CylinderGeometry(R,R*1.02,ALTO,48,6),mCera); cuerpo.position.y=.05+ALTO/2; E.add(cuerpo);
+  var labio=new THREE.Mesh(new THREE.TorusGeometry(R*.93,.035,10,48),mCera); labio.rotation.x=Math.PI/2; labio.position.y=.05+ALTO; E.add(labio);
+  var mPoza=new THREE.MeshStandardMaterial({color:'#FFE9C4',roughness:.2,emissive:'#FFB060',emissiveIntensity:0});
+  var poza=new THREE.Mesh(new THREE.CircleGeometry(R*.9,40),mPoza); poza.rotation.x=-Math.PI/2; poza.position.y=.05+ALTO-.04; E.add(poza);
+  for(var i=0;i<6;i++){ var a=i/6*6.28+.4, largo=.12+Math.random()*.28, go=new THREE.Mesh(new THREE.CylinderGeometry(.03,.036,largo,8),mCera), punta=new THREE.Mesh(new THREE.SphereGeometry(.038,10,8),mCera);
+    go.position.set(Math.cos(a)*R*.99,.05+ALTO-largo/2-.02,Math.sin(a)*R*.99); punta.position.set(go.position.x,go.position.y-largo/2,go.position.z); E.add(go); E.add(punta); }
+  var mecha=new THREE.Mesh(new THREE.CylinderGeometry(.012,.014,.14,6),new THREE.MeshStandardMaterial({color:'#1a120c',roughness:1})); mecha.position.set(0,.05+ALTO+.03,0); mecha.rotation.z=.12; E.add(mecha);
+  var brasa=new THREE.Mesh(new THREE.SphereGeometry(.017,8,6),new THREE.MeshBasicMaterial({color:'#FF6A20'})); brasa.position.set(-.008,.05+ALTO+.1,0); E.add(brasa);
+  var PUNTA=new THREE.Vector3(-.008,.05+ALTO+.1,0);
+  /* pétalos sobre la mesa */
+  var colsP=[HX1,HX3,'#FF7AA8','#E8285A'];
+  for(i=0;i<16;i++){ var pe=new THREE.Mesh(new THREE.SphereGeometry(.07,10,6),new THREE.MeshStandardMaterial({color:colsP[i%4],roughness:.6})); pe.scale.set(1,.12,.7);
+    var an=Math.random()*6.28, rr=.8+Math.random()*1.3; pe.position.set(Math.cos(an)*rr,.012,Math.sin(an)*rr*.6+.3); pe.rotation.y=Math.random()*6; E.add(pe); }
+  /* la llama: tres capas que tiemblan, un halo grande y el humo */
+  function gotaT(c1,c2){ return lienzoT(64,128,function(x,w,h){ var gr=x.createRadialGradient(32,92,2,32,80,60); gr.addColorStop(0,c1); gr.addColorStop(.5,c2); gr.addColorStop(1,'rgba(0,0,0,0)');
+    x.fillStyle=gr; x.beginPath(); x.moveTo(32,4); x.bezierCurveTo(52,50,60,86,32,124); x.bezierCurveTo(4,86,12,50,32,4); x.fill(); }); }
+  var llama=new THREE.Group(); llama.position.copy(PUNTA); E.add(llama);
+  var capas=[[gotaT('rgba(255,120,40,.9)','rgba(255,90,20,.35)'),.34,.62],[gotaT('rgba(255,200,90,1)','rgba(255,150,50,.6)'),.2,.42],[gotaT('rgba(255,250,225,1)','rgba(255,230,170,.8)'),.1,.24]].map(function(c){
+    var s=new THREE.Sprite(new THREE.SpriteMaterial({map:c[0],transparent:true,depthWrite:false,blending:THREE.AdditiveBlending})); s.scale.set(c[1],c[2],1); s.center.set(.5,.08); llama.add(s); return s; });
+  var azul=new THREE.Sprite(new THREE.SpriteMaterial({map:brilloT('rgba(80,130,255,.6)'),color:'#6FA0FF',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending})); azul.scale.set(.09,.06,1); llama.add(azul);
+  var halo=sprite3(brilloT('rgba(255,170,90,.35)'),'#FFB070',3.2); halo.position.copy(PUNTA).add(new THREE.Vector3(0,.18,0)); E.add(halo);
+  var NH=26, humo=[], humoT=brilloT('rgba(200,200,210,.3)');
+  for(i=0;i<NH;i++){ var hs=new THREE.Sprite(new THREE.SpriteMaterial({map:humoT,color:'#9AA0AA',transparent:true,opacity:0,depthWrite:false})); hs.userData={v:Math.random()}; E.add(hs); humo.push(hs); }
+  var v0=new THREE.Vector3();
+  function camara(){ var asp=W/H||.5, d=Math.max(4.2,1.2/(Math.tan(17*Math.PI/180)*asp));
+    C.position.set(0,1.3+d*.13,d); C.lookAt(0,1.62,0); C.updateMatrixWorld(); }
+  camara();
+  return {
+    /* la vela en la pantalla: centro, ancho, alto y la mecha, para el anillo de tocar y los textos */
+    geo:function(){ camara(); var top=M.pantalla(v0.set(0,.05+ALTO,0),C), base=M.pantalla(v0.set(0,.05,0),C), lado=M.pantalla(v0.set(R,.05+ALTO,0),C), me=M.pantalla(PUNTA,C);
+      return {x:top.x, w:Math.abs(lado.x-top.x)*2, h:base.y-top.y, top:top.y, mecha:{x:me.x,y:me.y}}; },
+    pintar:function(){ var t=S.t, L=S.luz, fl=.86+Math.sin(t*23)*.07+Math.sin(t*37.3)*.06+Math.sin(t*5.1)*.04;
+      camara();
+      llama.visible=L>.02; halo.visible=L>.02;
+      llama.position.set(PUNTA.x+Math.sin(t*2.3)*.012,PUNTA.y,PUNTA.z); llama.rotation.z=Math.sin(t*2.1)*.06;
+      capas.forEach(function(s,k){ s.material.opacity=L*(k===0?.75:1); s.scale.y=[.62,.42,.24][k]*(.9+.12*Math.sin(t*9.1+k)+.06*Math.sin(t*13.7))*Math.max(.3,L); });
+      azul.material.opacity=L*.6; halo.material.opacity=L*.9*fl;
+      luz.position.set(PUNTA.x,PUNTA.y+.22,PUNTA.z+.05); luz.intensity=L*3.2*fl;
+      mCera.emissiveIntensity=L*.36*fl; mPoza.emissiveIntensity=L*.65*fl; amb.intensity=.14+L*.06;
+      brasa.material.color.set(L>.02?'#FF9A40':(S.presion>0?'#FF5A10':'#3a1a0a'));
+      /* humo: solo apagada; más fuerte mientras se aprieta */
+      for(var i=0;i<NH;i++){ var hs=humo[i], u=(hs.userData.v+t*.18+i/NH)%1;
+        hs.position.set(PUNTA.x+Math.sin(u*9+i)*.05*u,PUNTA.y+.05+u*1.3,PUNTA.z+Math.cos(u*7+i)*.03*u); hs.scale.setScalar(.03+u*.16);
+        hs.material.opacity=(1-L)*(1-u)*u*(S.presion>0?.7:.28); }
+      M.pintar(E,C); }
+  };
+}
+
 /* ---------------- el árbol ---------------- */
 function escenaArbol(){
   var S={abiertas:{}, pendiente:-1, prendido:0, estrella:0, t:0, nieve:[], chispas:[],
@@ -2156,6 +2584,8 @@ function escenaArbol(){
   }
   var LUCES=[], NL=64;
   var COLS=[HX1,HX2,'#FF5A5A','#58D2FF','#FFD84D','#8CFF72',hex(mez(C1,BL,.4))];
+  /* el árbol en 3D apenas baje three.js; mientras, el de siempre */
+  var A3=null; cargar3D(function(){ try{ A3=arbol3D(S,sitio,NL); window.__arbol3D=A3; window.__arbolEsferas=function(){ return esferas().map(function(s){ return {x:s.x,y:s.y,r:s.r}; }); }; }catch(e){ A3=null; } });
   for(var i=0;i<NL;i++){
     LUCES.push({u:.1+.8*i/NL, v:Math.sin(i*.93)*.92, c:COLS[i%COLS.length], f:Math.random()*6.28});
   }
@@ -2173,6 +2603,7 @@ function escenaArbol(){
      foto rota no deja un hueco: las demás se reparten sin ella. */
   function esferas(){
     var F=fotosConSitio().slice(0,MAXE).filter(function(x){ return !x.rota; });
+    if(A3) return A3.esferas(F);
     var G=geo(), n=F.length, r=Math.max(18,Math.min(W,H)*(n<=4?.085:.07)), l=[];
     for(var i=0;i<n;i++){
       if(!F[i].lista) continue;
@@ -2193,10 +2624,10 @@ function escenaArbol(){
     return c;
   }
   function terminar(){
-    S.fin=true; S.finT=S.t;
-    var G=geo();
+    S.fin=true; S.finT=S.t; nucleo(function(N){ N.termino(); });
+    var G=geo(), E0=A3?A3.estrellaEn():{x:G.cx,y:G.top-H*.02};
     for(var i=0;i<70;i++){ var a=Math.random()*6.283, v=1+Math.random()*3;
-      S.chispas.push({x:G.cx,y:G.top-H*.02,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.5,v:1,
+      S.chispas.push({x:E0.x,y:E0.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.5,v:1,
                       c:[HX1,HX2,'#FFFFFF','#FFD84D'][i%4]}); }
     pistaEscena('');
   }
@@ -2351,7 +2782,7 @@ function escenaArbol(){
   function pintarA(){
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
     var G=geo();
-    arbol(G); luces(G); estrella(G);
+    if(A3) A3.pintar(); else { arbol(G); luces(G); estrella(G); }
     esferas().forEach(function(s){ esfera(s,!!S.abiertas[s.i],S.pendiente===s.i); });
     /* chispas cuando se enciende la estrella */
     g.globalCompositeOperation='lighter';
@@ -2406,7 +2837,9 @@ function escenaVela(){
          velas:+(DATOS.corazones||0)||0, chispas:[], todo:false, antes:null,
          turno:-1, turnoT:0, visible:null, avisoT:null};
   var POR=5.5;
+  var V3=null; cargar3D(function(){ try{ V3=vela3D(S); window.__vela3D=V3; }catch(e){ V3=null; window.__vela3Derr=String(e&&e.stack||e); } });
   function geo(){
+    if(V3) return V3.geo();
     var w=Math.min(W*.2,86), h=H*.22, x=W/2, top=H*.56;
     return {x:x, w:w, h:h, top:top, mecha:{x:x, y:top-6}};
   }
@@ -2501,6 +2934,7 @@ function escenaVela(){
   function pintarV(){
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
     var G=geo();
+    if(V3) V3.pintar(); else {
     var fondo=g.createLinearGradient(0,0,0,H);
     fondo.addColorStop(0,'#050407'); fondo.addColorStop(1,'#0c0806');
     g.fillStyle=fondo; g.fillRect(0,0,W,H);
@@ -2519,6 +2953,7 @@ function escenaVela(){
     g.strokeStyle='#241a12'; g.lineWidth=2.5;
     g.beginPath(); g.moveTo(G.x,G.top); g.lineTo(G.mecha.x,G.mecha.y); g.stroke();
     if(S.luz>.01) llama(G);
+    }
     /* apagada: el anillo que dice dónde tocar y, mientras se aprieta, cuánto falta */
     if(!S.prendida && !S.todo){
       var lat=.5+.5*Math.sin(S.t*2.5);
@@ -2566,6 +3001,7 @@ function escenaVela(){
         g.restore();
       }
     } else {
+      if(!S.termino){ S.termino=true; nucleo(function(N){ N.termino(); }); }
       var msg=String(DATOS.msg||'').split('\n').filter(function(x){return x.trim();}).slice(0,4);
       g.save(); g.globalAlpha=alfa; g.textAlign='center'; g.fillStyle='#FFF1DA';
       g.shadowColor='rgba(0,0,0,.8)'; g.shadowBlur=10;
@@ -2696,16 +3132,7 @@ function hayGrabador(){
 function hayArmador(){
   return !!(window.VideoEncoder && window.VideoFrame && !MANCHADO);
 }
-function formatoVideo(){
-  /* El orden importa: mp4 con h264 es lo único que reproducen WhatsApp e
-     Instagram en cualquier teléfono. Lo demás es red de seguridad. */
-  var t=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1',
-         'video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
-  for(var i=0;i<t.length;i++){
-    try{ if(MediaRecorder.isTypeSupported(t[i])) return t[i]; }catch(e){}
-  }
-  return '';
-}
+function formatoVideo(){ return Nucleo.video.formato(); }   /* mp4 primero: el del núcleo, igual en todas */
 function pintarBotonCompartir(){
   var b=document.getElementById('compartir');
   if(!b) return;
@@ -3482,44 +3909,23 @@ function partirTexto(ctx,txt,ancho){
   return lineas;
 }
 
-/* El video listo NO se comparte solo. El iPhone exige que el menú de
-   compartir salga de un toque del dedo, y para cuando el video termina ya
-   pasaron catorce segundos desde el toque: lo bloquearía. Así que se muestra
-   el botón y comparte cuando él lo pulsa. */
+/* El video listo se ofrece en la hoja del núcleo, la misma de los juegos: Compartir (el
+   iPhone exige que el menú salga de un toque), Descargar o Cerrar. */
 function ofrecerVideo(blob,nombre,tipo){
-  var archivo=null;
-  try{ archivo=new File([blob],nombre,{type:tipo}); }catch(e){}
-  var puede = !!(archivo && navigator.canShare && navigator.canShare({files:[archivo]}));
-
-  document.getElementById('grab-fig').innerHTML='<div class="lis">\u2728</div>';
-  document.getElementById('grab-txt').textContent =
-    puede ? 'Tu video está listo' : 'Tu video está listo para descargar';
-  document.getElementById('grab-bots').innerHTML =
-      (puede?'<button id="b-comp">Compartir</button>':'')
-    + '<button id="b-desc"'+(puede?' class="tenue"':'')+'>Descargar al teléfono</button>'
-    + '<button id="b-cerr" class="tenue">CERRAR</button>';
-
-  if(puede) document.getElementById('b-comp').onclick=function(){
-    navigator.share({files:[archivo],title:NOMBRE_VIDEO})
-      .then(cerrarGrab).catch(function(){});
-  };
-  document.getElementById('b-desc').onclick=function(){ descargarVideo(blob,nombre); };
-  document.getElementById('b-cerr').onclick=cerrarGrab;
-}
-
-function descargarVideo(blob,nombre){
-  var u=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=u; a.download=nombre;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(function(){URL.revokeObjectURL(u);},6000);
-  document.getElementById('grab-txt').textContent=
-    'Descargado. Búscalo en tus archivos o en la galería y súbelo a tu estado.';
+  cerrarGrab();
+  Nucleo.video.ofrecer(blob,nombre,tipo,{titulo:NOMBRE_VIDEO,cerrar:'Cerrar'});
 }
 
 /* ---------- controles ---------- */
 var abiertoEn=0;
 /* Al cerrar una foto, el árbol enciende su esfera: por eso avisa. */
+/* Cada foto que se abre (en el universo, en una esfera del árbol o en la luz de la vela)
+   queda anotada en el progreso del regalo: así se va llenando el álbum de la mochila. */
+(function(){ var gb=document.getElementById('globo'), gi=document.getElementById('globo-img'); if(!gb||!gi||!window.MutationObserver) return;
+  new MutationObserver(function(){ if(!gb.classList.contains('on')) return; var s=gi.src, ks=[];
+    for(var j=0;j<IMGS.length;j++) if(IMGS[j] && IMGS[j].src===s) ks.push(j); if(!ks.length) return;
+    /* la misma foto puede estar dos veces: cuenta la primera que todavía no se había visto */
+    nucleo(function(N){ var k=ks.filter(function(j){ return !N.visto(j); })[0]; N.vio(k==null?ks[0]:k); var e=N.estado(); if(TIPO==='universo' && e.total && e.vistos>=e.total) N.termino(); }); }).observe(gb,{attributes:true,attributeFilter:['class']}); })();
 function cerrarGlobo(){
   var gb=document.getElementById('globo'), estaba=gb.classList.contains('on');
   gb.classList.remove('on');
