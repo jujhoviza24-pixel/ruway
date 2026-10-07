@@ -6,7 +6,7 @@
      dedicatoria, canción y nota de voz. -->
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v40">
+<meta name="ruway-version" content="v41">
 <!-- GENERADO POR construir.js desde Experiencias.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -127,11 +127,8 @@ button:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
 .mu.on{border-color:#fff;box-shadow:0 0 0 2px var(--rosa)}
 .chip{border:1px solid var(--borde);background:var(--tarjeta);color:var(--crema);border-radius:999px;padding:6px 11px;font:700 12px Nunito,sans-serif}
 .chip.on{background:var(--rosa);color:#2A0716;border-color:var(--rosa)}
-#b-rec{position:fixed;left:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:11;height:40px;border-radius:999px;border:1px solid rgba(255,233,168,.35);
+#b-comp{position:fixed;left:14px;bottom:calc(80px + env(safe-area-inset-bottom,0px));z-index:11;height:40px;border-radius:999px;border:1px solid rgba(255,233,168,.35);
   background:rgba(20,11,38,.62);color:#FFF1DA;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;gap:7px;padding:0 14px;font:800 13px Nunito,sans-serif}
-#b-rec .punto{width:10px;height:10px;border-radius:50%;background:#FF4D5E;box-shadow:0 0 8px #FF4D5E}
-#b-rec.grabando{background:#E53935;border-color:#E53935;color:#fff}
-#b-rec.grabando .punto{background:#fff;animation:late 1s ease-in-out infinite}
 #video-listo video{width:100%;max-height:52vh;border-radius:14px;background:#000;margin:4px 0 10px;display:block}
 .nota-v{font-size:13px}
 a.primario{display:inline-block;text-decoration:none}
@@ -174,7 +171,7 @@ a.suave{cursor:pointer}
 .isla-ui #inv button.on{border-color:#FFC94A;background:rgba(255,201,74,.3)}
 .isla-ui #inv canvas{width:30px;height:30px;image-rendering:pixelated;border-radius:4px}
 .isla-ui #inv b{font-size:24px;line-height:30px}
-body.isla #b-rec{bottom:auto;left:auto;right:12px;top:calc(88px + env(safe-area-inset-top,0px))}
+body.isla #b-comp{bottom:auto;left:auto;right:12px;top:calc(88px + env(safe-area-inset-top,0px))}
 body.isla .pista{bottom:calc(326px + env(safe-area-inset-bottom,0px))}
 ul.mis{list-style:none;padding:0;margin:8px 0 14px;text-align:left}
 ul.mis li{padding:9px 12px;border-radius:12px;background:var(--tarjeta);border:1px solid var(--borde);margin-bottom:7px;font-size:14px}
@@ -208,7 +205,7 @@ body.corre .marcador span{font-size:15px;letter-spacing:0}
 .bita-bot{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:6;display:flex;justify-content:center;align-items:center;gap:12px;padding:0 16px}
 .bita-bot button:not(.primario){width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,233,168,.35);background:rgba(20,11,38,.6);font-size:22px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 .bita-bot .primario.late{animation:late 1.6s ease-in-out infinite}
-body.bita #b-rec{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+body.bita #b-comp{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 .form-b{text-align:left}.form-b h2,.form-b .etiqueta{text-align:center;display:block}
 .tipos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 12px}
@@ -288,7 +285,6 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 <div id="espera"><div class="lazo"></div><p id="espera-txt">Abriendo tu regalo</p><button onclick="location.reload()">Reintentar</button></div>
 <div class="sonidos" id="sonidos" hidden>
   <button id="b-son" aria-label="Música" hidden>♪</button>
-  <button id="b-voz" aria-label="Mensaje de voz" hidden>🎙️</button>
 </div>
 <div id="app"></div>
 <div class="capa marca" id="portada" hidden><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><div class="carta">
@@ -306,7 +302,8 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 <div class="capa marca" id="final" hidden><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><i class="pet"></i><div class="carta">
   <div class="para" id="f-para"></div>
   <h2 id="f-tit"></h2><p id="f-txt"></p><div class="firma" id="f-de"></div>
-  <button class="primario" id="f-bt">Volver a empezar</button>
+  <button class="primario" id="f-comp">📲 Compartir en mi estado</button>
+  <button class="suave" id="f-bt">Volver a empezar</button>
 </div></div>
 <div class="aviso" id="aviso" hidden></div>
 
@@ -401,6 +398,8 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
     var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
     guardar(); if(P.dias.length>=2) logro('vuelve'); if(P.dias.length>=5) logro('fiel');
     if(o.boton!==false) N.boton(o.dentro||null);
+    /* la voz (el premio del final) se va trayendo por detrás desde ya */
+    if(o.premio!==false && hayVozP()) setTimeout(precargarP,2500);
   };
   /* un recuerdo que se vio (la clave es la que use la página: el número o la dirección de la foto) */
   N.vio=function(k){ if(!P||k==null) return; k=String(k).slice(0,300);
@@ -412,7 +411,9 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
   N.visto=function(k){ return !!(P && P.vistos[String(k)]); };
   N.gano=function(item,k){ if(!P||!ITEMS[item]) return; P.inv[item]=Math.min(9999,(P.inv[item]||0)+(k||1)); guardar(); latir();
     if(objetos()>=20) logro('coleccion'); };
-  N.termino=function(){ if(!P) return; if(!P.fin){ P.fin=1; guardar(); } logro('fin'); hecha(); };
+  N.termino=function(){ if(!P) return; if(!P.fin){ P.fin=1; guardar(); } logro('fin'); hecha();
+    /* aviso para la página (u.html abre el premio con esto) */
+    try{ window.dispatchEvent(new CustomEvent('ruway:fin')); }catch(e){} };
   N.estado=function(){ return {cod:cod,vistos:vistos(),total:totalFotos(),objetos:objetos(),inv:P?JSON.parse(JSON.stringify(P.inv)):{},logros:P?Object.keys(P.logros):[],fin:P?P.fin:0,dias:P?P.dias.length:0,
     exp:exp,pase:N.pase.lista()}; };
   N.pase={
@@ -552,6 +553,71 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
         catch(e){ acabar(null); } } }); }
   N.audio={silencio:SILENCIO,guardado:guardadoA,guardar:guardarA,traer:traerA,traido:function(cual){ return TRAIDOS[cual]||null; }};
 
+  /* ======================= el premio del final: la voz =======================
+     La nota de voz es el PREMIO: no se puede escuchar desde el inicio, se abre al terminar la
+     experiencia, tocando un regalo que se abre. Se trae por detrás desde que se abre la página
+     (para que al final suene al instante, aunque la señal sea mala). Mientras habla, la canción
+     baja. Sin voz, en su lugar sale una nota cariñosa con su nombre. Después, si la página lo
+     pide (o.final), la dedicatoria, el Pase y el botón para compartir el video en el estado. */
+  var PR={el:null,capa:null,cargando:false,baja:null,abierto:false,sono:0};
+  function hayVozP(){ return !!(D.vozId||D.voz); }
+  function precargarP(){ if(PR.cargando) return;
+    if(D.vozId){ PR.cargando=true; traerA('voz',null,function(){},function(){ PR.cargando=false; }); }
+    else if(D.voz){ PR.cargando=true; elP().preload='auto'; elP().src=String(D.voz); } }
+  function elP(){ if(PR.el) return PR.el; var a=PR.el=new Audio(); a.preload='auto';
+    a.addEventListener('playing',function(){ if(a.src===SILENCIO) return; PR.sono++; ondaP(true); });
+    a.addEventListener('pause',function(){ ondaP(false); subirM(); });
+    a.addEventListener('ended',function(){ if(a.src===SILENCIO) return; ondaP(false); subirM(); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='▶ Escuchar otra vez'; dice('Escúchalo otra vez cuando quieras'); });
+    return a; }
+  function dice(t){ var e=PR.capa&&PR.capa.querySelector('.rn-pr-est'); if(e) e.textContent=t; }
+  function ondaP(si){ var o=PR.capa&&PR.capa.querySelector('.rn-onda'); if(o) o.classList.toggle('suena',!!si); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b&&si) b.textContent='⏸ Pausar'; if(si) dice('Escuchando su voz'); }
+  /* la canción baja mientras habla la voz; donde el volumen no se deja tocar (iPhone), se pausa */
+  function bajarM(m){ if(!m||m.paused||PR.baja) return; PR.baja={m:m,vol:m.volume}; try{ m.volume=.18; }catch(e){} if(Math.abs(m.volume-.18)>.02){ PR.baja.paro=true; m.pause(); } }
+  function subirM(){ var b=PR.baja; if(!b) return; PR.baja=null; try{ b.m.volume=b.vol; }catch(e){} if(b.paro){ try{ var p=b.m.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){} } }
+  function sonarP(musica){ var a=elP(); dice('Preparando su voz…');
+    function poner(u){ if(PR.capa==null) return; if(a.src!==u) a.src=u; try{ a.currentTime=0; }catch(e){} var m=typeof musica==='function'?musica():musica; bajarM(m);
+      try{ var p=a.play(); if(p&&p.then) p.then(function(){ ondaP(true); }); if(p&&p.catch) p.catch(function(){ subirM(); dice('Toca ▶ para escucharlo'); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='▶ Escuchar'; }); }catch(e){} }
+    if(D.vozId) traerA('voz',null,function(r){ poner(r.url); },function(){ PR.cargando=false; dice('Su mensaje no cargó. Toca para intentar otra vez'); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='↻ Intentar otra vez'; });
+    else if(D.voz) poner(String(D.voz)); }
+  function cerrarP(){ if(PR.el){ try{ PR.el.pause(); }catch(e){} } subirM(); if(PR.capa){ PR.capa.remove(); PR.capa=null; } }
+  /* o = {musica: el reproductor de la canción (o una función que lo dé), final:{titulo, compartir}, alCerrar} */
+  function mostrarP(o){ o=o||{}; estilos(); cerrarP(); PR.abierto=false;
+    var tm=D.tema||{}, para=String(D.para||'').trim().slice(0,40), de=String(D.de||'').trim().slice(0,40), voz=hayVozP();
+    var c=PR.capa=document.createElement('div'); c.className='rn-capa rn-premio'; c.id='rn-premio';
+    c.style.setProperty('--rn-c1',hexOk(tm.c1)||'#FF8FAB'); c.style.setProperty('--rn-c3',hexOk(tm.c3)||'#C2476B');
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Tu premio"><div class="rn-pr-uno"><h2>🎁 ¡Llegaste al final!</h2><p class="rn-sub"></p>'
+      +'<button type="button" class="rn-cofre" aria-label="Abrir tu premio"><i class="luz"></i><i class="cu"></i><i class="ta"></i><i class="ci"></i><i class="lz"></i></button>'
+      +'<p class="rn-toca">Toca el regalo para abrirlo</p></div><div class="rn-pr-dos" hidden></div><div class="rn-pr-tres" hidden></div><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
+    c.querySelector('.rn-sub').textContent=voz?'Te ganaste un premio: '+(de?de+' te dejó':'te dejaron')+' algo que solo se abre al final.':'Te ganaste un premio por llegar hasta aquí.';
+    document.body.appendChild(c);
+    var cofre=c.querySelector('.rn-cofre');
+    cofre.onclick=function(){ if(PR.abierto) return; PR.abierto=true; cofre.classList.add('abierto'); c.querySelector('.rn-toca').textContent=''; tin();
+      /* se despierta el reproductor DENTRO del toque: el iPhone no deja que suene después */
+      if(voz){ var a=elP(), t=TRAIDOS.voz; a.src=t?t.url:(!D.vozId&&D.voz?String(D.voz):SILENCIO); if(a.src!==SILENCIO) bajarM(typeof o.musica==='function'?o.musica():o.musica); try{ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){} }
+      setTimeout(dos,750); };
+    function dos(){ if(PR.capa!==c) return; var d=c.querySelector('.rn-pr-dos'); c.querySelector('.rn-pr-uno').hidden=true; d.hidden=false;
+      if(voz){ var barras=''; for(var i=0;i<18;i++) barras+='<i style="animation-delay:-'+((i*37)%90/100)+'s"></i>';
+        d.innerHTML='<h2>🎙️ Un mensaje para ti</h2><p class="rn-sub"></p><div class="rn-onda" aria-hidden="true">'+barras+'</div><p class="rn-pr-est"></p>'
+          +'<button type="button" class="rn-cerrar rn-suave" id="rn-otra">⏸ Pausar</button><button type="button" class="rn-cerrar" id="rn-seguir">Seguir</button>';
+        d.querySelector('.rn-sub').textContent=de?'Con la voz de '+de:'Con su propia voz';
+        d.querySelector('#rn-otra').onclick=function(){ var a=elP(); if(!a.paused && a.src!==SILENCIO){ a.pause(); this.textContent='▶ Seguir escuchando'; dice('En pausa'); } else sonarP(o.musica); };
+        sonarP(o.musica); }
+      else { d.innerHTML='<h2>💌 Una nota para ti</h2><div class="rn-carta rn-nota"><p></p></div><button type="button" class="rn-cerrar" id="rn-seguir">Seguir</button>';
+        var n=(para?para+', este':'Este')+' regalo se armó pensando solo en ti. Cada foto, cada palabra y cada detalle se eligieron con cariño, porque mereces sentirte así de especial todos los días.';
+        d.querySelector('.rn-nota p').textContent=n+(de?'\n— '+de:''); }
+      d.querySelector('#rn-seguir').onclick=function(){ if(PR.el) try{ PR.el.pause(); }catch(e){} subirM(); if(o.final) tres(); else { cerrarP(); if(o.alCerrar) o.alCerrar(); } }; }
+    function tres(){ var f=o.final||{}, d=c.querySelector('.rn-pr-tres'); c.querySelector('.rn-pr-dos').hidden=true; d.hidden=false;
+      d.innerHTML='<h2></h2><div class="rn-carta"><p></p></div><div class="rn-pr-bts"></div><button type="button" class="rn-cerrar" id="rn-comp">📲 Compartir en mi estado</button>'
+        +'<button type="button" class="rn-cerrar rn-suave" id="rn-cerr">Seguir mirando</button>';
+      d.querySelector('h2').textContent=f.titulo||'💌 Para ti';
+      d.querySelector('.rn-carta p').textContent=(String(D.msg||'').trim()||'Gracias por existir.')+(de?'\n— '+de:'');
+      var sg=N.pase.siguiente(); if(sg){ var bs=document.createElement('button'); bs.type='button'; bs.className='rn-cerrar'; bs.id='rn-sig'; bs.textContent=sg.ic+' Abrir '+sg.nom; bs.onclick=function(){ N.pase.ir(sg.id); }; d.querySelector('.rn-pr-bts').appendChild(bs); d.querySelector('#rn-comp').className='rn-cerrar rn-suave'; }
+      d.querySelector('#rn-comp').onclick=function(){ if(f.compartir) f.compartir(); };
+      d.querySelector('#rn-cerr').onclick=function(){ cerrarP(); if(o.alCerrar) o.alCerrar(); }; }
+    return c; }
+  N.premio={hayVoz:hayVozP,precargar:precargarP,mostrar:mostrarP,cerrar:cerrarP,
+    estado:function(){ var a=PR.el; return {voz:hayVozP(),lista:!!TRAIDOS.voz,abierto:PR.abierto,sono:PR.sono,sonando:!!(a&&!a.paused&&a.src!==SILENCIO),visible:!!PR.capa}; }};
+
   /* ======================= el video: grabar y compartir en el estado =======================
      El formato (mp4 primero: es lo único que WhatsApp e Instagram reproducen en cualquier
      teléfono), la hoja de "tu video está listo" y un grabador de lo que se ve en pantalla. */
@@ -560,7 +626,8 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
     for(var i=0;i<t.length;i++){ try{ if(MediaRecorder.isTypeSupported(t[i])) return t[i]; }catch(e){} } return ''; }
   /* El menú de compartir del iPhone tiene que salir de un toque: por eso el video no se comparte
      solo al terminar, se ofrece con un botón. */
-  function ofrecerV(blob,nombre,tipo,o){ o=o||{}; estilos(); var archivo=null; try{ archivo=new File([blob],nombre,{type:tipo}); }catch(e){}
+  var soltarV=null;   /* la hoja abierta: si se ofrece otro video, se suelta el suyo (REN-06: decenas de MB) */
+  function ofrecerV(blob,nombre,tipo,o){ o=o||{}; estilos(); if(soltarV) soltarV(); var archivo=null; try{ archivo=new File([blob],nombre,{type:tipo}); }catch(e){}
     var puede=!!(archivo&&navigator.canShare&&navigator.canShare({files:[archivo]})), url=URL.createObjectURL(blob), vieja=document.getElementById('video-listo');
     if(vieja) vieja.remove();
     var c=document.createElement('div'); c.className='rn-capa rn-video'; c.id='video-listo';
@@ -570,7 +637,11 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
       +'<button type="button" class="rn-cerrar rn-suave" id="b-cerr">'+esc(o.cerrar||'Cerrar')+'</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
     var sub=c.querySelector('.rn-sub'); sub.textContent='Compártelo en tu estado de WhatsApp o guárdalo en tu galería.';
     document.body.appendChild(c); var v=c.querySelector('video'); v.src=url; try{ var pp=v.play(); if(pp&&pp.catch) pp.catch(function(){}); }catch(e){}
-    function cerrar(){ try{ v.pause(); }catch(e){} c.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },60000); if(o.alCerrar) o.alCerrar(); }
+    function parar(){ try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){} c.remove(); if(soltarV===soltar) soltarV=null; }
+    function soltar(){ parar(); URL.revokeObjectURL(url); }
+    soltarV=soltar;
+    /* al cerrar, la dirección espera un rato por si se está descargando */
+    function cerrar(){ parar(); setTimeout(function(){ URL.revokeObjectURL(url); },60000); if(o.alCerrar) o.alCerrar(); }
     if(puede) c.querySelector('#b-comp').onclick=function(){ navigator.share({files:[archivo],title:o.titulo||'Mi regalo Ruway'}).then(function(){ if(o.alCompartir) o.alCompartir(); })['catch'](function(){}); };
     c.querySelector('#b-desc').onclick=function(){ var a=document.createElement('a'); a.href=url; a.download=nombre; document.body.appendChild(a); a.click(); a.remove();
       sub.textContent='Descargado. Búscalo en tus archivos o en la galería y súbelo a tu estado.'; };
@@ -605,7 +676,271 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
       if(!blob.size){ avisar('No se grabó nada, prueba otra vez'); return; }
       ofrecerV(blob,(o.nombre||'ruway-regalo')+'.'+ext,tipo,{cerrar:o.cerrar||'Seguir jugando',titulo:o.titulo}); }
     return {poner:poner,parar:parar,grabando:function(){ return !!rec; }}; }
-  N.video={formato:formatoV,ofrecer:ofrecerV,grabador:grabador};
+
+  /* ======================= el video para el estado =======================
+     Un video vertical que se arma solo, igual en las 12 experiencias, sin enlaces:
+       1. portada (2,5 s): "Para <para>" en grande y "De <de>", con los colores del regalo;
+       2. las fotos (hasta 6, 3 s cada una) con su frase, acercándose despacio y con fundido;
+       3. si hay voz: su mensaje sobre la foto principal, con la onda moviéndose al hablar
+          (la canción baja mientras habla);
+       4. cierre (2,5 s): el logo de Ruway y "Hecho a mano".
+     Nunca pasa de 30 s (lo que dura un estado). Se ARMA cuadro por cuadro (WebCodecs +
+     mp4-muxer, en 1080×1920 si el teléfono puede, si no 720×1280): sale fluido aunque el
+     teléfono sea lento. Donde no se puede armar, se graba en vivo (MediaRecorder, 720); y
+     donde tampoco, se explica cómo grabar la pantalla. Lo usan u.html y x.html. */
+  var VE={ocupado:false}, FPS_E=30;
+  /* El guion: qué va en cada tramo. Con una voz larga van menos fotos (al menos dos si hay). */
+  function guionE(nf,vozSeg){ var POR=3, PORT=2.5, CIE=2.5, TOPE=30, n=Math.max(0,Math.min(6,nf|0)), vd=Math.max(0,+vozSeg||0), vs=0;
+    if(vd>0){ var cabe=TOPE-PORT-CIE-POR*Math.min(n,2); vs=Math.max(Math.min(4,cabe),Math.min(vd+1.1,cabe)); }
+    var k=vs?Math.min(n,Math.floor((TOPE-PORT-CIE-vs)/POR+1e-6)):n, pasos=[{tipo:'portada',desde:0,hasta:PORT}], t=PORT, i, G;
+    for(i=0;i<k;i++){ pasos.push({tipo:'foto',foto:i,desde:t,hasta:t+POR}); t+=POR; }
+    if(!k && !vs){ pasos.push({tipo:'mensaje',desde:t,hasta:t+4.5}); t+=4.5; }
+    G={pasos:pasos,fotos:k,voz:-1,vozFin:-1};
+    if(vs){ pasos.push({tipo:'voz',foto:n?0:-1,desde:t,hasta:t+vs}); G.voz=t+.5; G.vozFin=Math.min(G.voz+vd,t+vs-.3); t+=vs; }
+    pasos.push({tipo:'cierre',desde:t,hasta:t+CIE}); t+=CIE; G.total=Math.round(t*100)/100; return G; }
+  /* una imagen que se puede pasar al video (las de otro sitio sin permiso "mancharían" el lienzo) */
+  function limpiaI(im){ try{ var c=document.createElement('canvas'); c.width=c.height=1; var x=c.getContext('2d'); x.drawImage(im,0,0,1,1); x.getImageData(0,0,1,1); return true; }catch(e){ return false; } }
+  function hexOk(c){ return /^#[0-9a-f]{6}$/i.test(String(c||''))?String(c):''; }
+  function rgba(h,a){ var n=parseInt(h.slice(1),16); return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')'; }
+  function mezclaC(h,k){ var n=parseInt(h.slice(1),16); return 'rgb('+Math.round((n>>16&255)*k)+','+Math.round((n>>8&255)*k)+','+Math.round((n&255)*k)+')'; }
+  function suave(x){ x=Math.max(0,Math.min(1,x)); return x*x*(3-2*x); }
+  function partirT(g,t,ancho){ var pal=String(t||'').split(/\s+/), l=[], a=''; for(var i=0;i<pal.length;i++){ if(!pal[i]) continue; var b=a?a+' '+pal[i]:pal[i]; if(g.measureText(b).width>ancho && a){ l.push(a); a=pal[i]; } else a=b; } if(a) l.push(a); return l; }
+  function cargarImg(u,listo){ if(!u){ listo(null); return; } var im=new Image(), hecho=false, r=0;
+    function fin(x){ if(hecho) return; hecho=true; clearTimeout(r); listo(x); }
+    r=setTimeout(function(){ fin(null); },6000); if(!/^data:/.test(u)) im.crossOrigin='anonymous';
+    im.onload=function(){ fin(limpiaI(im)?im:null); }; im.onerror=function(){ fin(null); }; im.src=u; }
+  /* las letras del video tienen que estar cargadas antes de dibujar (si no, salen con la del sistema) */
+  function letrasE(listo){ var hecho=false; function fin(){ if(!hecho){ hecho=true; listo(); } }
+    try{ if(document.fonts && document.fonts.load && window.Promise){ Promise.all(["700 60px 'Dancing Script'","800 40px 'Baloo 2'","700 30px Nunito"].map(function(f){ return document.fonts.load(f)['catch'](function(){}); })).then(fin,fin); setTimeout(fin,2500); return; } }catch(e){}
+    fin(); }
+  /* la onda de la voz: cuánto suena en cada cuadro (se calcula una vez) */
+  function envolventeE(b){ if(!b) return null; var d=b.getChannelData(0), paso=Math.round(b.sampleRate/FPS_E), l=[], mx=0;
+    for(var i=0;i<d.length;i+=paso){ var s=0, z=Math.min(d.length,i+paso); for(var j=i;j<z;j+=4) s+=d[j]*d[j]; var v=Math.sqrt(s/Math.max(1,(z-i)/4)); l.push(v); if(v>mx) mx=v; }
+    return l.map(function(v){ return mx?v/mx:0; }); }
+
+  /* El dibujo de cada cuadro. `textos()` y `conLogo()` dicen qué se pintó en el último (para las pruebas). */
+  function lienzoE(o,G,VW,VH,env,logo){
+    var E=VW/720, cv=document.createElement('canvas'); cv.width=VW; cv.height=VH; var g=cv.getContext('2d',{alpha:false});
+    var tm=o.tema||D.tema||{}, C1=hexOk(tm.c1)||'#FF8FAB', C2=hexOk(tm.c2)||'#FFE3EC', C3=hexOk(tm.c3)||'#C2476B';
+    var para=String(o.para!=null?o.para:(D.para||'')).trim().slice(0,40), de=String(o.de!=null?o.de:(D.de||'')).trim().slice(0,40);
+    var fotos=o.fotos||[], escritos=[], puesto=false;
+    try{ g.imageSmoothingQuality='high'; }catch(e){}
+    /* el fondo: un degradado con el color del regalo y luces suaves que suben (hechos una vez) */
+    var fondo=document.createElement('canvas'); fondo.width=Math.ceil(VW/4); fondo.height=Math.ceil(VH/4);
+    var fg=fondo.getContext('2d'), gr=fg.createLinearGradient(0,0,0,fondo.height); gr.addColorStop(0,mezclaC(C3,.62)); gr.addColorStop(.55,'#22143A'); gr.addColorStop(1,'#0E0818'); fg.fillStyle=gr; fg.fillRect(0,0,fondo.width,fondo.height);
+    function brillo(col){ var s=document.createElement('canvas'); s.width=s.height=64; var x=s.getContext('2d'), r=x.createRadialGradient(32,32,0,32,32,32); r.addColorStop(0,col); r.addColorStop(1,'rgba(0,0,0,0)'); x.fillStyle=r; x.fillRect(0,0,64,64); return s; }
+    var B=[brillo(rgba(C1,.5)),brillo(rgba(C2,.4)),brillo('rgba(255,214,140,.45)')], motas=[];
+    for(var i=0;i<16;i++){ var a=Math.sin(i*12.9898)*43758.5453, b=Math.sin(i*78.233)*12345.678; a-=Math.floor(a); b-=Math.floor(b); motas.push({x:a*VW,y:b*VH,r:(26+60*((a+b)%1))*E,v:(14+30*b)*E,s:B[i%3]}); }
+    /* la tarjeta de cada foto, con su sombra, se pinta una sola vez */
+    var CW=600*E, PH=(600-44)*E*1.08, CH=PH+44*E+150*E, tarjeta=document.createElement('canvas'); tarjeta.width=Math.ceil(CW+80*E); tarjeta.height=Math.ceil(CH+80*E);
+    (function(){ var x=tarjeta.getContext('2d'); x.shadowColor='rgba(0,0,0,.55)'; x.shadowBlur=34*E; x.shadowOffsetY=14*E; x.fillStyle='#FFFDF6'; x.fillRect(40*E,40*E,CW,CH); })();
+    var pies=fotos.map(function(f){ if(!f.txt) return null; var c=document.createElement('canvas'); c.width=Math.ceil(CW-40*E); c.height=Math.ceil(140*E); var x=c.getContext('2d');
+      x.textAlign='center'; x.fillStyle='#3A2140'; x.font="700 "+Math.round(44*E)+"px 'Dancing Script', cursive";
+      partirT(x,f.txt,c.width-30*E).slice(0,2).forEach(function(l,j){ x.fillText(l,c.width/2,56*E+j*52*E); }); return c; });
+    function texto(t,x,y,font,col,sombra){ g.font=font; g.fillStyle=col; g.textAlign='center'; if(sombra){ g.shadowColor='rgba(0,0,0,.55)'; g.shadowBlur=sombra*E; } g.fillText(t,x,y); g.shadowBlur=0; escritos.push(t); }
+    /* la letra más grande que quepa en el ancho, en una o dos líneas */
+    function titular(t,y,max,fam,col,sombra){ var tam=max, l; do{ g.font="700 "+Math.round(tam*E)+"px "+fam; l=partirT(g,t,640*E); tam-=6; } while((l.length>2||l.some(function(z){ return g.measureText(z).width>660*E; })) && tam>40);
+      tam+=6; l=l.slice(0,2); var y0=y-(l.length-1)*tam*E*.55; l.forEach(function(z,j){ texto(z,VW/2,y0+j*tam*E*1.08,"700 "+Math.round(tam*E)+"px "+fam,col,sombra); }); return y0+(l.length-1)*tam*E*1.08; }
+    function corazon(x,y,s,col){ g.fillStyle=col; g.beginPath(); g.moveTo(x,y+s*.3); g.bezierCurveTo(x-s*.9,y-s*.25,x-s*.45,y-s*.95,x,y-s*.45); g.bezierCurveTo(x+s*.45,y-s*.95,x+s*.9,y-s*.25,x,y+s*.3); g.fill(); }
+    function cubrir(im,x,y,w,h,k,u,dir){ var iw=im.naturalWidth||im.width, ih=im.naturalHeight||im.height; if(!iw||!ih) return;
+      var s=Math.max(w/iw,h/ih)*k, dw=iw*s, dh=ih*s; g.drawImage(im,x+(w-dw)/2+dir*(u-.5)*(dw-w)*.8,y+(h-dh)/2+(dir>0?1:-1)*(u-.5)*(dh-h)*.5,dw,dh); }
+    function portada(t){ var k=.94+.06*suave(t/1.2); g.save(); g.translate(VW/2,VH*.46); g.scale(k,k); g.translate(-VW/2,-VH*.46);
+      corazon(VW/2,VH*.3,46*E,C1);
+      var y=titular('Para '+(para||'ti'),VH*.43,118,"'Dancing Script', cursive",'#FFF1DA',18);
+      if(de) texto('De '+de,VW/2,y+110*E,"800 "+Math.round(46*E)+"px 'Baloo 2', sans-serif",C2,10);
+      g.restore(); }
+    function foto(p,t){ var f=fotos[p.foto]; if(!f) return; var u=(t-p.desde)/(p.hasta-p.desde), x0=(VW-CW)/2, y0=(VH-CH)/2-30*E+(1-suave(u*3))*40*E, dir=p.foto%2?1:-1;
+      g.save(); g.translate(VW/2,y0+CH/2); g.rotate(dir*.022); g.translate(-VW/2,-(y0+CH/2));
+      g.drawImage(tarjeta,x0-40*E,y0-40*E);
+      var px=x0+22*E, py=y0+22*E, pw=CW-44*E; g.save(); g.beginPath(); g.rect(px,py,pw,PH); g.clip(); cubrir(f.im,px,py,pw,PH,1.04+.12*u,u,dir); g.restore();
+      if(pies[p.foto]){ g.drawImage(pies[p.foto],x0+20*E,py+PH+8*E); escritos.push(f.txt); }
+      g.restore(); }
+    function voz(p,t){ var f=fotos[p.foto], cy=VH*.4, r=250*E, u=(t-p.desde)/(p.hasta-p.desde);
+      texto('Un mensaje de voz',VW/2,VH*.13,"800 "+Math.round(40*E)+"px 'Baloo 2', sans-serif",C2,8);
+      if(de) texto('de '+de,VW/2,VH*.13+70*E,"700 "+Math.round(58*E)+"px 'Dancing Script', cursive",'#FFF1DA',12);
+      g.save(); g.fillStyle=rgba(C1,.9); g.beginPath(); g.arc(VW/2,cy,r+14*E,0,6.2832); g.fill();
+      g.beginPath(); g.arc(VW/2,cy,r,0,6.2832); g.clip();
+      if(f) cubrir(f.im,VW/2-r,cy-r,2*r,2*r,1.05+.1*u,u,1); else { g.fillStyle=mezclaC(C3,.8); g.fillRect(VW/2-r,cy-r,2*r,2*r); }
+      g.restore(); if(!f) corazon(VW/2,cy+30*E,120*E,C2);
+      /* la onda: barras que se mueven con lo que suena de verdad */
+      var n=29, an=13*E, sep=9*E, x=VW/2-(n*an+(n-1)*sep)/2, yb=VH*.73, q=Math.floor((t-G.voz)*FPS_E), habla=t>=G.voz && t<=G.vozFin;
+      g.fillStyle=C2;
+      for(var j=0;j<n;j++){ var lvl=0; if(habla){ var e=env&&env[Math.min(env.length-1,Math.max(0,q+((j*3)%5)-2))]; lvl=(e==null?.5+.5*Math.sin(t*9+j):e)*(.55+.45*Math.abs(Math.sin(j*1.7+t*6))); }
+        var h=Math.max(10*E,lvl*150*E*(1-Math.abs(j-(n-1)/2)/(n*.75))); g.globalAlpha=.85; g.fillRect(x+j*(an+sep),yb-h/2,an,h); }
+      g.globalAlpha=1; }
+    function mensaje(){ var m=String(o.msg!=null?o.msg:(D.msg||'')).trim()||'Gracias por existir.'; g.font="700 "+Math.round(50*E)+"px 'Dancing Script', cursive";
+      var l=[]; m.split(/\n+/).forEach(function(z){ l=l.concat(partirT(g,z,600*E)); }); l=l.slice(0,8);
+      var y=VH/2-(l.length-1)*31*E; l.forEach(function(z,j){ texto(z,VW/2,y+j*62*E,"700 "+Math.round(50*E)+"px 'Dancing Script', cursive",'#FFF1DA',12); }); }
+    function cierre(p,t){ var a=suave((t-p.desde)/.6); g.save(); g.globalAlpha=a; g.fillStyle='#FFFBF4'; g.fillRect(0,0,VW,VH);
+      /* El logo, como mucho al doble de su tamaño real: estirado más se ve borroso (el de la
+         página mide 260 px). Con un logo grande (opcional, o.logoGrande) se ve nítido entero. */
+      if(logo){ var nw=logo.naturalWidth||logo.width, lw=Math.min(560*E,nw*2), lh=lw*(logo.naturalHeight||logo.height)/nw;
+        g.imageSmoothingEnabled=true; try{ g.imageSmoothingQuality='high'; }catch(e){}
+        g.drawImage(logo,(VW-lw)/2,VH*.42-lh/2,lw,lh); puesto=true; }
+      else texto('R U W A Y',VW/2,VH*.44,"800 "+Math.round(96*E)+"px 'Baloo 2', sans-serif",'#5C6B4A');
+      texto('Hecho a mano',VW/2,VH*.6,"700 "+Math.round(76*E)+"px 'Dancing Script', cursive",'#5C6B4A');
+      corazon(VW/2-250*E,VH*.6-22*E,22*E,C3); corazon(VW/2+250*E,VH*.6-22*E,22*E,C3);
+      g.restore(); }
+    function paso(p,t){ if(p.tipo==='portada') portada(t); else if(p.tipo==='foto') foto(p,t); else if(p.tipo==='voz') voz(p,t); else if(p.tipo==='mensaje') mensaje(); else cierre(p,t); }
+    function cuadro(t){ escritos=[]; puesto=false; t=Math.max(0,Math.min(G.total-1e-3,t));
+      g.setTransform(1,0,0,1,0,0); g.globalAlpha=1; g.drawImage(fondo,0,0,VW,VH);
+      for(var i=0;i<motas.length;i++){ var m=motas[i], y=((m.y-t*m.v)%(VH+200*E)+VH+200*E)%(VH+200*E)-100*E; g.drawImage(m.s,m.x+Math.sin(t*.6+i)*30*E-m.r,y-m.r,m.r*2,m.r*2); }
+      var k=0; while(k<G.pasos.length-1 && t>=G.pasos[k].hasta) k++;
+      var P=G.pasos[k], d=t-P.desde;
+      /* fundido: el tramo anterior se queda debajo medio segundo mientras entra el nuevo */
+      if(k>0 && d<.5 && P.tipo!=='cierre'){ var A=G.pasos[k-1]; g.save(); g.globalAlpha=1-suave(d/.5); paso(A,A.hasta-1e-3); g.restore(); g.save(); g.globalAlpha=suave(d/.5); paso(P,t); g.restore(); }
+      else paso(P,t); }
+    return {lienzo:cv,cuadro:cuadro,textos:function(){ return escritos.slice(); },conLogo:function(){ return puesto; }}; }
+
+  /* ---- el sonido del video: la canción de fondo y, encima, la voz ---- */
+  function bajarAudioE(cual,listo){ var id=cual==='voz'?D.vozId:D.cancionId, dir=String((cual==='voz'?D.voz:D.cancion)||'');
+    function porUrl(u){ try{ fetch(u).then(function(r){ if(!r.ok) throw 0; return r.arrayBuffer(); }).then(listo,function(){ listo(null); }); }catch(e){ listo(null); } }
+    if(id) traerA(cual,null,function(r){ porUrl(r.url); },function(){ if(dir) porUrl(dir); else listo(null); });
+    else if(dir) porUrl(dir); else listo(null); }
+  function decodificarE(ctx,ab,listo){ if(!ab||!ctx){ listo(null); return; } var hecho=false; function fin(b){ if(!hecho){ hecho=true; listo(b||null); } }
+    try{ var p=ctx.decodeAudioData(ab.slice(0),fin,function(){ fin(null); }); if(p&&p.then) p.then(fin,function(){ fin(null); }); }catch(e){ fin(null); } }
+  /* Las mismas subidas y bajadas para el armado y para el grabado en vivo: la canción entra suave,
+     baja mientras habla la voz, vuelve a subir y al final se apaga. */
+  function programarE(ctx,dest,bufs,G,t0){ var fuentes=[], ALTO=.8, BAJO=.2;
+    if(bufs.cancion){ var s=ctx.createBufferSource(), gn=ctx.createGain(), fin=ALTO; s.buffer=bufs.cancion; s.loop=true;
+      gn.gain.setValueAtTime(0,t0); gn.gain.linearRampToValueAtTime(ALTO,t0+.6);
+      if(bufs.voz && G.voz>=0){ gn.gain.setValueAtTime(ALTO,t0+G.voz-.6); gn.gain.linearRampToValueAtTime(BAJO,t0+G.voz);
+        if(G.vozFin+.8<G.total-2){ gn.gain.setValueAtTime(BAJO,t0+G.vozFin); gn.gain.linearRampToValueAtTime(ALTO,t0+G.vozFin+.8); } else fin=BAJO; }
+      gn.gain.setValueAtTime(fin,t0+G.total-2); gn.gain.linearRampToValueAtTime(0,t0+G.total-.05);
+      s.connect(gn); gn.connect(dest); s.start(t0); fuentes.push(s); }
+    if(bufs.voz && G.voz>=0){ var v=ctx.createBufferSource(), gv=ctx.createGain(), largo=G.vozFin-G.voz; v.buffer=bufs.voz;
+      gv.gain.setValueAtTime(1,t0); if(bufs.voz.duration>largo+.05){ gv.gain.setValueAtTime(1,t0+G.vozFin-.4); gv.gain.linearRampToValueAtTime(0,t0+G.vozFin); }
+      v.connect(gv); gv.connect(dest); v.start(t0+G.voz,0,largo+.05); fuentes.push(v); }
+    return fuentes; }
+  function mezclarE(bufs,G,listo){ var OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext, oc;
+    if(!OAC||!(bufs.cancion||bufs.voz)){ listo(null); return; }
+    try{ oc=new OAC(2,Math.ceil(48000*G.total),48000); programarE(oc,oc.destination,bufs,G,0); }catch(e){ listo(null); return; }
+    var hecho=false; function fin(b){ if(!hecho){ hecho=true; listo(b||null); } }
+    oc.oncomplete=function(e){ fin(e.renderedBuffer); };
+    try{ var p=oc.startRendering(); if(p&&p.then) p.then(fin,function(){ fin(null); }); }catch(e){ fin(null); } }
+  function codificarAudioE(buf,cfg,listo){ var trozos=[], fallo=false, ae;
+    try{ ae=new AudioEncoder({output:function(ch,meta){ trozos.push([ch,meta]); },error:function(){ fallo=true; }}); ae.configure(cfg); }catch(e){ listo(null); return; }
+    var L=buf.getChannelData(0), R=buf.numberOfChannels>1?buf.getChannelData(1):L, n=buf.length, SR=buf.sampleRate, B=Math.round(SR/10);
+    for(var p=0;p<n && !fallo;p+=B){ var m=Math.min(B,n-p), d=new Float32Array(m*2); d.set(L.subarray(p,p+m),0); d.set(R.subarray(p,p+m),m);
+      try{ var ad=new AudioData({format:'f32-planar',sampleRate:SR,numberOfFrames:m,numberOfChannels:2,timestamp:Math.round(p*1e6/SR),data:d}); ae.encode(ad); ad.close(); }catch(e){ fallo=true; } }
+    ae.flush().then(function(){ try{ ae.close(); }catch(e){} listo(fallo||!trozos.length?null:trozos); },function(){ listo(null); }); }
+  /* ceder el turno sin esperar los 4 ms de un setTimeout: el armado no congela la pantalla */
+  var cederE=(function(){ try{ var c=new MessageChannel(), cola=[]; c.port1.onmessage=function(){ var f=cola.shift(); if(f) f(); }; return function(f){ cola.push(f); c.port2.postMessage(0); }; }catch(e){ return function(f){ setTimeout(f,0); }; } })();
+  function cargarMuxerE(u,listo){ if(window.Mp4Muxer){ listo(true); return; } if(!u){ listo(false); return; }
+    var t=document.createElement('script'), hecho=false, r=setTimeout(function(){ fin(false); },15000);
+    function fin(ok){ if(hecho) return; hecho=true; clearTimeout(r); listo(ok && !!window.Mp4Muxer); }
+    t.onload=function(){ fin(true); }; t.onerror=function(){ fin(false); }; t.src=u; document.head.appendChild(t); }
+  /* ¿Qué sabe codificar ESTE teléfono? Se le pregunta (H.264 + AAC: lo que abre cualquier galería).
+     Primero en 1080×1920; si no puede, 720×1280. */
+  function codecsE(alta,conAudio,listo){ var prueba=!!window.__RUWAY_PRUEBA_VIDEO, tam=alta?[1080,720]:[720], el={};
+    if(!(window.VideoEncoder&&window.VideoFrame)){ listo(null); return; }
+    function probarT(i){ if(i>=tam.length){ listo(null); return; } var VW=tam[i], VH=Math.round(VW*16/9), niv=VW>=1080?'28':'1f', bps=VW>=1080?8000000:5000000;
+      var vs=[{c:'avc',codec:'avc1.6400'+niv},{c:'avc',codec:'avc1.4d00'+niv},{c:'avc',codec:'avc1.4200'+niv}]; if(prueba) vs.push({c:'vp9',codec:'vp09.00.40.08'});
+      (function probarV(j){ if(j>=vs.length){ probarT(i+1); return; } var v=vs[j], cfg={codec:v.codec,width:VW,height:VH,bitrate:bps,framerate:FPS_E,latencyMode:'quality'}; if(v.c==='avc') cfg.avc={format:'avc'};
+        var p; try{ p=VideoEncoder.isConfigSupported(cfg); }catch(e){ probarV(j+1); return; }
+        p.then(function(r){ if(r&&r.supported){ el={video:cfg,vcodec:v.c,VW:VW,VH:VH}; probarA(0); } else probarV(j+1); },function(){ probarV(j+1); }); })(0); }
+    var as=[{c:'aac',codec:'mp4a.40.2'}]; if(prueba) as.push({c:'opus',codec:'opus'});
+    function probarA(i){ if(!conAudio){ listo(el); return; } if(!window.AudioEncoder||!window.AudioData||i>=as.length){ listo(null); return; }
+      var cfg={codec:as[i].codec,sampleRate:48000,numberOfChannels:2,bitrate:128000}, p; try{ p=AudioEncoder.isConfigSupported(cfg); }catch(e){ probarA(i+1); return; }
+      p.then(function(r){ if(r&&r.supported){ el.audio=cfg; el.acodec=as[i].c; listo(el); } else probarA(i+1); },function(){ probarA(i+1); }); }
+    probarT(0); }
+
+  /* la hoja de "armando tu video", con la vista de cómo va quedando */
+  function hojaArmandoE(cancelar){ estilos(); var c=document.createElement('div'); c.className='rn-capa rn-video'; c.id='rn-armando';
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Preparando tu video"><h2>🎬 Preparando tu video</h2><p class="rn-sub" id="rn-arm-txt">Preparando tus fotos</p>'
+      +'<canvas id="rn-vista" width="135" height="240" style="display:block;margin:0 auto;border-radius:12px;background:#140B26"></canvas><div class="rn-barra"><i style="width:0%"></i></div>'
+      +'<button type="button" class="rn-cerrar rn-suave" id="rn-arm-cancelar">Cancelar</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
+    document.body.appendChild(c); c.querySelector('#rn-arm-cancelar').onclick=cancelar;
+    var vista=c.querySelector('#rn-vista'), vg=vista.getContext('2d'), tx=c.querySelector('#rn-arm-txt'), barra=c.querySelector('.rn-barra i');
+    return {txt:function(t){ tx.textContent=t; },pc:function(n){ barra.style.width=n+'%'; },ver:function(cv){ try{ vg.drawImage(cv,0,0,135,240); }catch(e){} },quitar:function(){ c.remove(); }}; }
+  /* donde el teléfono no sabe hacer video, se explica cómo grabar la pantalla */
+  function ayudaE(){ estilos(); var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-ayuda-video';
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Cómo grabarlo"><h2>📱 Grábalo con tu celular</h2><p class="rn-sub">Este teléfono no deja que la página arme el video, pero tu celular sí sabe grabar la pantalla.</p>'
+      +'<p style="font-size:14px;line-height:1.6"><b>iPhone:</b> desliza desde arriba a la derecha y toca el círculo de grabar.<br><b>Android:</b> baja la barra de notificaciones y busca «Grabar pantalla».</p>'
+      +'<button type="button" class="rn-cerrar">Entendido</button></div>';
+    document.body.appendChild(c); c.querySelector('.rn-cerrar').onclick=function(){ c.remove(); }; c.addEventListener('click',function(e){ if(e.target===c) c.remove(); }); }
+
+  /* Arma el video del estado. Se llama DENTRO del toque del botón (el iPhone solo deja despertar
+     el sonido ahí). o = {fotos:[{im,txt}], para, de, msg, tema:{c1,c2,c3}, logo:url, muxer:url,
+     nombre, titulo, alta:false (fuerza 720), alEmpezar, alTerminar}. */
+  function estadoE(o){ o=o||{}; if(VE.ocupado) return false;
+    var CA=window.AudioContext||window.webkitAudioContext, vivo=null; try{ if(CA){ vivo=new CA(); if(vivo.resume) vivo.resume(); } }catch(e){ vivo=null; }
+    var armador=!!(window.VideoEncoder&&window.VideoFrame), grabador=!!(window.MediaRecorder&&window.HTMLCanvasElement&&HTMLCanvasElement.prototype.captureStream&&formatoV());
+    if(!armador&&!grabador){ if(vivo) try{ vivo.close(); }catch(e){} ayudaE(); return false; }
+    VE.ocupado=true; var fallo=null, acabado=false, t0=performance.now(), nombre=o.nombre||'Mi regalo Ruway';
+    var ui=hojaArmandoE(function(){ fallo='cancelado'; if(!armando) terminar(null); });
+    var armando=false;
+    if(o.alEmpezar) try{ o.alEmpezar(); }catch(e){}
+    function terminar(blob,tipo,info){ if(acabado) return; acabado=true; VE.ocupado=false; ui.quitar(); if(vivo) try{ vivo.close(); }catch(e){}
+      if(o.alTerminar) try{ o.alTerminar(); }catch(e){}
+      if(blob){ window.__ruwayVideo=info; ofrecerV(blob,nombre+'.'+(/mp4/.test(tipo)?'mp4':'webm'),tipo,{titulo:o.titulo||nombre,cerrar:o.cerrar||'Cerrar'}); }
+      else if(fallo!=='cancelado') ayudaE(); }
+    var fotos=(o.fotos||[]).filter(function(f){ return f&&f.im&&(f.im.naturalWidth||f.im.width)&&limpiaI(f.im); }).slice(0,6), logo=null, bufs={cancion:null,voz:null}, abs={};
+    var o2={}; for(var kk in o) o2[kk]=o[kk]; o2.fotos=fotos; o=o2;
+    /* 1) las fotos listas para dibujarse (en iPhone una foto sin "decodificar" sale en blanco), las letras y el logo */
+    var pend=3; function uno(){ if(--pend===0) sonido(); }
+    (function(){ var l=[]; fotos.forEach(function(f){ if(f.im.decode) l.push(f.im.decode()['catch'](function(){})); }); var h=false; function s(){ if(!h){ h=true; uno(); } }
+      if(l.length&&window.Promise){ Promise.all(l).then(s,s); setTimeout(s,4000); } else s(); })();
+    letrasE(uno); cargarImg(o.logo||'',function(im){ logo=im; uno(); });
+    /* 2) la canción y la voz (las mismas que ya trajo la página: quedan guardadas) */
+    function sonido(){ if(fallo) return terminar(null); ui.txt('Preparando la canción y la voz'); var q=2;
+      ['cancion','voz'].forEach(function(cual){ if(o[cual]===false){ if(--q===0) decod(); return; } bajarAudioE(cual,function(ab){ abs[cual]=ab; if(--q===0) decod(); }); }); }
+    function decod(){ var OAC=window.OfflineAudioContext||window.webkitOfflineAudioContext, ctx=null; try{ ctx=armador&&OAC?new OAC(2,48000,48000):vivo; }catch(e){ ctx=vivo; }
+      var q=2; ['cancion','voz'].forEach(function(cual){ decodificarE(ctx,abs[cual],function(b){ bufs[cual]=b; if(--q===0) listoSonido(); }); }); }
+    var G=null, env=null;
+    function listoSonido(){ if(fallo) return terminar(null); G=guionE(fotos.length,bufs.voz?bufs.voz.duration:0); env=envolventeE(bufs.voz);
+      if(!armador){ enVivo(); return; }
+      cargarMuxerE(o.muxer||'mp4-muxer.min.js',function(hay){ if(!hay){ enVivo(); return; }
+        codecsE(o.alta!==false,!!(bufs.cancion||bufs.voz),function(cod){ if(!cod){ enVivo(); return; } armar(cod); }); }); }
+    /* 3a) armado cuadro por cuadro */
+    function armar(cod){ ui.txt('Preparando el sonido'); armando=true;
+      mezclarE(bufs,G,function(buf){ if(fallo) return terminar(null);
+        if(buf&&cod.audio) codificarAudioE(buf,cod.audio,arrancar); else arrancar(null); });
+      function arrancar(tA){ if(fallo) return terminar(null); var VW=cod.VW, VH=cod.VH, comp=lienzoE(o,G,VW,VH,env,logo), N2=Math.round(G.total*FPS_E), target, mux, ve, i=0, roto=null;
+        try{ target=new Mp4Muxer.ArrayBufferTarget(); var op={target:target,fastStart:'in-memory',video:{codec:cod.vcodec,width:VW,height:VH,frameRate:FPS_E}};
+          if(tA) op.audio={codec:cod.acodec,sampleRate:48000,numberOfChannels:2}; mux=new Mp4Muxer.Muxer(op);
+          if(tA) tA.forEach(function(x){ mux.addAudioChunk(x[0],x[1]); });
+          ve=new VideoEncoder({output:function(ch,meta){ try{ mux.addVideoChunk(ch,meta); }catch(e){ roto=e; } },error:function(e){ roto=e||new Error('codificador'); }}); ve.configure(cod.video); }
+        catch(e){ armando=false; enVivo(); return; }
+        ui.txt('Armando tu video · 0%');
+        (function tanda(){ if(fallo||roto){ try{ ve.close(); }catch(e){} armando=false; if(fallo) terminar(null); else enVivo(); return; }
+          if(ve.encodeQueueSize>4){ setTimeout(tanda,6); return; }
+          for(var h=Math.min(N2,i+2);i<h;i++){ var vf=null;
+            try{ comp.cuadro(i/FPS_E); vf=new VideoFrame(comp.lienzo,{timestamp:Math.round(i*1e6/FPS_E),duration:Math.round(1e6/FPS_E)}); ve.encode(vf,{keyFrame:i%(FPS_E*2)===0}); }catch(e){ roto=e; }
+            if(vf) vf.close(); if(roto) break; }
+          if(i%6===0||i>=N2){ var pc=Math.floor(i*100/N2); ui.txt('Armando tu video · '+pc+'%'); ui.pc(pc); ui.ver(comp.lienzo); }
+          if(i<N2){ cederE(tanda); return; }
+          ui.txt('Terminando tu video');
+          ve.flush().then(function(){ if(roto){ armando=false; enVivo(); return; } try{ ve.close(); }catch(e){} var blob;
+            try{ mux.finalize(); blob=new Blob([target.buffer],{type:'video/mp4'}); }catch(e){ armando=false; enVivo(); return; }
+            terminar(blob,'video/mp4',{camino:'armado',seg:(performance.now()-t0)/1000,cuadros:N2,ancho:VW,alto:VH,video:cod.vcodec,audio:tA?cod.acodec:'',fotos:G.fotos,total:G.total,voz:G.voz,vozFin:G.vozFin,guion:G}); },
+            function(){ armando=false; enVivo(); }); })(); } }
+    /* 3b) grabado en vivo (iPhone viejos): el mismo guion, en 720, con el sonido del mezclador despierto en el toque */
+    function enVivo(){ if(fallo) return terminar(null); if(!grabador){ terminar(null); return; }
+      var VW=o.alta===false?540:720, VH=Math.round(VW*16/9), comp=lienzoE(o,G,VW,VH,env,logo), trozos=[], rec, flujo, pista=null, fuentes=[], raf=0;
+      function seguir(b2){ try{ flujo=comp.lienzo.captureStream(0); pista=flujo.getVideoTracks()[0]; if(!pista||typeof pista.requestFrame!=='function'){ pista=null; flujo=comp.lienzo.captureStream(FPS_E); }
+          if(vivo&&(b2.cancion||b2.voz)){ var dest=vivo.createMediaStreamDestination(); fuentes=programarE(vivo,dest,b2,G,vivo.currentTime+.15); dest.stream.getAudioTracks().forEach(function(t){ flujo.addTrack(t); }); }
+          var mime=formatoV(); rec=new MediaRecorder(flujo,mime?{mimeType:mime,videoBitsPerSecond:VW>=720?6000000:3500000,audioBitsPerSecond:160000}:undefined); }
+        catch(e){ terminar(null); return; }
+        rec.ondataavailable=function(e){ if(e.data&&e.data.size) trozos.push(e.data); };
+        rec.onstop=function(){ cancelAnimationFrame(raf); fuentes.forEach(function(f){ try{ f.stop(); }catch(e){} });
+          var tipo=(rec.mimeType||'video/webm').split(';')[0], blob=new Blob(trozos,{type:tipo}); if(fallo||!blob.size){ terminar(null); return; }
+          terminar(blob,tipo,{camino:'vivo',seg:(performance.now()-t0)/1000,ancho:VW,alto:VH,fotos:G.fotos,total:G.total,voz:G.voz,vozFin:G.vozFin,guion:G}); };
+        ui.txt('Grabando tu video · déjalo terminar'); var ini=0;
+        (function cuadro(ahora){ if(fallo){ try{ rec.stop(); }catch(e){} return; } if(!ini) ini=ahora; var t=(ahora-ini)/1000;
+          try{ comp.cuadro(t); }catch(e){ try{ rec.stop(); }catch(e2){} return; } if(pista) pista.requestFrame();
+          var pc=Math.min(100,Math.floor(t*100/G.total)); ui.pc(pc); if(pc%5===0) ui.ver(comp.lienzo); ui.txt('Grabando tu video · '+Math.max(1,Math.ceil(G.total-t))+' s');
+          if(t>=G.total){ try{ rec.stop(); }catch(e){} return; } raf=requestAnimationFrame(cuadro); })(performance.now());
+        rec.start(); }
+      /* el sonido para el grabado en vivo se decodifica con el mezclador despierto */
+      if(vivo&&(abs.cancion||abs.voz)){ var b2={}, q=2; ['cancion','voz'].forEach(function(c){ decodificarE(vivo,abs[c],function(b){ b2[c]=b; if(--q===0) seguir(b2); }); }); }
+      else seguir({}); }
+    return true; }
+  /* para las pruebas y la vista previa: el guion y un cuadro cualquiera, sin armar el video */
+  estadoE.guion=guionE;
+  estadoE.lienzo=function(o,VW,VH,vozSeg,listo){ o=o||{}; letrasE(function(){ cargarImg(o.logo||'',function(lg){ var f=(o.fotos||[]).filter(function(x){ return x&&x.im&&limpiaI(x.im); }).slice(0,6);
+    var oo={}; for(var k in o) oo[k]=o[k]; oo.fotos=f; var G=guionE(f.length,vozSeg||0); var c=lienzoE(oo,G,VW||360,VH||640,null,lg); c.guion=G; listo(c); }); }); };
+  N.video={formato:formatoV,ofrecer:ofrecerV,grabador:grabador,estado:estadoE};
 
   /* ---- fluidez: si el 3D va lento en este teléfono, menos píxeles (nunca menos de 0,85) ---- */
   N.fluido=function(R){ if(!R||R.__fluido) return; R.__fluido=1; var t0=0, n=0, orig=R.render;
@@ -652,6 +987,21 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
    +'.rn-sello-padre,.rn-sello-maestro{background:linear-gradient(120deg,#34518F,#C99A2E)}.rn-sello-graduacion{background:linear-gradient(120deg,#5B3E91,#E0A526)}'
    +'.rn-sello-nino{background:linear-gradient(120deg,#4D96FF,#FF6B6B)}.rn-sello-patrias{background:linear-gradient(120deg,#D91023,#B5121B)}'
    +'.rn-sello-primavera{background:linear-gradient(120deg,#6BAA4B,#E8A33D)}.rn-sello-criolla{background:linear-gradient(120deg,#7A3E12,#C99A2E)}.rn-sello-anonuevo{background:linear-gradient(120deg,#1F2A5C,#8A6BD1)}'
+   +'.rn-premio{align-items:center;background:rgba(20,11,38,.8)}.rn-premio .rn-hoja{border-radius:26px;margin:0 14px;text-align:center}'
+   +'.rn-cofre{position:relative;display:block;width:140px;height:128px;margin:22px auto 8px;border:none;background:none;padding:0;cursor:pointer;animation:rnSalta 1.8s ease-in-out infinite}'
+   +'.rn-cofre i{position:absolute;display:block}.rn-cofre .cu{left:12px;right:12px;bottom:0;height:76px;border-radius:12px;background:linear-gradient(160deg,var(--rn-c1),var(--rn-c3));box-shadow:0 12px 26px rgba(0,0,0,.28)}'
+   +'.rn-cofre .ta{left:4px;right:4px;top:30px;height:28px;border-radius:10px;background:linear-gradient(160deg,var(--rn-c1),var(--rn-c3));filter:brightness(1.08);transform-origin:10% 100%;transition:transform .7s cubic-bezier(.3,1.6,.5,1)}'
+   +'.rn-cofre .ci{left:50%;top:30px;bottom:0;width:20px;margin-left:-10px;background:var(--rn-sol);transition:opacity .4s}'
+   +'.rn-cofre .lz{left:50%;top:6px;width:52px;height:30px;margin-left:-26px;border-radius:50% 50% 8px 8px;border:7px solid var(--rn-sol);border-bottom:none;transition:transform .7s,opacity .5s}'
+   +'.rn-cofre .luz{left:50%;top:58px;width:8px;height:8px;margin-left:-4px;border-radius:50%;background:#FFF3C4;opacity:0;transition:box-shadow .9s,opacity .4s}'
+   +'.rn-cofre.abierto{animation:none}.rn-cofre.abierto .ta{transform:translateY(-34px) rotate(-26deg)}.rn-cofre.abierto .lz{transform:translateY(-40px) rotate(-30deg);opacity:0}.rn-cofre.abierto .ci{opacity:.5}'
+   +'.rn-cofre.abierto .luz{opacity:1;box-shadow:0 0 70px 46px rgba(255,214,120,.8)}'
+   +'@keyframes rnSalta{0%,60%,100%{transform:translateY(0) rotate(0)}10%{transform:translateY(-10px) rotate(-5deg)}20%{transform:translateY(0) rotate(4deg)}30%{transform:translateY(-4px) rotate(-2deg)}}'
+   +'.rn-toca{font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde);min-height:20px}.rn-pr-est{font-size:13px;color:#8A7A66;min-height:18px;margin:0}'
+   +'.rn-onda{display:flex;align-items:center;justify-content:center;gap:5px;height:64px;margin:10px 0}.rn-onda i{display:block;width:6px;height:10px;border-radius:3px;background:var(--rn-c3)}'
+   +'.rn-onda.suena i{animation:rnOnda .9s ease-in-out infinite alternate}@keyframes rnOnda{from{height:8px}to{height:56px}}'
+   +'.rn-nota p{font:600 21px/1.4 "Dancing Script",cursive}'
+   +'@media (prefers-reduced-motion:reduce){.rn-cofre,.rn-onda.suena i{animation:none}.rn-onda.suena i{height:30px}}'
    +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}';
   function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
@@ -719,7 +1069,7 @@ var MAPA = { c:'rcod', cod:'rcod', rcod:'rcod', para:'rpara', rpara:'rpara',
                 tit:'rtit', rtit:'rtit', tem:'rtem', rtem:'rtem',
                 v:'rver', rver:'rver' };
 var ISO = "data:image/png;base64,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";
-var WEB = {"v":"v40","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-movs.json":466490,"via-lactea.jpg":502377,"prev-arbol.webp":60930,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":3746,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892}};
+var WEB = {"v":"v41","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-movs.json":466490,"via-lactea.jpg":502377,"ruway-logo.png":23968,"prev-arbol.webp":60930,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":3746,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892}};
 var DATOS=null, FOTOS=[], TIPO='', HOY=Date.now();
 /* El núcleo común (ruway-nucleo.js): progreso, colección, logros, mochila, audio guardado y
    fluidez, iguales en todas las experiencias. Baja aparte y en paralelo: lo que se le pide
@@ -859,7 +1209,7 @@ function portada(){
     var jugar=({constelaciones:constelaciones,planeta:planeta,laberinto:laberinto,carrito:carrito,bitacora:bitacora,cartas:cartas,isla:isla,corre:corre,match:match})[TIPO];
     var jugar0=jugar; jugar=function(){ jugar0(); setTimeout(function(){ nucleo(function(N){ N.boton(document.querySelector('.hud')); }); },60); };   /* la mochila, en el mismo sitio en todas */
     if(/^(planeta|laberinto|isla|corre)$/.test(TIPO)) elegirPersonaje(jugar); else jugar();
-    if(/^(planeta|laberinto|carrito|constelaciones|isla|corre|bitacora|match)$/.test(TIPO)) Grabar.poner();
+    nucleo(function(N){ if(N.estado().fin) botonCompartir(); });   /* ya lo terminó otra vez: compartir queda a mano */
   };
 }
 /* Cada foto se carga UNA vez y esa misma imagen sirve para verla y para
@@ -916,41 +1266,53 @@ function final(titulo,boton,luego){
   document.getElementById('f-tit').textContent=titulo;
   document.getElementById('f-txt').textContent=String(DATOS.msg||'').trim()||'Gracias por existir.';
   document.getElementById('f-de').textContent=String(DATOS.de||'').trim()?'— '+String(DATOS.de).trim():'';
-  var b=document.getElementById('f-bt'); b.textContent=boton||'Volver a empezar'; b.className='primario';
+  var b=document.getElementById('f-bt'), fc=document.getElementById('f-comp'); b.textContent=boton||'Volver a empezar'; b.className='suave'; fc.className='primario';
   document.getElementById('final').hidden=false;
   campanita([523,659,784,1046]);
   nucleo(function(N){ N.termino();
     /* Pase Ruway: con esta terminada se abre la siguiente, y se ofrece ir de frente */
     var viejo=document.getElementById('f-sig'); if(viejo) viejo.remove(); var sg=N.pase.siguiente();
     if(sg){ var bs=document.createElement('button'); bs.id='f-sig'; bs.className='primario'; bs.textContent=sg.ic+' Abrir '+sg.nom; bs.onclick=function(){ N.pase.ir(sg.id); };
-      b.parentNode.insertBefore(bs,b); b.className='suave'; } });
+      fc.parentNode.insertBefore(bs,fc); fc.className='suave'; }
+    /* el premio va encima: un regalo que se abre y suena con su voz (o una nota, si no grabó) */
+    N.premio.mostrar({musica:Sonido.musica});
+    botonCompartir(); });
+  fc.onclick=compartir;
   b.onclick=function(){ document.getElementById('final').hidden=true; if(luego) luego(); };
 }
+/* El video para el estado (el mismo de las 12 experiencias, lo arma el núcleo): portada con los
+   nombres, las fotos con su frase, la voz y el cierre con el logo. Se llama desde un toque. */
+function compartir(){ nucleo(function(N){ N.video.estado({fotos:FOTOS.filter(function(f){ return f.limpia && f.img; }).map(function(f){ return {im:f.img,txt:f.txt}; }),
+  logo:'ruway-logo.png', muxer:'mp4-muxer.min.js', nombre:'Mi regalo Ruway', titulo:'Mi regalo Ruway', alta:!(N.bajadas>=2)}); }); }
+/* el botón flotante, para volver a compartir después de cerrar el final */
+function botonCompartir(){ if(document.getElementById('b-comp')) return; var b=document.createElement('button'); b.id='b-comp'; b.type='button';
+  b.textContent='📲 Compartir'; b.setAttribute('aria-label','Compartir en mi estado'); b.onclick=compartir; document.body.appendChild(b); }
 function aviso(t){ var a=document.getElementById('aviso'); a.textContent=t; a.hidden=false; clearTimeout(a._t); a._t=setTimeout(function(){ a.hidden=true; },2400); }
 function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
-/* ============ el sonido: la canción y la nota de voz ============
+/* ============ el sonido: la canción ============
    Igual que en el universo: si Drive entrega la canción directa, esa; si no,
    se trae por pedazos del servidor y se arma en el teléfono. El reproductor
-   se despierta en el toque de la portada, que es lo que exige el iPhone. */
+   se despierta en el toque de la portada, que es lo que exige el iPhone.
+   La nota de voz ya no tiene botón: es el PREMIO del final (Nucleo.premio),
+   que la trae por detrás desde que se abre y baja la canción mientras suena. */
 var Sonido=(function(){
-  var A=new Audio(), V=new Audio(); A.loop=true; A.preload='auto';
-  var quiere=true, vozSonando=false, antes=false, listaC=false, silencio=Nucleo.audio.silencio;   /* el del núcleo */
-  var bSon=document.getElementById('b-son'), bVoz=document.getElementById('b-voz');
+  var A=new Audio(); A.loop=true; A.preload='auto';
+  var quiere=true, listaC=false, silencio=Nucleo.audio.silencio;   /* el del núcleo */
+  var bSon=document.getElementById('b-son');
   function pintar(){ bSon.textContent=!listaC?'♪…':(quiere&&!A.paused?'♪':'✕'); bSon.classList.toggle('suena',quiere&&!A.paused&&listaC); }
-  /* traer la canción o la voz: el motor del núcleo, el mismo del universo (guardado en el teléfono,
+  /* traer la canción: el motor del núcleo, el mismo del universo (guardado en el teléfono,
      pedazos con refuerzo). Devuelve la dirección lista para sonar. */
   function traer(cual,ok,mal){ Nucleo.audio.traer(cual,null,function(r){ ok(r.url); },mal); }
-  function ponerCancion(url){ A.src=url; listaC=true; if(quiere && !vozSonando){ A.volume=.75; var p=A.play(); if(p&&p.catch) p.catch(function(){}); } pintar(); }
+  function ponerCancion(url){ A.src=url; listaC=true; if(quiere){ A.volume=.75; var p=A.play(); if(p&&p.catch) p.catch(function(){}); } pintar(); }
   function empezar(){
     var d=DATOS, hay=!!(d.cancion||d.cancionId);
-    document.getElementById('sonidos').hidden=!(hay||d.voz||d.vozId);
+    document.getElementById('sonidos').hidden=!hay;
     if(hay){ bSon.hidden=false;
       if(d.cancion){ A.src=d.cancion; listaC=true; var p=A.play(); if(p&&p.catch) p.catch(function(){});
         A.addEventListener('error',rescate,{once:true}); setTimeout(function(){ if(A.readyState<3) rescate(); },4000); }
       else { if(silencio){ A.src=silencio; var p2=A.play(); if(p2&&p2.catch) p2.catch(function(){}); } rescate(); }
     }
-    if(d.voz||d.vozId){ bVoz.hidden=false; }
     pintar();
   }
   var rescatando=false;
@@ -961,35 +1323,9 @@ var Sonido=(function(){
     if(quiere && !A.paused){ quiere=false; A.pause(); } else { quiere=true; A.play().catch(function(){}); }
     pintar();
   };
-  function soltarVoz(){ if(!vozSonando) return; vozSonando=false; bVoz.classList.remove('suena'); bVoz.textContent='🎙️';
-    if(antes && quiere && listaC) A.play().catch(function(){}); }
-  V.addEventListener('ended',soltarVoz); V.addEventListener('pause',soltarVoz);
-  function ponerVoz(){ antes=!A.paused && listaC; if(!A.paused) A.pause(); V.currentTime=0;
-    V.play().then(function(){ vozSonando=true; bVoz.classList.add('suena'); bVoz.textContent='⏸'; })['catch'](function(){ aviso('No se pudo reproducir el mensaje'); }); }
-  var vozLista=false;
-  bVoz.onclick=function(){
-    if(vozSonando){ V.pause(); return; }
-    if(vozLista){ ponerVoz(); return; }
-    if(silencio){ V.src=silencio; V.play().catch(function(){}); }         /* despierta en el toque */
-    bVoz.textContent='🎙️…';
-    if(DATOS.voz && !DATOS.vozId){ V.src=DATOS.voz; vozLista=true; ponerVoz(); return; }
-    traer('voz',function(u){ V.src=u; vozLista=true; ponerVoz(); },function(){ bVoz.textContent='🎙️'; aviso('El mensaje no cargó, toca otra vez'); });
-  };
   A.addEventListener('play',pintar); A.addEventListener('pause',pintar);
-  /* la canción, para meterla al video (si el teléfono deja) */
-  /* El iPhone no tiene captureStream en el audio. Ahí se pasa la canción por
-     el mezclador del navegador, pero SOLO si llegó armada en el teléfono
-     (blob:): con la dirección directa de Drive el mezclador la silenciaría,
-     también en los parlantes. */
-  var mezcla=null;
-  function pista(){ try{ if(!listaC || A.paused) return null;
-      if(A.captureStream){ var s=A.captureStream(); return s.getAudioTracks().length?s:null; }
-      if(!/^blob:/.test(A.src)) return null;
-      if(!mezcla){ var C=window.AudioContext||window.webkitAudioContext; if(!C) return null; var ctx=new C(), fuente=ctx.createMediaElementSource(A), dest=ctx.createMediaStreamDestination();
-        fuente.connect(ctx.destination); fuente.connect(dest); mezcla={ctx:ctx,dest:dest}; }
-      if(mezcla.ctx.state==='suspended') mezcla.ctx.resume();
-      return mezcla.dest.stream; }catch(e){ return null; } }
-  return {empezar:empezar,pista:pista};
+  /* el reproductor de la canción: el premio la baja mientras suena la voz */
+  return {empezar:empezar,musica:function(){ return A; }};
 })();
 
 /* Los sonidos cortos del juego, hechos acá mismo. */
@@ -1021,50 +1357,6 @@ function lienzo2d(){
   return cv;
 }
 function titulo2(){ var a=nombrePara(), b=nombreDe(); return a&&b?a+' y '+b:(a||'Para ti'); }
-
-/* ============ grabar el juego para compartirlo en estados ============
-   Se arma un video vertical 9:16 (720×1280) copiando cada cuadro del juego a
-   un lienzo aparte y encima el título y la marca. Si se abre un recuerdo o la
-   dedicatoria, también se dibujan en el video. Con la canción cuando el
-   teléfono lo permite. Máximo 30 segundos, lo que acepta un estado de WhatsApp.
-   Al terminar: "Compartir" abre el menú del teléfono (WhatsApp → Mi estado);
-   si el teléfono no sabe compartir archivos, se descarga. */
-/* Grabar 30 segundos del juego para el estado: el grabador es el del núcleo (el mismo formato y
-   la misma hoja de "tu video está listo" que el universo). Acá solo se dice QUÉ se ve en cada
-   cuadro: el juego, el título, y encima el recuerdo abierto o la carta del final. */
-var Grabar=(function(){
-  var g=null, cx=null, W=720, H=1280;
-  function fuente(){ return document.querySelector('.escena canvas'); }
-  function texto(t,x,y,font,col,sombra){ cx.font=font; cx.fillStyle=col; cx.textAlign='center'; cx.shadowColor='rgba(0,0,0,.6)'; cx.shadowBlur=sombra||14; cx.fillText(t,x,y); cx.shadowBlur=0; }
-  function envolver(t,max){ var pal=String(t||'').split(/\s+/), l=[], a=''; pal.forEach(function(p){ var b=a?a+' '+p:p; if(cx.measureText(b).width>max && a){ l.push(a); a=p; } else a=b; }); if(a) l.push(a); return l; }
-  function dibujar(c,w,h){ cx=c; W=w; H=h;
-    var f=fuente();
-    if(f && f.width){ var k=Math.max(W/f.width,H/f.height), dw=f.width*k, dh=f.height*k; try{ cx.drawImage(f,(W-dw)/2,(H-dh)/2,dw,dh); }catch(e){} }
-    var gr=cx.createLinearGradient(0,0,0,260); gr.addColorStop(0,'rgba(10,5,20,.55)'); gr.addColorStop(1,'rgba(10,5,20,0)'); cx.fillStyle=gr; cx.fillRect(0,0,W,260);
-    var h1=document.querySelector('.hud h1'), sm=document.querySelector('.hud small');
-    if(h1) texto(h1.textContent,W/2,110,'800 58px "Baloo 2", sans-serif','#FFC531');
-    if(sm) texto(sm.textContent,W/2,160,'700 26px Nunito, sans-serif','#EFE4FF',10);
-    /* un recuerdo abierto: la polaroid con su foto */
-    var r=document.getElementById('recuerdo'), fin=document.getElementById('final');
-    if(r && !r.hidden){ cx.fillStyle='rgba(10,5,20,.72)'; cx.fillRect(0,0,W,H); polaroid(r); }
-    else if(fin && !fin.hidden){ cx.fillStyle='rgba(10,5,20,.78)'; cx.fillRect(0,0,W,H);
-      texto(document.getElementById('f-para').textContent,W/2,400,'700 58px "Dancing Script", cursive','#FFC94A');
-      texto(document.getElementById('f-tit').textContent,W/2,480,'800 44px "Baloo 2", sans-serif','#FFF1DA');
-      cx.font='600 30px Nunito, sans-serif'; envolver(document.getElementById('f-txt').textContent,W-140).slice(0,8).forEach(function(l,i){ texto(l,W/2,560+i*44,'600 30px Nunito, sans-serif','#E8DCF5',6); });
-      texto(document.getElementById('f-de').textContent,W/2,1000,'700 48px "Dancing Script", cursive','#FFC94A'); } }
-  function polaroid(r){
-    var caja=r.querySelector('#r-foto'), n=caja?+caja.getAttribute('data-n'):-1, f=FOTOS[n], im=(f && f.limpia && f.img)?f.img:null;
-    var x=110, y=300, w=500; cx.save(); cx.translate(W/2,y+310); cx.rotate(-.035); cx.translate(-W/2,-(y+310));
-    cx.shadowColor='rgba(0,0,0,.5)'; cx.shadowBlur=40; cx.fillStyle='#FFFDF6'; cx.fillRect(x,y,w,620); cx.shadowBlur=0;
-    if(im){ var s=Math.min(im.width,im.height); cx.drawImage(im,(im.width-s)/2,(im.height-s)/2,s,s,x+20,y+20,w-40,w-40); }
-    else { var gr=cx.createLinearGradient(x,y,x+w,y+w); gr.addColorStop(0,'#FF9A8B'); gr.addColorStop(1,'#B79CFF'); cx.fillStyle=gr; cx.fillRect(x+20,y+20,w-40,w-40); }
-    cx.font='700 40px "Dancing Script", cursive'; envolver(document.getElementById('r-txt').textContent,w-60).slice(0,2).forEach(function(l,i){ texto(l,W/2,y+540+i*40,'700 40px "Dancing Script", cursive','#3A2140',0); });
-    cx.restore();
-    texto(document.getElementById('r-et').textContent,W/2,y-40,'800 26px Nunito, sans-serif','#FFC94A',8); }
-  function poner(){ if(g) return; g=Nucleo.video.grabador({dibujar:dibujar,pista:Sonido.pista,puede:function(){ return !!fuente(); },aviso:aviso,
-      alEmpezar:function(){ nota(880,.12,'sine',.05); },cerrar:'Seguir jugando',titulo:'Mi regalo Ruway'}); g.poner(); }
-  return {poner:poner};
-})();
 
 /* ============ los personajes de los juegos ============
    Quien abre el regalo elige con quién jugar: osito, conejito, pingüino,
@@ -1283,18 +1575,26 @@ function cartas(){
   function sobre(etq,clase,abrir){ var b=document.createElement('button'); b.className='sobre '+(clase||'');
     b.innerHTML='<div class="tapa"></div><div class="sello">♥</div><span></span>'; b.querySelector('span').textContent=etq;
     b.onclick=function(){ b.classList.add('abierto'); nota(520,.15,'triangle',.05); setTimeout(abrir,550); }; cont.appendChild(b); return b; }
-  sobre('Ábreme primero','oro'+(abiertas.d?' abierto':''),function(){ abiertas.d=1; guardarL();
-    carta(null,String(DATOS.msg||'').trim()||'Gracias por existir.'); });
+  sobre('Ábreme primero','oro'+(abiertas.d?' abierto':''),function(){ var ya=todas(); abiertas.d=1; guardarL();
+    carta(null,String(DATOS.msg||'').trim()||'Gracias por existir.',!ya&&todas()); });
   (FOTOS.length?FOTOS:[]).forEach(function(f,i){
-    sobre(SOBRES[i]||'Abre cuando quieras',abiertas[i]?'abierto':'',function(){ abiertas[i]=1; guardarL(); carta(f,f.txt); nucleo(function(N){ N.vio(i); N.gano('beso'); }); }); });
+    sobre(SOBRES[i]||'Abre cuando quieras',abiertas[i]?'abierto':'',function(){ var ya=todas(); abiertas[i]=1; guardarL(); carta(f,f.txt,!ya&&todas()); nucleo(function(N){ N.vio(i); N.gano('beso'); }); }); });
+  /* Si vuelve con todas abiertas (cerró la página antes de "Guardar la carta" en la última),
+     el final sigue a mano: sin esto, el Pase quedaba trabado para siempre. */
+  if(todas()) sobre('Ver el final 💌','oro',function(){ final('Abriste todas tus cartas','Volver a mis cartas',function(){}); });
   function guardarL(){ try{ localStorage.setItem(llaveL,JSON.stringify(abiertas)); }catch(e){} }
-  function carta(f,texto){
+  /* abiertas todas: la dedicatoria y una por foto. El final sale solo al abrir la última, no al volver */
+  function todas(){ if(!abiertas.d) return false; for(var i=0;i<FOTOS.length;i++) if(!abiertas[i]) return false; return true; }
+  function carta(f,texto,ultima){
     var c=document.getElementById('recuerdo'), cj=c.querySelector('.carta'), viejo=cj.innerHTML;
     cj.innerHTML='<div class="papel">'+(f?'<div class="foto"></div>':'')+'<p></p><p class="de"></p></div><button class="primario">Guardar la carta</button>';
     if(f) fotoEn(cj.querySelector('.foto'),f);
     cj.querySelector('p').textContent=texto||''; cj.querySelector('.de').textContent=String(DATOS.de||'').trim()?'— '+String(DATOS.de).trim():'';
     c.hidden=false; campanita([660,880]);
-    cj.querySelector('button').onclick=function(){ c.hidden=true; cj.innerHTML=viejo; };
+    /* la última cuenta como terminada al abrirla, aunque no llegue a tocar "Guardar" */
+    if(ultima) nucleo(function(N){ N.termino(); });
+    cj.querySelector('button').onclick=function(){ c.hidden=true; cj.innerHTML=viejo;
+      if(ultima) final('Abriste todas tus cartas','Volver a mis cartas',function(){}); };
   }
 }
 
@@ -1403,7 +1703,9 @@ function bitacora(){
     /* ---- el camino: una cinta de luz que serpentea hacia el fondo ---- */
     var PASO=5.2, camino=null, cinta=null, orbes=[];
     function punto(k){ return new THREE.Vector3(Math.sin(k*.55)*2.2, Math.sin(k*.33)*1.1-1.4, -k*PASO); }
-    function armarCamino(n){ if(cinta){ E.remove(cinta); cinta.geometry.dispose(); } orbes.forEach(function(o){ E.remove(o); }); orbes=[];
+    /* se rearma cada vez que pregunta al servidor: lo que se quita se libera (la luz de la cinta, luzCinta, sigue: es de todas) */
+    function armarCamino(n){ if(cinta){ E.remove(cinta); cinta.children.forEach(function(m){ m.geometry.dispose(); m.material.dispose(); }); }
+      orbes.forEach(function(o){ E.remove(o); if(o.material.map) o.material.map.dispose(); o.material.dispose(); }); orbes=[];
       var pts=[]; for(var k=-1;k<=n+2;k++) pts.push(punto(k)); camino=new THREE.CatmullRomCurve3(pts);
       cinta=new THREE.Group(); var g1=new THREE.TubeGeometry(camino,Math.max(40,n*14),.05,8,false);
       luzCinta.repeat.set(n*5+10,1);
@@ -1478,7 +1780,7 @@ function bitacora(){
       tarjetas=nuevas; armarCamino(tarjetas.length);
       tarjetas.forEach(function(t,i){ var p=punto(i+.5), lado=i%2?1:-1; t.base=new THREE.Vector3(p.x+lado*1.9,p.y+1.45,p.z); t.lado=lado; t.m.position.copy(t.base); t.m.rotation.set(0,-lado*.35,lado*.05); });
       /* los días de la cinta: un puntito con la fecha en cada recuerdo fechado */
-      tarjetas.forEach(function(t,i){ if(!t.r.dia || t.r.orig) return; var o=cartel3D(diaLindo(t.r.dia),'#FFE0EC'); o.scale.set(1.3,.33,1); o.position.set(t.base.x,t.base.y-1.4,t.base.z+.05); E.add(o); orbes.push(o); t.o=o; });
+      tarjetas.forEach(function(t,i){ t.o=null; if(!t.r.dia || t.r.orig) return; var o=cartel3D(diaLindo(t.r.dia),'#FFE0EC'); o.scale.set(1.3,.33,1); o.position.set(t.base.x,t.base.y-1.4,t.base.z+.05); E.add(o); orbes.push(o); t.o=o; });
       fin=Math.max(0,tarjetas.length-1);
       document.getElementById('bt-add').classList.toggle('late',tarjetas.length<=FOTOS.length);
     }
@@ -2085,19 +2387,26 @@ function rwNorm(v){ var d={piel:0,polera:0,short:0,pelo:0,zapas:0,acc:'nada'}; i
   ['piel','polera','short','pelo','zapas'].forEach(function(k){ var n=v[k]; if(n===(n|0)&&n>=0&&n<RW_OPC[k].length) d[k]=n; });
   if(RW_OPC.acc.indexOf(v.acc)>=0) d.acc=v.acc; return d; }
 /* Repinta la textura de una malla por zonas del atlas (coordenadas en 1024): cada zona toma un color
-   y conserva las luces y sombras del original. Lo pintado de fábrica queda guardado para volver. */
+   y conserva las luces y sombras del original. Lo pintado de fábrica queda guardado para volver.
+   Cada toque repinta sobre el MISMO lienzo y la misma textura de esa malla (antes creaba un lienzo
+   de 1024² y una textura nueva por toque, sin soltar la anterior). */
 function repintar(mesh,zonas){ function rgb(h){ var n=parseInt(h.slice(1),16); return [n>>16,n>>8&255,n&255]; }
   var mat=mesh.material, map=mat&&mat.map; if(!map||!map.image) return;
     if(!mesh.userData.orig){ var c0=document.createElement('canvas'); c0.width=map.image.width; c0.height=map.image.height; c0.getContext('2d').drawImage(map.image,0,0); mesh.userData.orig=c0; }
-    var o=mesh.userData.orig, W=o.width, c=document.createElement('canvas'); c.width=W; c.height=o.height; var x=c.getContext('2d'); x.drawImage(o,0,0);
+    var o=mesh.userData.orig, W=o.width, t=mesh.userData.pintada, c=t&&mat.map===t?t.image:null;
+    if(!c){ c=document.createElement('canvas'); c.width=W; c.height=o.height; }
+    var x=c.getContext('2d'); x.clearRect(0,0,W,o.height); x.drawImage(o,0,0);
     var im=x.getImageData(0,0,W,o.height), d=im.data, k=W/1024;
     zonas.forEach(function(z){ if(z.igual) return; var col=rgb(z.col), base=z.base, x0=Math.round(z.r[0]*k), y0=Math.round(z.r[1]*k), x1=Math.round(z.r[2]*k), y1=Math.round(z.r[3]*k);
       for(var y=y0;y<y1;y++) for(var xx=x0;xx<x1;xx++){ var i=(y*W+xx)*4; if(d[i+3]<10) continue; var r=d[i], g=d[i+1], b=d[i+2];
         if(z.si && !z.si(r,g,b)) continue;
         var l=(.3*r+.59*g+.11*b), f=z.oscuro?(.85+l/255*2.2):l/base;
         d[i]=Math.min(255,col[0]*f); d[i+1]=Math.min(255,col[1]*f); d[i+2]=Math.min(255,col[2]*f); } });
-    x.putImageData(im,0,0); var t=new THREE.CanvasTexture(c); t.flipY=map.flipY; t.encoding=map.encoding; t.anisotropy=4; t.wrapS=map.wrapS; t.wrapT=map.wrapT;
-    mat.map=t; mat.needsUpdate=true; }
+    x.putImageData(im,0,0);
+    if(t && mat.map===t){ t.needsUpdate=true; return; }
+    if(t) t.dispose();
+    t=new THREE.CanvasTexture(c); t.flipY=map.flipY; t.encoding=map.encoding; t.anisotropy=4; t.wrapS=map.wrapS; t.wrapT=map.wrapT;
+    mesh.userData.pintada=t; mat.map=t; mat.needsUpdate=true; }
 function vestirRuway(M,rw){ rw=rwNorm(rw); if(!M||!M.mallas) return;
   /* zonas del atlas de VRoid de este Ruway: polera 0–512 arriba; short, pelo y zapatillas a la derecha; piel abajo */
   var rojo=function(r,g,b){ return r>130 && r>g+50 && r>b+45; }, piel=function(r,g,b){ return r>150 && r>=g && g>=b-8 && r-b>12 && !(r>245&&g>245&&b>245); };
@@ -2138,7 +2447,7 @@ function vestirAvatar(M,id,v){ if(id==='killa') vestirKilla(M,v); else if(id==='
 function ponerAcc(M,acc,col){
   /* accesorios en la cabeza */
   var cab=M.huesos&&M.huesos.C_Head; if(!cab) return;
-  if(M.acc){ cab.remove(M.acc); M.acc=null; }
+  if(M.acc){ cab.remove(M.acc); M.acc.traverse(function(o){ if(o.isMesh){ o.geometry.dispose(); o.material.dispose(); } }); M.acc=null; }   /* se suelta el de antes: cada toque arma uno nuevo */
   if(acc==='nada') return;
   var kA=M.kCab||(M.alto||1.82)/1.82, a=new THREE.Group(); a.position.set(0,.25*kA,-.03*kA); a.scale.setScalar(kA); cab.add(a); M.acc=a;   /* medidas pensadas en la cabeza del Ruway de 1,82 */
   var cp=new THREE.MeshStandardMaterial({color:col,roughness:.6}), os=new THREE.MeshStandardMaterial({color:'#2B2B33',roughness:.4,metalness:.3});
@@ -3093,8 +3402,7 @@ function isla(){
       var fin=function(){ ocupado=false; misiones(); crecer(); if(EST.cor.length===5){ corazones[5].visible=EST.cor.indexOf(5)<0; aviso('💗 El último corazón apareció en el cuarto secreto de la casa'); } };
       ocupado=true;
       if(k===1) return recuerdo(fotoN(0),'Corazón 1 de 6 · La primera foto','Seguir',fin);
-      if(k===2){ var hayVoz=!!(DATOS.voz||DATOS.vozId); if(hayVoz){ var bv=document.getElementById('b-voz'); if(bv) setTimeout(function(){ bv.click(); },400); }
-        return recuerdo(fotoN(1),'Corazón 2 de 6 · '+(hayVoz?'Escucha su voz 🎙️':'Otro recuerdo'),'Seguir',fin); }
+      if(k===2) return recuerdo(fotoN(1),'Corazón 2 de 6 · Otro recuerdo','Seguir',fin);
       if(k===3){ tocarCancion(); return recuerdo(fotoN(2),'Corazón 3 de 6 · Su canción 🎵','Seguir',fin); }
       if(k===4){ var f=FOTOS[fotoN(3)];
         var c=capa('<span class="etiqueta">Corazón 4 de 6 · Una carta 💌</span><div class="papel">'+(f&&f.src?'<div class="foto" id="cf"></div>':'')+'<p>'+esc(String(DATOS.msg||'').trim()||'Gracias por existir.')+'</p>'
@@ -3107,7 +3415,7 @@ function isla(){
     }
     function casa(){ var voz=!!(DATOS.voz||DATOS.vozId), abierta=EST.cor.length>=5;
       var salas=[['sala','🛋️','Sala','Fotos de los dos'],['cuarto','🛏️','Habitación','Un mensaje privado'],['musica','🎵','Sala musical','Su canción'],
-                 ['galeria','📸','Galería','Todos sus recuerdos'],['voces','🎙️','Voces',voz?'Su mensaje de voz':'Sin mensaje de voz'],['secreta',abierta?'🎁':'🔒','Secreta',abierta?'Aquí dentro está el último corazón':'Encuentra 5 corazones']];
+                 ['galeria','📸','Galería','Todos sus recuerdos'],['voces','🎙️','Voces',voz?(EST.fin?'Su mensaje de voz':'🔒 Es tu premio final'):'Sin mensaje de voz'],['secreta',abierta?'🎁':'🔒','Secreta',abierta?'Aquí dentro está el último corazón':'Encuentra 5 corazones']];
       var c=capa('<span class="etiqueta">La casa de los recuerdos</span><h2>¿A qué cuarto entras?</h2><div class="salas">'+salas.map(function(s){ return '<button type="button" data-s="'+s[0]+'"><i>'+s[1]+'</i><b>'+s[2]+'</b><small>'+esc(s[3])+'</small></button>'; }).join('')+'</div><div id="sala-v"></div><button class="primario" data-cerrar>Salir de la casa</button>');
       var vv=c.querySelector('#sala-v');
       c.querySelector('.salas').onclick=function(e){ var b=e.target.closest('button'); if(!b) return; var s=b.dataset.s; nota(620,.06,'triangle',.04); vv.innerHTML='';
@@ -3116,7 +3424,8 @@ function isla(){
         if(s==='musica'){ tocarCancion(); vv.innerHTML='<p class="nota-v">'+(document.getElementById('b-son').hidden?'Este regalo no trae canción.':'🎵 Suena su canción. Con el botón ♪ de arriba la pausas.')+'</p>'; }
         if(s==='galeria'){ vv.innerHTML='<div class="gal">'+FOTOS.map(function(f,i){ return '<button type="button" data-n="'+i+'" class="foto" aria-label="Foto '+(i+1)+'"></button>'; }).join('')+'</div>';
           vv.querySelectorAll('.gal .foto').forEach(function(d,i){ fotoEn(d,FOTOS[i]); d.onclick=function(){ c.style.display='none'; recuerdo(i,'Recuerdo '+(i+1)+' de '+nF,'Volver a la galería',function(){ c.style.display=''; }); }; }); }
-        if(s==='voces'){ if(voz){ document.getElementById('b-voz').click(); vv.innerHTML='<p class="nota-v">🎙️ Escucha su voz…</p>'; } else vv.innerHTML='<p class="nota-v">Este regalo no trae mensaje de voz.</p>'; }
+        if(s==='voces'){ if(voz && EST.fin){ c.remove(); ocupado=false; nucleo(function(N){ N.premio.mostrar({musica:Sonido.musica}); }); }
+          else vv.innerHTML='<p class="nota-v">'+(voz?'🎁 Su mensaje de voz es tu premio: se abre cuando planten su flor al final.':'Este regalo no trae mensaje de voz.')+'</p>'; }
         if(s==='secreta'){ vv.innerHTML='<p class="nota-v">'+(abierta?(EST.cor.indexOf(5)>=0?'Aquí encontraste el último corazón 💗':'Sal de este menú: el último corazón brilla aquí dentro, en medio de la casa 💗'):'La puerta está cerrada con candado. Encuentra 5 corazones y se abre.')+'</p>'; }
       };
     }
@@ -3610,7 +3919,7 @@ function Kit3D(){
    cielo del anochecer con estrellas que titilan y cometas que pasan. */
 function planeta(){
   document.body.classList.add('juego');
-  var n=FOTOS.length, hayVoz=!!(DATOS.voz||DATOS.vozId), total=Math.max(1,n+(hayVoz?1:0));
+  var n=FOTOS.length, hayVoz=false, total=Math.max(1,n);   /* la voz ya no va en un regalo del camino: es el premio del final */
   var H0=hud('Planeta '+titulo2(),'Lleva '+pjAl()+' a cada regalo',total); H0.puntos(0);
   var box=document.createElement('div'); box.className='escena'; var cv=document.createElement('canvas'); box.appendChild(cv); document.getElementById('app').appendChild(box);
   var palanca=document.createElement('div');
