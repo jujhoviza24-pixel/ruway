@@ -6,7 +6,7 @@
      dedicatoria, canción y nota de voz. -->
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v41">
+<meta name="ruway-version" content="v42">
 <!-- GENERADO POR construir.js desde Experiencias.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -255,23 +255,37 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
 .aviso{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#FFF1DA;color:#3A2140;
   padding:10px 16px;border-radius:999px;font-weight:800;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:12;white-space:nowrap}
 
-/* cartas */
-.sobres{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
-.sobre{position:relative;aspect-ratio:4/3;border:none;border-radius:10px;background:#F4E1C1;color:#5A3420;padding:0;cursor:pointer;
-  box-shadow:0 10px 24px rgba(0,0,0,.35);perspective:600px;overflow:visible}
-.sobre::before{content:"";position:absolute;inset:0;border-radius:10px;
-  background:linear-gradient(35deg,transparent 49.5%,rgba(90,52,32,.14) 50%,transparent 51%),linear-gradient(-35deg,transparent 49.5%,rgba(90,52,32,.14) 50%,transparent 51%)}
-.sobre .tapa{position:absolute;left:0;right:0;top:0;height:58%;background:#E8C99A;clip-path:polygon(0 0,100% 0,50% 100%);
-  transform-origin:top;transition:transform .6s;border-radius:10px 10px 0 0}
-.sobre .sello{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;
-  background:radial-gradient(circle at 40% 35%,#FF6A88,#C2185B);box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;
-  justify-content:center;color:#FFE0EA;font-size:15px;transition:opacity .3s}
-.sobre span{position:absolute;left:8px;right:8px;bottom:8px;font:700 15px/1.15 'Dancing Script',Caveat,cursive;text-align:center}
-.sobre.abierto .tapa{transform:rotateX(180deg)}
-.sobre.abierto .sello{opacity:0}
-.sobre.abierto{background:#FBEEDC}
-.sobre.oro{grid-column:1/-1;aspect-ratio:auto;height:120px;background:linear-gradient(135deg,#FFE08A,#E8A73A)}
-.sobre.oro .tapa{background:#F2C25C}
+/* cartas: "El Chasqui del Mar". El juego 3D trae sus propios estilos (ruway-chasqui.js); aquí van
+   la pantalla de carga y el álbum en 2D (sin WebGL, si algo no carga, o después del final). */
+#cq-carga{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;
+  background:radial-gradient(ellipse at 50% 32%,#5A3A4E,#2A1B33 62%,#140B26);color:#FFF1DA;font:700 15px Nunito,sans-serif}
+#cq-carga p{margin:0}
+#cq-carga.ver-mar{background:linear-gradient(180deg,rgba(20,11,38,.2),rgba(20,11,38,.6));transition:background .8s}   /* ya armado: se ve el mar mientras llega Ruway */
+#cq-carga .suave{color:#FFE3A3}
+.cq-c-ola{width:120px;height:48px;position:relative}
+.cq-c-ola::before{content:"\1F6F6";position:absolute;left:50%;top:0;font-size:34px;transform:translateX(-50%);animation:cq-mece 2.4s ease-in-out infinite}
+.cq-c-ola::after{content:"";position:absolute;left:0;right:0;bottom:0;height:9px;border-radius:50%;opacity:.75;
+  background:repeating-linear-gradient(90deg,#7FD1D8 0 14px,#4FA6B8 14px 28px);animation:cq-ola 1.6s linear infinite}
+@keyframes cq-mece{50%{transform:translateX(-50%) translateY(-5px) rotate(-6deg)}}
+@keyframes cq-ola{to{background-position:28px 0}}
+.cq-album{padding-top:calc(128px + env(safe-area-inset-top,0px));padding-bottom:calc(150px + env(safe-area-inset-bottom,0px));text-align:center}   /* abajo, sitio para el botón flotante de compartir */
+.cq-al-txt{margin:0 0 16px;color:#E8DCF5;line-height:1.5}
+.cq-sobres{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;align-items:start}
+.cq-sobre{position:relative;aspect-ratio:4/3;border:none;border-radius:12px;padding:10px;cursor:pointer;color:#5A3A20;
+  background:linear-gradient(160deg,#FBF1DC,#E9D2A6);box-shadow:0 10px 24px rgba(0,0,0,.35),inset 0 0 0 2px rgba(200,150,60,.5);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;font:700 13px Nunito,sans-serif}
+.cq-sobre::before{content:"";position:absolute;inset:0;border-radius:12px;pointer-events:none;background-repeat:no-repeat;background-size:100% 62%;
+  background-image:linear-gradient(to bottom right,transparent 49%,rgba(150,110,70,.35) 50%,transparent 51%),linear-gradient(to bottom left,transparent 49%,rgba(150,110,70,.35) 50%,transparent 51%)}
+.cq-s-sello{position:relative;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:19px;color:#FFD6DC;
+  background:radial-gradient(circle at 38% 32%,#E04A5E,#A8242E 60%,#6E1220);box-shadow:0 3px 8px rgba(80,10,20,.4)}
+.cq-s-num{position:relative}
+.cq-sobre.abierto{aspect-ratio:auto;padding:6px 6px 8px;justify-content:flex-start;background:linear-gradient(180deg,#FFF9EC,#F4E6CB)}
+.cq-sobre.abierto::before{display:none}
+.cq-s-foto{display:block;width:100%;aspect-ratio:4/3;border-radius:8px;overflow:hidden;background:linear-gradient(145deg,#FFB49A,#C9A2E8)}
+.cq-s-foto img{width:100%;height:100%;object-fit:cover;display:block}
+.cq-s-txt{display:block;width:100%;text-align:left;font:italic 13px/1.3 Georgia,serif;color:#3A2410;white-space:pre-line;overflow-wrap:anywhere}
+.cq-album .primario{margin-top:4px}
+@media (prefers-reduced-motion:reduce){.cq-c-ola::before,.cq-c-ola::after{animation:none}}
 .papel{background:#FFFDF6;color:#3A2140;border-radius:6px;padding:18px 16px;box-shadow:0 18px 40px rgba(0,0,0,.45);text-align:left;
   background-image:repeating-linear-gradient(transparent 0 27px,rgba(90,52,32,.1) 27px 28px);max-width:330px;margin:0 auto 16px}
 .papel .foto{aspect-ratio:4/3;border-radius:4px;overflow:hidden;margin-bottom:12px;background:linear-gradient(145deg,#FF9A8B,#B79CFF)}
@@ -351,7 +365,7 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
   /* las experiencias, para nombrarlas en el Pase Ruway (las de u.html se abren allá; las demás en x.html) */
   var EXPS={universo:['🌌','Universo'],arbol:['🎄','Árbol que se enciende'],vela:['🕯️','Vela que no se apaga'],constelaciones:['✨','Constelaciones'],
     planeta:['🪐','Planeta propio'],laberinto:['🧸','Laberinto 3D'],carrito:['🏁','La gran carrera'],isla:['🏝️','Nuestra isla'],match:['💕','El regalo secreto'],
-    corre:['🏃','Corre hasta mí'],bitacora:['📖','Nuestra bitácora'],cartas:['💌','Cartas para abrir cuando…']};
+    corre:['🏃','Corre hasta mí'],bitacora:['📖','Nuestra bitácora'],cartas:['💌','El Chasqui del Mar']};
   var EN_U=/^(universo|arbol|vela)$/;
   function vacio(){ return {v:1,vistos:{},inv:{},logros:{},fin:0,dias:[],hechas:{},ev:{}}; }
   /* Lo guardado se revisa: un valor raro vuelve a cero en vez de romper la mochila. */
@@ -1069,7 +1083,7 @@ var MAPA = { c:'rcod', cod:'rcod', rcod:'rcod', para:'rpara', rpara:'rpara',
                 tit:'rtit', rtit:'rtit', tem:'rtem', rtem:'rtem',
                 v:'rver', rver:'rver' };
 var ISO = "data:image/png;base64,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";
-var WEB = {"v":"v41","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-movs.json":466490,"via-lactea.jpg":502377,"ruway-logo.png":23968,"prev-arbol.webp":60930,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":3746,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892}};
+var WEB = {"v":"v42","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-movs.json":466490,"via-lactea.jpg":502377,"ruway-logo.png":23968,"prev-arbol.webp":60930,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":83710,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892,"ruway-chasqui.js":280000}};
 var DATOS=null, FOTOS=[], TIPO='', HOY=Date.now();
 /* El núcleo común (ruway-nucleo.js): progreso, colección, logros, mochila, audio guardado y
    fluidez, iguales en todas las experiencias. Baja aparte y en paralelo: lo que se le pide
@@ -1185,7 +1199,7 @@ var TXT={
   laberinto:{ic:'🧸',tit:'Encuentra nuestros recuerdos en el laberinto',txt:'En el laberinto hay regalitos escondidos. Cada uno guarda una foto. Con todos, se abre el corazón del final.',bt:'Empezar'},
   carrito:{ic:'🏁',tit:'La gran carrera de los dos',txt:'Rebasa a todos en tres vueltas. Cada arco de corazón que cruces abre un recuerdo nuestro.',bt:'¡Arrancar!'},
   bitacora:{ic:'📖',tit:'Nuestra bitácora',txt:'Nuestra historia flotando en el espacio. Los dos podemos ir agregando fotos, notas y nuestras próximas citas.',bt:'Abrir'},
-  cartas:{ic:'💌',tit:'Cartas para abrir cuando…',txt:'Una carta para cada momento. Ábrelas cuando toque (o todas ahora, no le diré a nadie).',bt:'Ver mis cartas'},
+  cartas:{ic:'💌',tit:'El Chasqui del Mar',txt:'Rema en tu caballito de totora por el mar de Huanchaco, encuentra nuestras fotos y llévalas al muelle: alguien te espera.',bt:'Empezar a remar'},
   isla:{ic:'🏝️',tit:'Nuestra isla',txt:'Encuéntrame, planta nuestra flor y busca 6 corazones: cada uno guarda un recuerdo. Y lo que construyas aquí, lo veré yo también.',bt:'Entrar a la isla'},
   match:{ic:'💕',tit:'Tienes un regalo secreto 💕',txt:'Junta 3 o más iguales: corazones, flores, besos, estrellas y regalos. Gana los niveles y se abre un mensaje para ti.',bt:'¡Abrir mi regalo!'},
   corre:{ic:'🏃',tit:'Corre hasta mí',txt:'Esquiva los problemas, junta corazones y abre los regalos del camino. Al final te estoy esperando.',bt:'¡A correr!'}
@@ -1260,8 +1274,9 @@ function recuerdo(i,etiqueta,boton,luego){
   if(FOTOS[i]) nucleo(function(N){ N.vio(i); });
   b.onclick=function(){ document.getElementById('recuerdo').hidden=true; if(luego) luego(); };
 }
-/* La dedicatoria del cliente, al final de cada experiencia. */
-function final(titulo,boton,luego){
+/* La dedicatoria del cliente, al final de cada experiencia. otraVez: lo vuelve a ver en la
+   misma visita (sale igual, con su premio, pero no se cuenta como terminada otra vez). */
+function final(titulo,boton,luego,otraVez){
   document.getElementById('f-para').textContent=nombrePara()?'Para '+nombrePara():'';
   document.getElementById('f-tit').textContent=titulo;
   document.getElementById('f-txt').textContent=String(DATOS.msg||'').trim()||'Gracias por existir.';
@@ -1269,7 +1284,7 @@ function final(titulo,boton,luego){
   var b=document.getElementById('f-bt'), fc=document.getElementById('f-comp'); b.textContent=boton||'Volver a empezar'; b.className='suave'; fc.className='primario';
   document.getElementById('final').hidden=false;
   campanita([523,659,784,1046]);
-  nucleo(function(N){ N.termino();
+  nucleo(function(N){ if(!otraVez) N.termino();
     /* Pase Ruway: con esta terminada se abre la siguiente, y se ofrece ir de frente */
     var viejo=document.getElementById('f-sig'); if(viejo) viejo.remove(); var sg=N.pase.siguiente();
     if(sg){ var bs=document.createElement('button'); bs.id='f-sig'; bs.className='primario'; bs.textContent=sg.ic+' Abrir '+sg.nom; bs.onclick=function(){ N.pase.ir(sg.id); };
@@ -1345,10 +1360,24 @@ function hud(titulo,sub,n){
 }
 function pista(t){ var p=document.getElementById('pista-j'); if(!p){ p=document.createElement('div'); p.className='pista'; p.id='pista-j'; document.body.appendChild(p); }
   p.textContent=t; p.style.opacity=t?1:0; }
-function cargarThree(listo){
+function cargarThree(listo,mal){
   if(window.THREE){ listo(); return; }
-  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
-  s.onload=listo; s.onerror=function(){ aviso('No cargó el mundo 3D. Revisa tu conexión.'); };
+  cargarJS('https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',listo,function(){ if(mal) mal(); else aviso('No cargó el mundo 3D. Revisa tu conexión.'); },
+    {integrity:'sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==',crossOrigin:'anonymous'});   /* con su huella (SEG-20) */
+}
+/* Un archivo .js se pide UNA vez: si se vuelve a pedir mientras baja (p. ej. del álbum se vuelve al
+   mar), se espera la misma descarga. Si falla, se borra para poder intentarlo de nuevo.
+   attr: propiedades extra del <script> (integrity y crossOrigin de las librerías de cdnjs). */
+var _js={};
+function cargarJS(src,ok,mal,attr){
+  var c=_js[src];
+  if(c&&c.listo){ if(ok) ok(); return; }
+  if(c){ c.ok.push(ok); c.mal.push(mal); return; }
+  c=_js[src]={listo:false,ok:[ok],mal:[mal]};
+  var s=document.createElement('script'); s.src=src;
+  if(attr) for(var k in attr) s[k]=attr[k];
+  s.onload=function(){ c.listo=true; var l=c.ok; c.ok=[]; c.mal=[]; l.forEach(function(f){ if(f) f(); }); };
+  s.onerror=function(){ delete _js[src]; if(s.parentNode) s.parentNode.removeChild(s); var l=c.mal; c.ok=[]; c.mal=[]; l.forEach(function(f){ if(f) f(); }); };
   document.head.appendChild(s);
 }
 function lienzo2d(){
@@ -1562,40 +1591,124 @@ function constelaciones(){
   })(0);
 }
 
-/* ================= CARTAS ================= */
-var SOBRES=['Abre cuando me extrañes','Abre cuando estés triste','Abre cuando necesites reír','Abre cuando no puedas dormir',
-  'Abre cuando sea tu cumpleaños','Abre cuando pelees conmigo','Abre cuando quieras saber cuánto te quiero','Abre cuando todo salga bien'];
+/* ================= CARTAS: "El Chasqui del Mar" =================
+   Ruway, vestido de chasqui, rema en su caballito de totora por el mar de Huanchaco hasta el muelle.
+   Cada foto del regalo flota en un sobre que brilla: al recogerla vuela al cofre y sale en grande
+   (el recuerdo de siempre, con su frase). En el muelle viene el regalo mayor: el cofre, Killa, el
+   abrazo, los fuegos y la galería; después, el final común (el premio con su voz, la dedicatoria,
+   el Pase y "Compartir en mi estado").
+   El juego vive aparte (lib/chasqui/ → ruway-chasqui.js) y se baja SOLO al entrar aquí, con three
+   y el cargador de glTF; Killa, recién cerca del final. Sin WebGL, si algo no carga o si el
+   celular pierde el 3D, sigue el álbum en 2D con lo mismo: las fotos, sus frases y el final.
+   Lo encontrado se guarda en ruway:cartas:<cod> con la forma de siempre: {d:1,0:1,1:1,…}
+   (los números, las fotos que ya están en el cofre; d, que ya vio el final). Los regalos de
+   antes conservan lo que ya habían abierto: esas fotos empiezan dentro del cofre. */
+var CHASQUI_JS='ruway-chasqui.js';
+/* ¿Hay WebGL? Se prueba con un lienzo que se suelta enseguida (así, sin WebGL, no se baja nada).
+   De paso se anota el nombre de la tarjeta de video: el juego elige su calidad (y si suaviza los
+   bordes) ANTES de abrir su lienzo, sin abrir otro contexto para averiguarlo. */
+function hayWebGL(){ try{ var c=document.createElement('canvas'), gl=c.getContext('webgl')||c.getContext('experimental-webgl');
+  if(!gl) return false; var gpu='';
+  try{ var x=gl.getExtension('WEBGL_debug_renderer_info'); gpu=String(gl.getParameter(x?x.UNMASKED_RENDERER_WEBGL:gl.RENDERER)||''); }catch(e){}
+  var l=gl.getExtension('WEBGL_lose_context'); if(l) l.loseContext(); return {gpu:gpu}; }catch(e){ return false; } }
 function cartas(){
-  var llaveL='ruway:cartas:'+DATOS.codigo, abiertas={}; try{ abiertas=JSON.parse(localStorage.getItem(llaveL)||'{}'); }catch(e){}
-  var h=document.createElement('div'); h.className='hoja';
-  h.innerHTML='<div class="nombres"></div><div class="desde">Una carta para cada momento</div><div class="sobres" id="sobres"></div>';
-  h.querySelector('.nombres').textContent='Para '+(nombrePara()||'ti');
-  document.getElementById('app').appendChild(h);
-  var cont=h.querySelector('#sobres');
-  function sobre(etq,clase,abrir){ var b=document.createElement('button'); b.className='sobre '+(clase||'');
-    b.innerHTML='<div class="tapa"></div><div class="sello">♥</div><span></span>'; b.querySelector('span').textContent=etq;
-    b.onclick=function(){ b.classList.add('abierto'); nota(520,.15,'triangle',.05); setTimeout(abrir,550); }; cont.appendChild(b); return b; }
-  sobre('Ábreme primero','oro'+(abiertas.d?' abierto':''),function(){ var ya=todas(); abiertas.d=1; guardarL();
-    carta(null,String(DATOS.msg||'').trim()||'Gracias por existir.',!ya&&todas()); });
-  (FOTOS.length?FOTOS:[]).forEach(function(f,i){
-    sobre(SOBRES[i]||'Abre cuando quieras',abiertas[i]?'abierto':'',function(){ var ya=todas(); abiertas[i]=1; guardarL(); carta(f,f.txt,!ya&&todas()); nucleo(function(N){ N.vio(i); N.gano('beso'); }); }); });
-  /* Si vuelve con todas abiertas (cerró la página antes de "Guardar la carta" en la última),
-     el final sigue a mano: sin esto, el Pase quedaba trabado para siempre. */
-  if(todas()) sobre('Ver el final 💌','oro',function(){ final('Abriste todas tus cartas','Volver a mis cartas',function(){}); });
-  function guardarL(){ try{ localStorage.setItem(llaveL,JSON.stringify(abiertas)); }catch(e){} }
-  /* abiertas todas: la dedicatoria y una por foto. El final sale solo al abrir la última, no al volver */
-  function todas(){ if(!abiertas.d) return false; for(var i=0;i<FOTOS.length;i++) if(!abiertas[i]) return false; return true; }
-  function carta(f,texto,ultima){
-    var c=document.getElementById('recuerdo'), cj=c.querySelector('.carta'), viejo=cj.innerHTML;
-    cj.innerHTML='<div class="papel">'+(f?'<div class="foto"></div>':'')+'<p></p><p class="de"></p></div><button class="primario">Guardar la carta</button>';
-    if(f) fotoEn(cj.querySelector('.foto'),f);
-    cj.querySelector('p').textContent=texto||''; cj.querySelector('.de').textContent=String(DATOS.de||'').trim()?'— '+String(DATOS.de).trim():'';
-    c.hidden=false; campanita([660,880]);
-    /* la última cuenta como terminada al abrirla, aunque no llegue a tocar "Guardar" */
-    if(ultima) nucleo(function(N){ N.termino(); });
-    cj.querySelector('button').onclick=function(){ c.hidden=true; cj.innerHTML=viejo;
-      if(ultima) final('Abriste todas tus cartas','Volver a mis cartas',function(){}); };
+  var llaveL='ruway:cartas:'+DATOS.codigo, G={};
+  try{ G=JSON.parse(localStorage.getItem(llaveL)||'{}')||{}; }catch(e){}
+  if(!G||typeof G!=='object'||Array.isArray(G)) G={};
+  var NF=FOTOS.length, gl3d=hayWebGL(), con3d=!!gl3d, terminada=false, juego=null, caja=null, hoja=null;
+  function guardarL(){ try{ localStorage.setItem(llaveL,JSON.stringify(G)); }catch(e){} }
+  function cuantas(){ var n=0; for(var i=0;i<NF;i++) if(G[i]) n++; return n; }
+  var H=hud('El Chasqui del Mar',NF?'Encuentra nuestras fotos y llévalas al muelle':'Lleva el cofre al muelle',NF); H.puntos(cuantas());
+
+  /* una foto encontrada (en el mar o en el álbum): al cofre y a la llave, y su recuerdo en grande */
+  function encontrada(i,luego){
+    if(!G[i]){ G[i]=1; guardarL(); H.puntos(cuantas()); nucleo(function(N){ N.gano('beso'); }); }
+    recuerdo(i,'Foto '+(i+1)+' de '+NF+' · al cofre','Guardar en el cofre',luego);
   }
+  /* el final común. Si lo vuelve a ver en la misma visita, N.termino no se repite. */
+  function finalComun(){
+    G.d=1; guardarL();
+    final('Todo lo que traje fue para ti','Volver al cofre',function(){ album('fin'); },terminada);
+    terminada=true;
+  }
+  /* las fotos como las pide el juego: la frase va como texto; imagen() solo si se puede pintar en WebGL */
+  function fotoJuego(f){ return {frase:String(f.txt||''),src:f.src,poner:function(im){ ponerFoto(im,f); },imagen:function(){ return f.limpia&&f.img?f.img:null; }}; }
+  function quitarCaja(){ if(caja&&caja.parentNode) caja.parentNode.removeChild(caja); caja=null; document.body.classList.remove('juego'); }
+  /* ¿hay algo encima del mar? (la mochila o el pase del núcleo, una tarjeta de la página) */
+  function tapado(){ return !!document.querySelector('.rn-capa,.capa:not([hidden])'); }
+  function quitarAlbum(){ if(hoja&&hoja.parentNode) hoja.parentNode.removeChild(hoja); hoja=null; }
+
+  /* ---- el mar en 3D ---- */
+  function mar(){
+    quitarAlbum(); quitarCaja();
+    H.sub(NF?'Encuentra nuestras fotos y llévalas al muelle':'Lleva el cofre al muelle');
+    document.body.classList.add('juego');
+    caja=document.createElement('div'); caja.id='cq'; document.body.appendChild(caja);
+    var carga=document.createElement('div'); carga.id='cq-carga'; carga.setAttribute('role','status');
+    carga.innerHTML='<div class="cq-c-ola" aria-hidden="true"></div><p></p><button type="button" class="suave" hidden>Ver mis fotos en un álbum</button>';
+    var cTxt=carga.querySelector('p'), cBt=carga.querySelector('button'); cTxt.textContent='Preparando el mar de Huanchaco…';
+    caja.appendChild(carga);
+    var vencido=false, reloj=setTimeout(function(){ cBt.hidden=false; },12000);   /* si tarda mucho, el álbum queda a un toque */
+    function fallo(motivo){ if(vencido) return; vencido=true; clearTimeout(reloj); var j=juego; juego=null; if(j) j.cerrar(); quitarCaja(); album(motivo); }
+    cBt.onclick=function(){ fallo('lento'); };
+    function empezar(){
+      if(vencido) return;
+      cTxt.textContent='Trayendo a Ruway…';
+      setTimeout(function armar(){   /* que se vea el aviso antes de armar el mar (toma un momento) */
+        if(vencido) return;
+        if(tapado()){ setTimeout(armar,300); return; }   /* con la mochila abierta se espera: armar el mar congela la pantalla un rato */
+        try{ juego=Chasqui.jugar({contenedor:caja,fotos:FOTOS.map(fotoJuego),guardadas:G,visto:!!G.d,
+          glbRuway:AVATARES.ruway.glb,glbKilla:AVATARES.killa.glb,conMusica:!!(DATOS.cancion||DATOS.cancionId),gpu:gl3d?gl3d.gpu:'',tapado:tapado,
+          al:{listo:function(){ clearTimeout(reloj); if(carga.parentNode) carga.parentNode.removeChild(carga); },
+              recoger:function(i,seguir){ encontrada(i,seguir); },
+              seguir:function(){ var j=juego; juego=null; vencido=true; if(j) j.cerrar(); quitarCaja(); finalComun(); },
+              fallo:function(m){ juego=null; fallo(m==='perdido'?'perdido':'sin3d'); },
+              bajo:function(){ nucleo(function(N){ N.bajadas=(N.bajadas||0)+1; }); }}});
+          if(juego&&!juego.fallo&&carga.parentNode) carga.classList.add('ver-mar');
+        }catch(e){ fallo('carga'); }
+      },60);
+    }
+    function conJuego(){ if(window.Chasqui&&Chasqui.jugar) empezar(); else cargarJS(CHASQUI_JS,empezar,function(){ fallo('carga'); }); }
+    cargarThree(function(){ if(vencido) return; if(THREE.GLTFLoader) conJuego(); else cargarJS(RUWAY_JS,conJuego,function(){ fallo('carga'); }); },function(){ fallo('carga'); });
+  }
+
+  /* ---- el álbum en 2D: cada foto en un sobre con su sello; al abrirlo, su recuerdo ---- */
+  var MSJ={sin3d:'Tu celular no puede abrir el mar en 3D, pero tu cofre llegó igual. Abre cada carta:',
+    carga:'No pudimos traer el mar esta vez. Aquí está tu cofre: abre cada carta.',
+    lento:'Mientras el mar se prepara, aquí está tu cofre: abre cada carta.',
+    perdido:'La imagen 3D se reinició para cuidar tu celular. Tu cofre sigue aquí, con todo lo que encontraste.',
+    fin:'Todo lo que te traje, guardado en tu cofre.'};
+  function pintarSobre(b,i){
+    var f=FOTOS[i]||{}, ab=!!G[i];
+    b.className='cq-sobre'+(ab?' abierto':''); while(b.firstChild) b.removeChild(b.firstChild);
+    if(ab){
+      var ft=document.createElement('span'); ft.className='cq-s-foto'; var im=document.createElement('img'); im.alt=''; ponerFoto(im,f); ft.appendChild(im); b.appendChild(ft);
+      var tx=document.createElement('span'); tx.className='cq-s-txt'; tx.textContent=f.txt||''; b.appendChild(tx);
+    } else {
+      var se=document.createElement('span'); se.className='cq-s-sello'; se.setAttribute('aria-hidden','true'); se.textContent='♥'; b.appendChild(se);
+      var nm=document.createElement('span'); nm.className='cq-s-num'; nm.textContent='Carta '+(i+1); b.appendChild(nm);
+    }
+    b.setAttribute('aria-label',ab?'Carta '+(i+1)+': ya está en tu cofre':'Abrir la carta '+(i+1));
+  }
+  function album(modo){
+    quitarAlbum();
+    H.sub(modo==='fin'?'Todo está en tu cofre':'Abre cada carta de tu cofre');
+    hoja=document.createElement('div'); hoja.className='hoja cq-album'; hoja.id='cq-album';
+    hoja.innerHTML='<p class="cq-al-txt"></p><div class="cq-sobres"></div>'
+      +'<button type="button" class="primario" id="cq-abrir-final" hidden></button><button type="button" class="suave" id="cq-al-mar" hidden></button>';
+    hoja.querySelector('.cq-al-txt').textContent=MSJ[modo]||MSJ.sin3d;
+    var lista=hoja.querySelector('.cq-sobres'), bf=hoja.querySelector('#cq-abrir-final'), bm=hoja.querySelector('#cq-al-mar');
+    function pintarFin(){ bf.hidden=cuantas()<NF; bf.textContent=G.d?'🎬 Ver el final otra vez':'🎁 Abrir el regalo mayor'; }
+    FOTOS.forEach(function(f,i){
+      var b=document.createElement('button'); b.type='button'; b.setAttribute('data-i',i); pintarSobre(b,i); lista.appendChild(b);
+      b.onclick=function(){ encontrada(i,function(){ pintarSobre(b,i); pintarFin(); }); };
+    });
+    pintarFin(); bf.onclick=finalComun;
+    if(con3d && modo!=='sin3d'){ bm.hidden=false; bm.textContent=modo==='fin'?'🛶 Remar otra vez':'🛶 Volver al mar'; bm.onclick=mar; }
+    document.getElementById('app').appendChild(hoja);
+  }
+
+  if(con3d) mar(); else album('sin3d');
 }
 
 /* ================= BITÁCORA ================= */

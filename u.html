@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v41">
+<meta name="ruway-version" content="v42">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -229,6 +229,10 @@ html,body{height:100%;background:#03040a;overflow:hidden;
   padding:0 28px;text-align:center;font-size:12.5px;line-height:1.7;color:var(--c2);opacity:.62}
 #esperando.cerrado .sobre{animation:respira 3.4s ease-in-out infinite}
 @media (max-width:360px){#esperando .cuenta div{min-width:52px}#esperando .cuenta b{font-size:23px}}
+/* Todavía en el taller (SEG-04): la misma pantalla, sin cuenta atrás y con un
+   botón para volver a mirar. */
+#esperando.preparando .cuenta{display:none}
+#esperando.preparando button{display:block}
 
 /* La marquita que solo ve el dueño cuando revisa un universo que para el
    resto todavía está cerrado. */
@@ -283,10 +287,31 @@ function llave(par) {
   return 'ruway:uni:' + (/^[A-Z0-9]{4,10}$/.test(c) ? c : '-');
 }
 
+/* Ni la copia guardada ni la respuesta deciden qué código se carga (SEG-14).
+   De ellas salían dos direcciones que el navegador carga como código: la de
+   los ramos (un <script src>) y la base de la API (el JSONP también es un
+   <script>). Quien lograra escribir en este almacenamiento dejaba código suyo
+   dentro del regalo por 30 días. Ahora la API es siempre la de esta página y
+   los ramos solo si son un .js de este mismo sitio. (Sin barras invertidas
+   en las expresiones: esto vive dentro de un texto de construir.js.) */
+function soloDeAqui(u) {
+  try {
+    var x = new URL(String(u || ''), location.href);
+    return x.origin === location.origin && !x.search && !x.hash
+      && /^[A-Za-z0-9_./-]+$/.test(x.pathname) && x.pathname.slice(-3) === '.js';
+  } catch (e) { return false; }
+}
+function limpiarDatos(d) {
+  if (!d || typeof d !== 'object') return d;
+  d.api = API;
+  if (d.ramos && !soloDeAqui(d.ramos)) d.ramos = '';
+  return d;
+}
+
 function guardado(par) {
   try {
     var v = JSON.parse(localStorage.getItem(llave(par)) || 'null');
-    if (v && v.d && (Date.now() - v.t) < 30 * 24 * 3600 * 1000) return v.d;
+    if (v && v.d && (Date.now() - v.t) < 30 * 24 * 3600 * 1000) return limpiarDatos(v.d);
   } catch (e) {}
   return null;
 }
@@ -325,7 +350,7 @@ function pedirDatos() {
     setTimeout(function () { encender(); }, 0);
     /* Y por detrás se pide la versión fresca, por si el dueño cambió algo:
        se guarda para la próxima vez, sin interrumpir esta. */
-    traer(par, function (d) { if (d && d.ok) guardar(par, d); }, function () {});
+    traer(par, function (d) { d = limpiarDatos(d); if (d && d.ok) guardar(par, d); }, function () {});
     return;
   }
 
@@ -341,6 +366,7 @@ function pedirDatos() {
 
   traer(par, function (d) {
     clearInterval(contando);
+    d = limpiarDatos(d);
     if (!d || !d.ok) {
       espera('No encontramos este regalo.\nRevisa el enlace o escríbenos.', true);
       return;
@@ -739,7 +765,7 @@ function traer(par, ok, mal) {
   /* las experiencias, para nombrarlas en el Pase Ruway (las de u.html se abren allá; las demás en x.html) */
   var EXPS={universo:['🌌','Universo'],arbol:['🎄','Árbol que se enciende'],vela:['🕯️','Vela que no se apaga'],constelaciones:['✨','Constelaciones'],
     planeta:['🪐','Planeta propio'],laberinto:['🧸','Laberinto 3D'],carrito:['🏁','La gran carrera'],isla:['🏝️','Nuestra isla'],match:['💕','El regalo secreto'],
-    corre:['🏃','Corre hasta mí'],bitacora:['📖','Nuestra bitácora'],cartas:['💌','Cartas para abrir cuando…']};
+    corre:['🏃','Corre hasta mí'],bitacora:['📖','Nuestra bitácora'],cartas:['💌','El Chasqui del Mar']};
   var EN_U=/^(universo|arbol|vela)$/;
   function vacio(){ return {v:1,vistos:{},inv:{},logros:{},fin:0,dias:[],hechas:{},ev:{}}; }
   /* Lo guardado se revisa: un valor raro vuelve a cero en vez de romper la mochila. */
@@ -1542,6 +1568,33 @@ function esperarApertura(d){
   }
 }
 
+/* El regalo todavía está en el taller ("Por revisar"): el servidor no manda
+   nada de él hasta que se aprueba (SEG-04). Se dice con cariño, sin cuenta
+   atrás, y se vuelve a mirar solo cada tanto por si ya está listo. */
+function esperarRevision(d){
+  var t=d.tema||{};
+  var r=document.documentElement.style;
+  if(t.c1) r.setProperty('--c1',t.c1);
+  if(t.c2) r.setProperty('--c2',t.c2);
+  if(t.c3) r.setProperty('--c3',t.c3);
+  var velo=document.getElementById('esperando');
+  velo.classList.remove('perdido');
+  velo.classList.add('cerrado');
+  velo.classList.add('preparando');
+  document.getElementById('esp-para').textContent='Un regalo para ti';
+  /* "ocupado": mucha gente pidiendo regalos a la vez (o alguien probando
+     códigos, SEG-06). Se reintenta solo en un par de minutos. */
+  document.getElementById('esp-txt').textContent=d.ocupado
+    ? 'Hay muchas personas abriendo regalos ahora mismo 🌷' : 'Tu regalo se está preparando 🌷';
+  document.getElementById('esp-vuelve').textContent=d.ocupado
+    ? 'En un par de minutos lo intentamos otra vez, solos. No cierres esta pantalla.'
+    : 'Lo estamos terminando con mucho cariño. Vuelve a este enlace en un ratito.';
+  var bt=document.getElementById('esp-bt');
+  if(bt) bt.textContent='Volver a mirar';
+  var espera=Math.max(60000,Math.min(3600000,Number(d.faltan)||600000));
+  setTimeout(function(){ location.reload(); },espera);
+}
+
 /* Cuántas veces se abre y cuánto rato se queda quien lo recibió.
    Una marca al entrar y el tiempo al salir (o al cambiar de app). Va con
    sendBeacon: el teléfono lo manda aunque la página ya se esté cerrando.
@@ -1565,6 +1618,7 @@ var Visita=(function(){
   return {empezar:empezar};
 })();
 function encender(){
+if(DATOS && (DATOS.preparando || DATOS.ocupado)){ esperarRevision(DATOS); return; }
 if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
 /* Pase Ruway: el mismo código trae varias experiencias que se abren una tras otra. Se muestra
    la que toca (o la pedida con ?x=, si ya se desbloqueó); si es un juego, vive en x.html. */
@@ -2642,9 +2696,18 @@ var T3D={pidio:false,esperan:[]};
 function cargar3D(cb){
   if(window.THREE){ cb(); return; }
   T3D.esperan.push(cb); if(T3D.pidio) return; T3D.pidio=true;
-  var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js'; s.async=true;
-  s.onload=function(){ var l=T3D.esperan; T3D.esperan=[]; l.forEach(function(f){ try{ f(); }catch(e){ if(window.console) console.log(e); } }); };
-  document.head.appendChild(s);
+  /* Con su huella (SEG-20): si el archivo de cdnjs cambiara, el navegador no
+     lo ejecuta. Si cdnjs no contesta, una vez más desde jsDelivr (la misma
+     versión, byte a byte, con la misma huella); si tampoco, queda el 2D. */
+  var fuentes=['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+               'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'];
+  (function pedir(i){
+    var s=document.createElement('script'); s.src=fuentes[i]; s.async=true;
+    s.integrity='sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=='; s.crossOrigin='anonymous';
+    s.onload=function(){ var l=T3D.esperan; T3D.esperan=[]; l.forEach(function(f){ try{ f(); }catch(e){ if(window.console) console.log(e); } }); };
+    s.onerror=function(){ if(s.parentNode) s.parentNode.removeChild(s); if(i+1<fuentes.length) setTimeout(function(){ pedir(i+1); },800); };
+    document.head.appendChild(s);
+  })(0);
 }
 /* El motor: un solo renderizador que sigue el tamaño del lienzo (también
    cuando el video lo cambia a 1080×1920 mientras graba). */
