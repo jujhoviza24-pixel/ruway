@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v42">
+<meta name="ruway-version" content="v43">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -111,6 +111,20 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 @media (max-width:420px){#s3 .cab b{font-size:22px}}
 #s3 .pie{position:absolute;bottom:18px;left:0;right:0;text-align:center;pointer-events:none;
   font-size:10px;letter-spacing:.32em;color:#9C937E;font-family:sans-serif}
+/* En memoria: el final lo abre quien recibe, cuando quiera (no se abre solo) */
+#despedida{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:8;max-width:calc(100% - 32px);
+  padding:13px 22px;border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);border-radius:26px;
+  background:color-mix(in srgb,#0b0912 70%,transparent);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  color:var(--c2);font-size:14px;font-weight:600;font-family:'Baloo 2',sans-serif;white-space:nowrap;
+  box-shadow:0 8px 26px rgba(0,0,0,.45);cursor:pointer}
+/* La vela, a su ritmo: anterior · cuál es · pausar · siguiente */
+#vela-ctl{position:absolute;left:50%;bottom:102px;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:6px;
+  padding:5px;border-radius:26px;background:color-mix(in srgb,#0b0912 62%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  border:1px solid rgba(255,226,180,.18);transition:opacity .6s}
+#vela-ctl button{min-width:40px;height:38px;padding:0 12px;border:0;border-radius:19px;background:rgba(255,226,180,.1);color:#FFE6C4;
+  font:600 14px 'Baloo 2',sans-serif;cursor:pointer}
+#vela-ctl #vela-ant,#vela-ctl #vela-sig{font-size:22px;line-height:1;padding:0 10px}
+#vela-n{min-width:86px;text-align:center;color:rgba(255,230,196,.85);font:600 12px sans-serif;letter-spacing:.04em}
 #compartir{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:7;
   padding:13px 26px;border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);
   border-radius:26px;
@@ -161,6 +175,9 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 /* La animación solo al aparecer: con .oculto el elemento sigue ahí, en
    transparente, y la animación se gastaría al cargar la página. */
 #regala:not(.oculto){animation:regsube .5s ease-out}
+/* En memoria sale después de despedirse: encima de "Escuchar el mensaje de voz" (152 px), de los
+   controles de la vela (102 px) y de "Compartir" (42 px), sin tapar ninguno. */
+#regala.memoria{bottom:calc(200px + env(safe-area-inset-bottom))}
 #regala b{display:block;color:var(--c2);font-family:'Baloo 2',sans-serif;font-size:16px}
 #regala span{display:block;font-size:13px;opacity:.85;margin-top:2px}
 #regala .bts{display:flex;gap:10px;align-items:center;margin-top:10px}
@@ -673,6 +690,8 @@ function traer(par, ok, mal) {
   <div id="pista" class="oculto"></div>
   <div id="esc-pista" class="oculto"></div>
   <button id="compartir" class="oculto" onclick="compartirUniverso()">Compartir en mi estado</button>
+  <button id="despedida" class="oculto" onclick="abrirDespedida()"></button>
+  <div id="vela-ctl" class="oculto" role="group" aria-label="Los recuerdos de la vela"><button id="vela-ant" aria-label="Foto anterior">‹</button><span id="vela-n" aria-live="polite"></span><button id="vela-pausa">Pausar</button><button id="vela-sig" aria-label="Foto siguiente">›</button></div>
   <button id="corazon" class="oculto" onclick="mandarCorazon()" aria-label="Mandar un corazón">❤️</button>
   <div id="cor-globo" class="oculto"></div>
   <div id="regala" class="oculto"><b>¿Te gustó? 🌻</b><span>Sorprende tú también a alguien que quieres.</span>
@@ -752,7 +771,7 @@ function traer(par, ok, mal) {
    nucleo(function(N){ ... }). */
 (function(){
   if(window.Nucleo) return;
-  var N={}, D={}, cod='', clave='', P=null, api='', previa=false, fotosFn=null, personaje='', envioT=0, boton=null, cuentaEl=null, exp='', PASE=[], paseEl=null;
+  var N={}, D={}, cod='', clave='', P=null, api='', previa=false, fotosFn=null, personaje='', envioT=0, boton=null, cuentaEl=null, exp='', PASE=[], paseEl=null, TONO='';
   var ITEMS={corazon:['❤️','Corazones'],estrella:['⭐','Estrellas'],flor:['🌸','Flores'],beso:['💋','Besos'],regalo:['🎁','Regalos']};
   var LOGROS=[
     {id:'primero',ic:'📸',nom:'Primer recuerdo',txt:'Abriste tu primer recuerdo'},
@@ -796,7 +815,7 @@ function traer(par, ok, mal) {
   var ac=null;
   function tin(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); [784,988,1319].forEach(function(f,i){ var o=ac.createOscillator(), v=ac.createGain(), t=ac.currentTime+i*.09;
       o.type='sine'; o.frequency.value=f; v.gain.setValueAtTime(.06,t); v.gain.exponentialRampToValueAtTime(.0001,t+.35); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t+.36); }); }catch(e){} }
-  function toast(ic,t,sub){ estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
+  function toast(ic,t,sub){ if(TONO) return; estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
     d.querySelector('i').textContent=ic; d.querySelector('b').textContent=t; d.querySelector('small').textContent=sub||''; document.body.appendChild(d);
     requestAnimationFrame(function(){ d.classList.add('on'); }); setTimeout(function(){ d.classList.remove('on'); setTimeout(function(){ d.remove(); },500); },3200); tin(); }
   function logro(id){ if(!P||P.logros[id]) return; var l=LOGROS.filter(function(x){ return x.id===id; })[0]; if(!l) return;
@@ -807,6 +826,10 @@ function traer(par, ok, mal) {
     o=o||{}; D=o.datos||{}; var c=String(D.codigo||'').trim().toUpperCase();
     cod=/^[A-Z0-9]{4,10}$/.test(c)?c:'DEMO'; clave='ruway:prog:'+cod; api=typeof o.api==='string'?o.api:''; previa=!!(D.vistaPrevia||window.__DEMO);
     fotosFn=o.fotos||null; personaje=o.personaje||''; P=leer(); exp=EXPS[o.exp]?o.exp:(EXPS[D.tipo]?D.tipo:''); PASE=paseDe(D);
+    /* El tono. Un regalo en memoria (la vela, o el público "memoria" que eligió quien lo compró) no
+       lleva nada de juego: ni mochila, ni Pase, ni avisos de logros, ni premio. El progreso se
+       sigue guardando igual (mismas llaves), solo que no se muestra. */
+    TONO=(o.tono==='memoria'||exp==='vela'||(D.extra&&D.extra.publico==='memoria'))?'memoria':'';
     TEMP=(D.temporada&&AMB[D.temporada.id])?{id:D.temporada.id,ic:String(D.temporada.ic||'').slice(0,4),nom:String(D.temporada.nom||'').slice(0,30)}:null;
     if(o.ambiente!==false) ambiente(o.ambienteZ);
     var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
@@ -829,7 +852,9 @@ function traer(par, ok, mal) {
     /* aviso para la página (u.html abre el premio con esto) */
     try{ window.dispatchEvent(new CustomEvent('ruway:fin')); }catch(e){} };
   N.estado=function(){ return {cod:cod,vistos:vistos(),total:totalFotos(),objetos:objetos(),inv:P?JSON.parse(JSON.stringify(P.inv)):{},logros:P?Object.keys(P.logros):[],fin:P?P.fin:0,dias:P?P.dias.length:0,
-    exp:exp,pase:N.pase.lista()}; };
+    exp:exp,pase:N.pase.lista(),tono:TONO}; };
+  /* Nucleo.tono('memoria') lo pone a mano (y quita la mochila si ya estaba); sin nada, dice cuál es. */
+  N.tono=function(t){ if(t!==undefined){ TONO=t==='memoria'?'memoria':''; if(TONO) quitarBotones(); } return TONO; };
   N.pase={
     /* las del pase, con si ya se terminó y si ya se puede abrir */
     lista:function(){ var h=P?P.hechas:{}; return PASE.map(function(x,i){ return {id:x,ic:EXPS[x][0],nom:EXPS[x][1],hecha:!!h[x],abierta:abierta(PASE,h,i,D),actual:x===exp}; }); },
@@ -844,7 +869,7 @@ function traer(par, ok, mal) {
     url:function(id){ try{ var u=new URL(location.href); u.pathname=u.pathname.replace(/[^\/]*$/,EN_U.test(id)?'u.html':'x.html'); u.searchParams.set('x',id); return u.href; }catch(e){ return ''; } },
     enU:function(id){ return EN_U.test(id); },
     ir:function(id){ var u=N.pase.url(id); if(u) location.href=u; },
-    siguiente:function(){ var i=PASE.indexOf(exp), s=i>=0?PASE[i+1]:null; return s && P && P.hechas[exp] ? {id:s,ic:EXPS[s][0],nom:EXPS[s][1]} : null; } };
+    siguiente:function(){ if(TONO) return null; var i=PASE.indexOf(exp), s=i>=0?PASE[i+1]:null; return s && P && P.hechas[exp] ? {id:s,ic:EXPS[s][0],nom:EXPS[s][1]} : null; } };
 
   /* ---- el avance, al servidor: la misma hoja de Universos (columna Avance) ---- */
   function programarEnvio(){ if(previa||!api||cod==='DEMO') return; clearTimeout(envioT); envioT=setTimeout(enviar,4000); }
@@ -995,7 +1020,8 @@ function traer(par, ok, mal) {
     else if(D.voz) poner(String(D.voz)); }
   function cerrarP(){ if(PR.el){ try{ PR.el.pause(); }catch(e){} } subirM(); if(PR.capa){ PR.capa.remove(); PR.capa=null; } }
   /* o = {musica: el reproductor de la canción (o una función que lo dé), final:{titulo, compartir}, alCerrar} */
-  function mostrarP(o){ o=o||{}; estilos(); cerrarP(); PR.abierto=false;
+  function mostrarP(o,oir){ o=o||{}; estilos(); cerrarP(); PR.abierto=false;
+    if(TONO) return mostrarM(o,oir);
     var tm=D.tema||{}, para=String(D.para||'').trim().slice(0,40), de=String(D.de||'').trim().slice(0,40), voz=hayVozP();
     var c=PR.capa=document.createElement('div'); c.className='rn-capa rn-premio'; c.id='rn-premio';
     c.style.setProperty('--rn-c1',hexOk(tm.c1)||'#FF8FAB'); c.style.setProperty('--rn-c3',hexOk(tm.c3)||'#C2476B');
@@ -1029,6 +1055,42 @@ function traer(par, ok, mal) {
       d.querySelector('#rn-comp').onclick=function(){ if(f.compartir) f.compartir(); };
       d.querySelector('#rn-cerr').onclick=function(){ cerrarP(); if(o.alCerrar) o.alCerrar(); }; }
     return c; }
+  /* En memoria el final no es un premio. La voz se ofrece PREGUNTANDO ("¿Quieres escucharlo ahora?"),
+     se puede dejar para después y nunca suena de golpe: solo con un toque de quien la recibe. Sin
+     caja, sin la palabra "premio", sin Pase. Después, la dedicatoria; al cerrar queda un botón
+     discreto para escuchar el mensaje cuando se quiera. */
+  function mostrarM(o,directo){ var tm=D.tema||{}, de=String(D.de||'').trim().slice(0,40), voz=hayVozP(), f=o.final||{};
+    var c=PR.capa=document.createElement('div'); c.className='rn-capa rn-premio rn-memoria'; c.id='rn-premio';
+    c.style.setProperty('--rn-c1',hexOk(tm.c1)||'#C3B1F0'); c.style.setProperty('--rn-c3',hexOk(tm.c3)||'#7D6AB8');
+    c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Un mensaje para ti"><div class="rn-m-uno"></div><div class="rn-pr-dos" hidden></div><div class="rn-pr-tres" hidden></div><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
+    document.body.appendChild(c);
+    var uno=c.querySelector('.rn-m-uno'), dos=c.querySelector('.rn-pr-dos'), tr=c.querySelector('.rn-pr-tres');
+    function ver(x){ uno.hidden=x!==uno; dos.hidden=x!==dos; tr.hidden=x!==tr; }
+    function pregunta(){ ver(uno);
+      uno.innerHTML='<h2>Un mensaje para ti</h2><p class="rn-sub">Hay un mensaje de voz para ti. ¿Quieres escucharlo ahora?</p><p class="rn-nota-m">Puedes escucharlo ahora o más tarde, cuando quieras.</p>'
+        +'<button type="button" class="rn-cerrar" id="rn-oir">Sí, escucharlo ahora</button><button type="button" class="rn-cerrar rn-suave" id="rn-luego">Más tarde</button>';
+      uno.querySelector('#rn-oir').onclick=oir; uno.querySelector('#rn-luego').onclick=dedicatoria; }
+    function oir(){ /* el reproductor se despierta DENTRO del toque: el iPhone no deja que suene después */
+      var a=elP(), t=TRAIDOS.voz; a.src=t?t.url:(!D.vozId&&D.voz?String(D.voz):SILENCIO); try{ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){}
+      ver(dos); var barras=''; for(var i=0;i<18;i++) barras+='<i style="animation-delay:-'+((i*37)%90/100)+'s"></i>';
+      dos.innerHTML='<h2>Un mensaje para ti</h2><div class="rn-onda" aria-hidden="true">'+barras+'</div><p class="rn-pr-est"></p>'
+        +'<button type="button" class="rn-cerrar rn-suave" id="rn-otra">⏸ Pausar</button><button type="button" class="rn-cerrar" id="rn-seguir">Seguir</button>';
+      dos.querySelector('#rn-otra').onclick=function(){ var a2=elP(); if(!a2.paused && a2.src!==SILENCIO){ a2.pause(); this.textContent='▶ Seguir escuchando'; dice('En pausa'); } else sonarP(o.musica); };
+      dos.querySelector('#rn-seguir').onclick=function(){ if(PR.el) try{ PR.el.pause(); }catch(e){} subirM(); dedicatoria(); };
+      sonarP(o.musica); }
+    function dedicatoria(){ ver(tr);
+      tr.innerHTML='<h2></h2><div class="rn-carta"><p></p></div>'+(voz?'<button type="button" class="rn-cerrar rn-suave" id="rn-escuchar">Escuchar el mensaje de voz</button>':'')
+        +(f.compartir?'<button type="button" class="rn-cerrar rn-suave" id="rn-comp">Compartir en mi estado</button>':'')+'<button type="button" class="rn-cerrar" id="rn-cerr">Quedarme un rato más</button>';
+      tr.querySelector('h2').textContent=f.titulo||'Para ti';
+      tr.querySelector('.rn-carta p').textContent=(String(D.msg||'').trim()||'Gracias por todo.')+(de?'\n— '+de:'');
+      var e=tr.querySelector('#rn-escuchar'); if(e) e.onclick=oir;
+      var cp=tr.querySelector('#rn-comp'); if(cp) cp.onclick=function(){ f.compartir(); };
+      tr.querySelector('#rn-cerr').onclick=function(){ cerrarP(); if(voz) botonLuego(o); if(o.alCerrar) o.alCerrar(); }; }
+    if(voz && directo) oir(); else if(voz) pregunta(); else dedicatoria();
+    return c; }
+  /* después de cerrar: un botón discreto para escuchar el mensaje cuando se quiera (su toque es el permiso) */
+  function botonLuego(o){ if(document.getElementById('rn-luego-voz')) return; var v=document.createElement('button'); v.type='button'; v.id='rn-luego-voz'; v.className='rn-luego'; v.textContent='Escuchar el mensaje de voz';
+    v.onclick=function(){ v.remove(); mostrarP(o,true); }; document.body.appendChild(v); }
   N.premio={hayVoz:hayVozP,precargar:precargarP,mostrar:mostrarP,cerrar:cerrarP,
     estado:function(){ var a=PR.el; return {voz:hayVozP(),lista:!!TRAIDOS.voz,abierto:PR.abierto,sono:PR.sono,sonando:!!(a&&!a.paused&&a.src!==SILENCIO),visible:!!PR.capa}; }};
 
@@ -1416,13 +1478,16 @@ function traer(par, ok, mal) {
    +'.rn-onda.suena i{animation:rnOnda .9s ease-in-out infinite alternate}@keyframes rnOnda{from{height:8px}to{height:56px}}'
    +'.rn-nota p{font:600 21px/1.4 "Dancing Script",cursive}'
    +'@media (prefers-reduced-motion:reduce){.rn-cofre,.rn-onda.suena i{animation:none}.rn-onda.suena i{height:30px}}'
-   +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}';
+   +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}'
+   +'.rn-nota-m{font-size:13px;color:#8A7A66;margin:0 0 6px}.rn-memoria .rn-hoja h2{font-weight:700}'
+   +'.rn-luego{position:fixed;left:50%;bottom:calc(152px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;border:0;border-radius:999px;padding:11px 18px;background:rgba(255,251,244,.94);color:#4A3F5C;font:700 14px/1.1 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer}';
   function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function pintarBoton(){ if(cuentaEl) cuentaEl.textContent=objetos()?String(objetos()):(vistos()+'/'+totalFotos());
     if(paseEl){ var l=N.pase.lista(); paseEl.querySelector('span').textContent=l.filter(function(x){ return x.hecha; }).length+'/'+l.length; } }
   function latir(el){ el=el||boton; if(!el) return; el.classList.remove('late'); void el.offsetWidth; el.classList.add('late'); }
-  N.boton=function(dentro){ estilos(); if(boton) boton.remove();
+  function quitarBotones(){ if(boton){ boton.remove(); boton=null; cuentaEl=null; } if(paseEl){ paseEl.remove(); paseEl=null; } }
+  N.boton=function(dentro){ if(TONO){ quitarBotones(); return null; } estilos(); if(boton) boton.remove();
     boton=document.createElement('button'); boton.type='button'; boton.className='rn-bot'+(dentro?' en-hud':''); boton.setAttribute('aria-label','Mi mochila');
     boton.innerHTML='<i>🎒</i><span></span>'; cuentaEl=boton.querySelector('span');
     boton.onclick=function(e){ e.stopPropagation(); N.mochila(); };
@@ -1433,7 +1498,7 @@ function traer(par, ok, mal) {
       paseEl.innerHTML='<i>🎟️</i><span></span>'; paseEl.onclick=function(e){ e.stopPropagation(); N.mochila('pase'); };
       if(dentro) (dentro).appendChild(paseEl); else document.body.appendChild(paseEl); }
     pintarBoton(); return boton; };
-  N.mochila=function(pestana){ estilos(); if(!P) return; var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
+  N.mochila=function(pestana){ if(TONO) return; estilos(); if(!P) return; var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
     var para=String(D.para||'').trim(), de=String(D.de||'').trim();
     c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Mi mochila"><h2>🎒 Mi mochila</h2><p class="rn-sub"></p>'
       +'<div class="rn-tabs">'+(PASE.length?'<button data-p="pase">🎟️ Pase</button>':'')+'<button data-p="rec">Recuerdos</button><button data-p="col">Colección</button><button data-p="log">Logros</button></div><div class="rn-cuerpo"></div>'
@@ -2644,6 +2709,11 @@ function pintarSprites(a,b){
    Usan el mismo lienzo y el mismo tamaño que el universo, así que el video
    para compartir sale igual para las tres. */
 var TIPO=(DATOS && DATOS.tipo==='arbol')?'arbol':(DATOS && DATOS.tipo==='vela')?'vela':'universo';
+/* Un regalo EN MEMORIA de alguien que falleció: la vela siempre, y cualquier otro con el público
+   "memoria". Nada de juego (el núcleo ya no pone mochila, Pase, logros ni premio), la portada
+   invita con calma y el final lo abre la persona cuando quiera. */
+var MEMORIA=TIPO==='vela' || !!(DATOS && DATOS.extra && DATOS.extra.publico==='memoria');
+if(MEMORIA){ var abM=document.getElementById('abrir'); if(abM) abM.textContent='Toca para entrar'; }
 /* Lo que el bucle, el video y los toques usan. Por defecto, el universo. */
 var ESCENA={avanzar:avanzar, pintar:pintarUniverso, tocar:null, abajo:null, mueve:null, arriba:null,
             paraVideo:null, alCerrar:null};
@@ -3172,8 +3242,10 @@ function escenaArbol(){
 function escenaVela(){
   var S={luz:0, prendida:false, presion:0, apretando:false, x0:0, y0:0, t:0, desde:0,
          velas:+(DATOS.corazones||0)||0, chispas:[], todo:false, antes:null,
-         turno:-1, turnoT:0, visible:null, avisoT:null};
-  var POR=5.5;
+         turno:-1, turnoT:0, visible:null, avisoT:null, pausa:false, etq:'', ctl:false, sx:0, sy:0, desliza:false, nF:-1};
+  /* Siete segundos por recuerdo (antes 5,5: con ocho fotos era casi un minuto sin poder hacer
+     nada). Y con controles: pausar, volver y pasar, porque el ritmo lo pone quien la recibe. */
+  var POR=7;
   var V3=null; cargar3D(function(){ try{ V3=vela3D(S); window.__vela3D=V3; }catch(e){ V3=null; window.__vela3Derr=String(e&&e.stack||e); } });
   function geo(){
     if(V3) return V3.geo();
@@ -3193,8 +3265,10 @@ function escenaVela(){
        medio llega otra foto, no se salta a la mitad de la que se estaba viendo. */
     if(S.prendida && !S.todo && S.t-S.desde>=2.5){
       if(S.turno<0){ S.turno=0; S.turnoT=S.t; }
+      else if(S.pausa) S.turnoT+=k/60;                  /* en pausa, el recuerdo se queda */
       else if(S.t-S.turnoT>=POR){ S.turno++; S.turnoT=S.t; }
     }
+    controles();
     for(var c=S.chispas.length-1;c>=0;c--){ var ch=S.chispas[c];
       ch.x+=ch.vx*k; ch.y+=ch.vy*k; ch.v-=.015*k; if(ch.v<=0) S.chispas.splice(c,1); }
   }
@@ -3320,7 +3394,7 @@ function escenaVela(){
   }
   function recuerdos(){
     if(S.turno<0) return;
-    var F=fotosDelUniverso(), n=F.length;
+    var F=fotosDelUniverso(), n=F.length; S.nF=n;   /* los controles usan esta cuenta */
     var cual=S.turno%(n+1);                 /* las fotos y, al final, la dedicatoria */
     var u=Math.min(1,(S.t-S.turnoT)/POR);
     var alfa=u<.15?u/.15:u>.85?(1-u)/.15:1;
@@ -3375,16 +3449,46 @@ function escenaVela(){
     return true;
   }
   function pistaApagada(){ if(!S.prendida) pistaEscena('Mantén el dedo en la mecha para encenderla'); }
+  /* los controles: se muestran cuando empiezan los recuerdos; la etiqueta solo se toca si cambia */
+  var ctl=document.getElementById('vela-ctl'), bPausa=document.getElementById('vela-pausa');
+  function controles(){
+    var ver=S.prendida && !S.todo && S.turno>=0;
+    if(ver!==S.ctl){ S.ctl=ver; ctl.classList.toggle('oculto',!ver); }
+    if(!ver) return;
+    /* la cuenta de fotos la deja recuerdos() (sin armar otra lista en cada fotograma) */
+    var n=S.nF>=0?S.nF:fotosDelUniverso().length, cual=S.turno%(n+1);
+    var e=cual<n?'Foto '+(cual+1)+' de '+n:'Su dedicatoria';
+    if(e!==S.etq){ S.etq=e; document.getElementById('vela-n').textContent=e; }
+  }
+  function pasar(d){
+    if(S.turno<0) return;
+    S.turno=Math.max(0,S.turno+d);
+    S.turnoT=S.t-POR*.16;                               /* entra ya visible, sin esperar el fundido */
+    controles();
+  }
+  function pausar(){
+    S.pausa=!S.pausa;
+    /* si se pausa justo cuando se apaga o aparece, se deja bien visible */
+    var u=(S.t-S.turnoT)/POR; if(S.pausa && (u<.15||u>.85)) S.turnoT=S.t-POR*.5;
+    bPausa.textContent=S.pausa?'Seguir':'Pausar';
+  }
+  document.getElementById('vela-ant').addEventListener('click',function(){ pasar(-1); });
+  document.getElementById('vela-sig').addEventListener('click',function(){ pasar(1); });
+  bPausa.addEventListener('click',pausar);
 
   ESCENA={avanzar:avanzarV, pintar:pintarV, tocar:tocarV,
           abajo:function(px,py){
             if(!S.prendida && cercaDeMecha(px,py)){ S.apretando=true; S.x0=px; S.y0=py; }
+            if(S.prendida){ S.sx=px; S.sy=py; S.desliza=true; }
           },
           /* Si el dedo se va lejos, se suelta: era un arrastre, no la mecha. */
           mueve:function(px,py){
             if(S.apretando && Math.hypot(px-S.x0,py-S.y0)>45) S.apretando=false;
+            /* encendida: deslizar a un lado pasa al recuerdo siguiente o vuelve al anterior */
+            if(S.desliza && Math.abs(px-S.sx)>70 && Math.abs(px-S.sx)>Math.abs(py-S.sy)*1.5){ S.desliza=false; pasar(px<S.sx?1:-1); }
           },
           arriba:function(){
+            S.desliza=false;
             var soltoAntes=S.apretando && !S.prendida && S.presion>.05;
             S.apretando=false;
             if(soltoAntes){
@@ -3444,6 +3548,8 @@ var VIDEO_OCUPA=false;       /* la pantalla deja de dibujarse mientras se arma *
 function pintarBotonCompartir(){
   var b=document.getElementById('compartir');
   if(!b || !(window.Nucleo && Nucleo.estado().fin)) return;
+  /* en memoria, mientras espera "Cuando quieras…" (en el mismo sitio), Compartir no sale */
+  var bd=document.getElementById('despedida'); if(bd && !bd.classList.contains('oculto')) return;
   b.classList.remove('oculto');
   b.textContent='Compartir en mi estado';
 }
@@ -3488,9 +3594,18 @@ function compartirUniverso(){
    de quien lo manda (o una nota cariñosa si no grabó voz). Después, la
    dedicatoria, el Pase y el botón para compartir el video en el estado. */
 var PREMIO_ABIERTO=false;
-var TITULO_FIN={universo:'Tu universo está completo', arbol:'Tu árbol se encendió', vela:'Tu vela sigue encendida'}[TIPO];
+/* En memoria, la invitación a regalar espera a que la persona se despida (ver más abajo). */
+var REGALA_AL_DESPEDIR=null;
+var TITULO_FIN=MEMORIA ? (TIPO==='vela'?'Esta vela sigue encendida':'Con todo el cariño, para ti')
+  : {universo:'Tu universo está completo', arbol:'Tu árbol se encendió', vela:'Tu vela sigue encendida'}[TIPO];
 addEventListener('ruway:fin',function(){
   if(PREMIO_ABIERTO) return; PREMIO_ABIERTO=true;
+  /* En memoria nada se abre solo: queda un botón para cuando la persona quiera. */
+  if(MEMORIA){ var bd=document.getElementById('despedida');
+    bd.textContent=Nucleo.premio.hayVoz()?'Cuando quieras, hay un mensaje para ti':'Cuando quieras, toca aquí para despedirte';
+    /* en una segunda visita Compartir ya estaba ahí: se aparta hasta que se despida */
+    document.getElementById('compartir').classList.add('oculto');
+    bd.classList.remove('oculto'); return; }
   /* primero se deja ver la última foto (o la estrella, o la llama) */
   (function esperar(){
     var gb=document.getElementById('globo');
@@ -3502,6 +3617,15 @@ addEventListener('ruway:fin',function(){
     }, TIPO==='universo'?700:2500);
   })();
 });
+
+/* El final de un regalo en memoria: la voz preguntando, la dedicatoria y compartir (núcleo). */
+function abrirDespedida(){
+  document.getElementById('despedida').classList.add('oculto');
+  cerrarGlobo();
+  Nucleo.premio.mostrar({musica:document.getElementById('audio'),
+    final:{titulo:TITULO_FIN, compartir:compartirUniverso},
+    alCerrar:function(){ pintarBotonCompartir(); var r=REGALA_AL_DESPEDIR; REGALA_AL_DESPEDIR=null; if(r) r(); }});
+}
 
 function partirTexto(ctx,txt,ancho){
   var pal=String(txt).split(' '), lineas=[], act='';
@@ -3618,6 +3742,7 @@ c.addEventListener('touchend',function(){pinch=0;});
 /* Lo único que el HTML llama por su nombre. Como ahora todo vive dentro de
    encender(), hay que sacarlo afuera a mano. */
 window.compartirUniverso=compartirUniverso;
+window.abrirDespedida=abrirDespedida;
 window.mandarCorazon=mandarCorazon;
 window.cerrarRegala=cerrarRegala;
 window.tocarGlobo=tocarGlobo;
@@ -3722,21 +3847,32 @@ function urlPedirDesde(){
     },8000);
     /* Y "regala uno tú también", a los cuarenta y cinco, una sola vez por
        teléfono. Al final y con su ×: no puede sentirse como publicidad. En
-       la vela, más tarde y con otras palabras: es un momento de recuerdo. */
+       memoria (la vela, o el público "memoria"), sin reloj y con otras
+       palabras: es un momento de recuerdo. */
     var ya=false; try{ ya=!!localStorage.getItem('ruway:regala:'+DATOS.codigo); }catch(e){}
     var u=urlPedirDesde();
-    if(TIPO==='vela'){
+    if(MEMORIA && TIPO!=='vela'){
+      document.querySelector('#regala b').textContent='Un recuerdo para quien extrañas';
+      document.querySelector('#regala span').textContent='Puedes regalar algo así para alguien que recuerdas.';
+    } else if(TIPO==='vela'){
       document.querySelector('#regala b').textContent='🕯️ Una vela para quien extrañas';
       document.querySelector('#regala span').textContent='Puedes encender una así para alguien que recuerdas.';
       document.getElementById('regala-si').textContent='Quiero una';
     } else if(TIPO==='arbol'){
       document.querySelector('#regala b').textContent='¿Te gustó? 🎄';
     }
-    if(!ya && u) setTimeout(function(){
-      if(GRABANDO || document.getElementById('s3').classList.contains('oculto')) return;
-      document.getElementById('regala-si').href=u;
-      document.getElementById('regala').classList.remove('oculto');
-    },TIPO==='vela'?75000:45000);
+    if(!ya && u){
+      var invitar=function(){
+        if(GRABANDO || document.getElementById('s3').classList.contains('oculto')) return;
+        document.getElementById('regala-si').href=u;
+        var rg=document.getElementById('regala'); rg.classList.toggle('memoria',MEMORIA); rg.classList.remove('oculto');
+      };
+      /* En memoria nada va con reloj: antes salía a los 75 s, en medio de los recuerdos, y en un
+         teléfono lento tapaba los controles de la vela. Ahora sale recién cuando la persona se
+         despide (al cerrar la hoja final) y por encima de los botones de abajo. */
+      if(MEMORIA) REGALA_AL_DESPEDIR=function(){ setTimeout(invitar,4000); };
+      else setTimeout(invitar,45000);
+    }
   });
   document.getElementById('regala-si').addEventListener('click',function(){
     try{ localStorage.setItem('ruway:regala:'+DATOS.codigo,'1'); }catch(e){}
