@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v43">
+<meta name="ruway-version" content="v44">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -111,6 +111,14 @@ html,body{height:100%;background:#03040a;overflow:hidden;
 @media (max-width:420px){#s3 .cab b{font-size:22px}}
 #s3 .pie{position:absolute;bottom:18px;left:0;right:0;text-align:center;pointer-events:none;
   font-size:10px;letter-spacing:.32em;color:#9C937E;font-family:sans-serif}
+/* El árbol que se enciende (3D): mientras se juega, la plaza manda (tiene su propio HUD). Lo de la
+   página se aparta hasta que la persona sale de la galería; el núcleo (mochila, premio) sigue encima. */
+body.aj-jugando #s3 .cab,body.aj-jugando #s3 .pie,body.aj-jugando #son,body.aj-jugando #volver,body.aj-jugando #pista,
+body.aj-jugando #esc-pista,body.aj-jugando #compartir,body.aj-jugando #corazon,body.aj-jugando #cor-globo,
+body.aj-jugando #regala,body.aj-jugando #globo{visibility:hidden!important}
+#aj-caja{position:absolute;inset:0;z-index:5}
+#aj-baja{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 40%,#18214a,#0B1022 70%);
+  color:#FFF3DE;font:600 18px Georgia,serif;text-align:center;padding:24px}
 /* En memoria: el final lo abre quien recibe, cuando quiera (no se abre solo) */
 #despedida{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:8;max-width:calc(100% - 32px);
   padding:13px 22px;border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);border-radius:26px;
@@ -1982,6 +1990,7 @@ document.getElementById('abrir').addEventListener('click',function(){
 });
 document.getElementById('ver').addEventListener('click',function(){
   esconder(s2);ver(s3);vivo=true;size();
+  if(TIPO==='arbol' && typeof jugarArbol==='function') jugarArbol();
   nucleo(function(N){ N.boton(); });
   /* el botón aparece unos segundos después: primero que vea su universo */
   setTimeout(function(){ if(typeof pintarBotonCompartir==='function') pintarBotonCompartir(); },4000);
@@ -2032,6 +2041,11 @@ document.getElementById('son').addEventListener('click',function(){
 });
 document.getElementById('volver').addEventListener('click',function(){
   vivo=false;esconder(s3);ver(s1);cerrarGlobo();
+  /* La plaza 3D queda en pausa (sin cuadros ni sonido) con todo lo armado: al volver a entrar sigue
+     donde estaba, sin volver a bajar ni a armar nada. Se libera del todo al pasar al 2D o al cerrar
+     la página. (Liberarla aquí obligaría a rearmarla al volver: varios segundos en un celular
+     sencillo, y otro contexto WebGL nuevo cada vez.) */
+  if(AJUEGO) AJUEGO.pausar(true);
   var mb=document.querySelector('.rn-bot'); if(mb) mb.remove();
   var a=document.getElementById('audio'); if(a.src) a.pause();
   hoja.style.transform='translateY(20px) scale(.96)';
@@ -2744,7 +2758,9 @@ function fotosConSitio(){
     var im=IMGS[o.k];
     var lista=!!(im && im.complete && im.naturalWidth);
     var rota=!lista && (!im || (im.complete && !im.naturalWidth && !im.crossOrigin));
-    r.push({im:im, txt:o.txt||'', j:j++, lista:lista, rota:rota});
+    /* k: su lugar en IMGS (el que anota N.vio). limpia: llegó "como propia" (con permiso de copia),
+       así que se puede pintar en WebGL; si llegó de la forma normal, solo en 2D. */
+    r.push({im:im, txt:o.txt||'', j:j++, k:o.k, lista:lista, rota:rota, limpia:lista && !!im.crossOrigin});
   }
   return r;
 }
@@ -2753,8 +2769,9 @@ function nombrePara(){
   return p.length<=24 ? p : '';
 }
 
-/* ====================== EL ÁRBOL Y LA VELA EN 3D ======================
-   Se arman con three.js (el mismo de los juegos) en un lienzo aparte, y cada
+/* ====================== LA VELA EN 3D ======================
+   (El árbol en 3D es otro: la plaza de "El árbol que se enciende", más abajo.)
+   Se arma con three.js (el mismo de los juegos) en un lienzo aparte, y cada
    cuadro se copia sobre el lienzo de siempre. Así lo demás no cambia: el
    video para los estados, la foto que se abre, la pista, el botón de
    compartir. Lo que se toca (las esferas, la mecha) se calcula proyectando
@@ -2762,10 +2779,10 @@ function nombrePara(){
    justo donde cae cada esfera: una foto que llegó sin permiso de copia no
    se puede subir al 3D, pero en 2D sí se ve. Si three.js no baja (sin
    señal), queda el dibujo 2D de antes. */
-var T3D={pidio:false,esperan:[]};
-function cargar3D(cb){
+var T3D={pidio:false,esperan:[],malos:[]};
+function cargar3D(cb,mal){
   if(window.THREE){ cb(); return; }
-  T3D.esperan.push(cb); if(T3D.pidio) return; T3D.pidio=true;
+  T3D.esperan.push(cb); if(mal) T3D.malos.push(mal); if(T3D.pidio) return; T3D.pidio=true;
   /* Con su huella (SEG-20): si el archivo de cdnjs cambiara, el navegador no
      lo ejecuta. Si cdnjs no contesta, una vez más desde jsDelivr (la misma
      versión, byte a byte, con la misma huella); si tampoco, queda el 2D. */
@@ -2775,7 +2792,8 @@ function cargar3D(cb){
     var s=document.createElement('script'); s.src=fuentes[i]; s.async=true;
     s.integrity='sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ=='; s.crossOrigin='anonymous';
     s.onload=function(){ var l=T3D.esperan; T3D.esperan=[]; l.forEach(function(f){ try{ f(); }catch(e){ if(window.console) console.log(e); } }); };
-    s.onerror=function(){ if(s.parentNode) s.parentNode.removeChild(s); if(i+1<fuentes.length) setTimeout(function(){ pedir(i+1); },800); };
+    s.onerror=function(){ if(s.parentNode) s.parentNode.removeChild(s); if(i+1<fuentes.length) setTimeout(function(){ pedir(i+1); },800);
+      else { var l=T3D.malos; T3D.malos=[]; T3D.esperan=[]; T3D.pidio=false; l.forEach(function(f){ try{ f(); }catch(e){} }); } };
     document.head.appendChild(s);
   })(0);
 }
@@ -2798,113 +2816,6 @@ function brilloT(col){ return lienzoT(128,128,function(x,w,h){ var gr=x.createRa
   gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(.25,col||'rgba(255,230,190,.55)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,w,h); }); }
 function sprite3(tex,col,esc){ var s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,color:col||'#FFFFFF',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
   s.scale.setScalar(esc||1); return s; }
-
-/* ---------------- el árbol ----------------
-   Un pino de verdad: cinco capas de ramas con puntas irregulares, luces en
-   espiral que se van prendiendo, la estrella arriba, regalos al pie, una
-   ventana con nieve atrás y copos cayendo. La cámara se mece despacio. */
-function arbol3D(S,sitio,NL){
-  var M=motor3D(), E=new THREE.Scene(), C=new THREE.PerspectiveCamera(36,W/H||.5,.1,60);
-  E.background=lienzoT(8,512,function(x,w,h){ var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#060a18'); gr.addColorStop(.6,'#0b1126'); gr.addColorStop(1,'#140d10'); x.fillStyle=gr; x.fillRect(0,0,w,h); });
-  E.fog=new THREE.Fog('#0a0f22',9,20);
-  E.add(new THREE.AmbientLight('#8894c8',.32));
-  var luna=new THREE.DirectionalLight('#9fb6ff',.45); luna.position.set(-3,5,-4); E.add(luna);
-  var calida=new THREE.PointLight(HX1,.4,9,1.6); calida.position.set(0,1.5,1.3); E.add(calida);
-  /* el cuarto: piso de madera, alfombra, la pared y la ventana con nieve */
-  var madera=lienzoT(256,256,function(x,w,h){ x.fillStyle='#2a1a12'; x.fillRect(0,0,w,h); for(var i=0;i<8;i++){ x.fillStyle=i%2?'#2f1d14':'#26170f'; x.fillRect(0,i*32,w,31); }
-    for(var k=0;k<400;k++){ x.fillStyle='rgba(0,0,0,.12)'; x.fillRect(Math.random()*w,Math.random()*h,20+Math.random()*40,1); } });
-  madera.wrapS=madera.wrapT=THREE.RepeatWrapping; madera.repeat.set(4,4);
-  var piso=new THREE.Mesh(new THREE.CircleGeometry(9,48),new THREE.MeshStandardMaterial({map:madera,roughness:.85})); piso.rotation.x=-Math.PI/2; E.add(piso);
-  var alfombra=new THREE.Mesh(new THREE.CircleGeometry(1.9,48),new THREE.MeshStandardMaterial({color:hex(mez(C3,[20,10,10],.55)),roughness:1})); alfombra.rotation.x=-Math.PI/2; alfombra.position.y=.01; E.add(alfombra);
-  var pared=new THREE.Mesh(new THREE.PlaneGeometry(20,9),new THREE.MeshStandardMaterial({color:'#1a2138',roughness:1})); pared.position.set(0,4,-4.2); E.add(pared);
-  var ventanaT=lienzoT(256,320,function(x,w,h){ var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#0e1f4a'); gr.addColorStop(1,'#2a3f78'); x.fillStyle=gr; x.fillRect(0,0,w,h);
-    x.fillStyle='#FFF4D6'; x.beginPath(); x.arc(190,60,22,0,6.3); x.fill();
-    for(var i=0;i<60;i++){ x.fillStyle='rgba(255,255,255,'+(.3+Math.random()*.6)+')'; x.fillRect(Math.random()*w,Math.random()*h*.7,1.5,1.5); }
-    x.fillStyle='#dfe8f7'; x.beginPath(); x.moveTo(0,h); x.lineTo(0,h*.78); x.quadraticCurveTo(w*.3,h*.7,w*.55,h*.8); x.quadraticCurveTo(w*.8,h*.72,w,h*.76); x.lineTo(w,h); x.fill();
-    x.fillStyle='#16324f'; [[40,.78],[90,.74],[210,.76]].forEach(function(p){ x.beginPath(); x.moveTo(p[0],h*p[1]-60); x.lineTo(p[0]-18,h*p[1]); x.lineTo(p[0]+18,h*p[1]); x.fill(); }); });
-  var ventana=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3),new THREE.MeshBasicMaterial({map:ventanaT,fog:false})); ventana.position.set(2.3,3.1,-4.15); E.add(ventana);
-  var marco=new THREE.MeshStandardMaterial({color:'#3a2a20',roughness:.8});
-  [[0,1.52,2.6,.12],[0,-1.52,2.6,.12],[-1.24,0,.12,3.1],[1.24,0,.12,3.1],[0,0,.07,3],[0,0,2.4,.07]].forEach(function(b){ var m=new THREE.Mesh(new THREE.BoxGeometry(b[2],b[3],.08),marco); m.position.set(2.3+b[0],3.1+b[1],-4.1); E.add(m); });
-  /* el pino */
-  var agujas=lienzoT(128,128,function(x,w,h){ x.fillStyle='#1c5a33'; x.fillRect(0,0,w,h);
-    for(var i=0;i<700;i++){ var a=Math.random()*6.3, l=4+Math.random()*7, px=Math.random()*w, py=Math.random()*h; x.strokeStyle=['#2a7443','#1b5230','#338649','#185030'][i%4]; x.lineWidth=1.6;
-      x.beginPath(); x.moveTo(px,py); x.lineTo(px+Math.cos(a)*l,py+Math.sin(a)*l*.4+l*.6); x.stroke(); } });
-  agujas.wrapS=agujas.wrapT=THREE.RepeatWrapping; agujas.repeat.set(3,1);
-  var verde=new THREE.MeshStandardMaterial({map:agujas,color:'#FFFFFF',roughness:.9,flatShading:true,side:THREE.DoubleSide});
-  var Y0=.55, Y1=3.35;                                  /* donde empiezan las ramas y la punta */
-  function radio(y){ return Math.max(.05,(Y1-y)/(Y1-Y0)*1.3); }
-  var arbol=new THREE.Group(); E.add(arbol);
-  var relleno=new THREE.Mesh(new THREE.ConeGeometry(1.08,Y1-Y0,24),new THREE.MeshStandardMaterial({color:'#0e3a20',roughness:1})); relleno.position.y=(Y0+Y1)/2-.05; arbol.add(relleno);
-  for(var k=0;k<5;k++){
-    var yb=Y0+k*.52, alto=1.12-k*.1, r=radio(yb)*1.12+.08, geo=new THREE.ConeGeometry(r,alto,30,3,true), p=geo.attributes.position;
-    for(var i=0;i<p.count;i++){ var vy=p.getY(i); if(vy>alto/2-.01) continue;   /* la punta queda en su sitio */
-      var f=1+(Math.random()-.5)*.2, abajo=vy<-alto/2+.01; p.setX(i,p.getX(i)*f); p.setZ(i,p.getZ(i)*f); if(abajo) p.setY(i,vy-(i%2?.07:0)-Math.random()*.04); }
-    geo.computeVertexNormals(); var capa=new THREE.Mesh(geo,verde); capa.position.y=yb+alto/2; capa.rotation.y=k*.7; arbol.add(capa);
-  }
-  var tronco=new THREE.Mesh(new THREE.CylinderGeometry(.13,.16,.5,12),new THREE.MeshStandardMaterial({color:'#4a2f1c',roughness:.9})); tronco.position.y=.45; arbol.add(tronco);
-  var maceta=new THREE.Mesh(new THREE.CylinderGeometry(.42,.32,.42,28),new THREE.MeshStandardMaterial({color:hex(mez(C3,[0,0,0],.3)),roughness:.5,metalness:.1})); maceta.position.y=.21; arbol.add(maceta);
-  var aro=new THREE.Mesh(new THREE.TorusGeometry(.42,.025,8,40),new THREE.MeshStandardMaterial({color:'#D8B45A',metalness:.8,roughness:.3})); aro.rotation.x=Math.PI/2; aro.position.y=.4; arbol.add(aro);
-  /* regalos al pie, con cinta y moño */
-  [[-.95,.35,.34,C1,.4],[.9,.15,.28,C3,-.3],[-.45,.95,.24,C2,.2],[.55,.8,.3,[120,170,255],.9]].forEach(function(q){
-    var b=new THREE.Group(), s=q[2], col=hex(q[3]), cinta=new THREE.MeshStandardMaterial({color:hex(mez(q[3],BL,.65)),roughness:.4,metalness:.2});
-    var caja=new THREE.Mesh(new THREE.BoxGeometry(s,s*.8,s),new THREE.MeshStandardMaterial({color:col,roughness:.6})); caja.position.y=s*.4; b.add(caja);
-    var c1=new THREE.Mesh(new THREE.BoxGeometry(s*1.02,s*.82,s*.16),cinta); c1.position.y=s*.4; b.add(c1);
-    var c2=new THREE.Mesh(new THREE.BoxGeometry(s*.16,s*.82,s*1.02),cinta); c2.position.y=s*.4; b.add(c2);
-    [-1,1].forEach(function(l){ var mo=new THREE.Mesh(new THREE.TorusGeometry(s*.14,s*.045,8,16),cinta); mo.position.set(l*s*.12,s*.86,0); mo.rotation.set(0,Math.PI/2,l*.6); b.add(mo); });
-    b.position.set(q[0],0,q[1]); b.rotation.y=q[4]; E.add(b); });
-  /* las luces en espiral: foquitos y su brillo */
-  var COLS=[HX1,HX2,'#FF5A5A','#58D2FF','#FFD84D','#8CFF72',hex(mez(C1,BL,.4))].map(function(c){ return new THREE.Color(c); });
-  var PL=[], pg=new THREE.BufferGeometry(), pp=new Float32Array(NL*3), pc=new Float32Array(NL*3);
-  for(i=0;i<NL;i++){ var u=.06+.88*i/NL, yy=Y1-.15-u*(Y1-Y0-.2), an=u*Math.PI*2*3.3, rr=radio(yy)*1.06+.04;
-    PL.push({x:Math.sin(an)*rr,y:yy,z:Math.cos(an)*rr,c:COLS[i%COLS.length],f:Math.random()*6.3}); pp.set([PL[i].x,PL[i].y,PL[i].z],i*3); }
-  pg.setAttribute('position',new THREE.BufferAttribute(pp,3)); pg.setAttribute('color',new THREE.BufferAttribute(pc,3));
-  var brillos=new THREE.Points(pg,new THREE.PointsMaterial({size:.42,map:brilloT(),vertexColors:true,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
-  E.add(brillos);
-  var foco=new THREE.InstancedMesh(new THREE.SphereGeometry(.032,8,6),new THREE.MeshBasicMaterial({color:'#FFFFFF'}),NL), o3=new THREE.Object3D();
-  PL.forEach(function(L,i){ o3.position.set(L.x,L.y,L.z); o3.updateMatrix(); foco.setMatrixAt(i,o3.matrix); foco.setColorAt(i,new THREE.Color('#3a4a42')); }); E.add(foco);
-  /* las esferas: la bola de cristal de color va en 3D; la foto se pinta encima en 2D */
-  var bolas=[], matB=[new THREE.MeshStandardMaterial({color:HX1,metalness:.55,roughness:.22}),new THREE.MeshStandardMaterial({color:HX3,metalness:.55,roughness:.22})];
-  var capuchon=new THREE.MeshStandardMaterial({color:'#D8B45A',metalness:.85,roughness:.3});
-  function anclaDe(i,n,v){ var s=sitio(i,n), y=Y1-.35-s[0]*(Y1-Y0-.55), an=s[1]*1.9, rr=radio(y)+.2; return (v||new THREE.Vector3()).set(Math.sin(an)*rr,y,Math.cos(an)*rr); }
-  function bolasPara(n){ while(bolas.length<n){ var b=new THREE.Group(), m=new THREE.Mesh(new THREE.SphereGeometry(.21,24,18),matB[bolas.length%2]); b.add(m);
-      var cp=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.07,12),capuchon); cp.position.y=.23; b.add(cp); E.add(b); bolas.push(b); }
-    bolas.forEach(function(b,i){ b.visible=i<n; }); }
-  /* la estrella */
-  var forma=new THREE.Shape(); for(i=0;i<10;i++){ var aa=Math.PI/2+i*Math.PI/5, ra=i%2?.1:.25; if(i) forma.lineTo(Math.cos(aa)*ra,Math.sin(aa)*ra); else forma.moveTo(Math.cos(aa)*ra,Math.sin(aa)*ra); }
-  var mEst=new THREE.MeshStandardMaterial({color:'#FFD45A',emissive:'#FFB020',emissiveIntensity:0,metalness:.6,roughness:.3});
-  var estrella=new THREE.Mesh(new THREE.ExtrudeGeometry(forma,{depth:.06,bevelEnabled:true,bevelSize:.02,bevelThickness:.02,bevelSegments:2}),mEst); estrella.position.set(0,Y1+.2,-.03); E.add(estrella);
-  var halo=sprite3(brilloT('rgba(255,210,120,.5)'),'#FFE3A0',2.4); halo.position.copy(estrella.position); E.add(halo);
-  var luzE=new THREE.PointLight('#FFD48A',0,6,1.5); luzE.position.copy(estrella.position); E.add(luzE);
-  /* los copos */
-  var NN=320, ng=new THREE.BufferGeometry(), np=new Float32Array(NN*3); for(i=0;i<NN;i++) np.set([(Math.random()-.5)*10,Math.random()*6,-4+Math.random()*6.5],i*3);
-  ng.setAttribute('position',new THREE.BufferAttribute(np,3));
-  var copos=new THREE.Points(ng,new THREE.PointsMaterial({size:.06,map:brilloT(),color:'#FFFFFF',transparent:true,opacity:.8,depthWrite:false})); E.add(copos);
-  var gris=new THREE.Color('#3a4a42'), tmp=new THREE.Color(), derecha=new THREE.Vector3(), blanco=new THREE.Color('#FFFFFF'), bajito=new THREE.Vector3(0,-.02,0), ancla=new THREE.Vector3();   /* se reusan en cada cuadro: nada nuevo por cuadro */
-  function camara(t){ var d=Math.max(6.2,1.75/(Math.tan(18*Math.PI/180)*(W/H||.5))), a=Math.sin(t*.18)*.22;
-    C.position.set(Math.sin(a)*d,2.05,Math.cos(a)*d); C.lookAt(0,1.62,0); C.updateMatrixWorld(); }
-  camara(0);
-  return {
-    /* dónde cae cada esfera en la pantalla (x, y y su radio), para pintar la foto y para tocarla */
-    esferas:function(F){ var n=F.length, l=[]; bolasPara(n);
-      for(var i=0;i<n;i++){ var a=anclaDe(i,n,ancla); bolas[i].position.copy(a).add(bajito);
-        if(!F[i].lista) continue;
-        var p=M.pantalla(a,C); derecha.setFromMatrixColumn(C.matrixWorld,0).multiplyScalar(.19).add(a); var q=M.pantalla(derecha,C);
-        l.push({x:p.x,y:p.y,r:Math.max(14,Math.hypot(q.x-p.x,q.y-p.y)),f:F[i],i:F[i].j}); }
-      return l; },
-    estrellaEn:function(){ return M.pantalla(estrella.position,C); },
-    pintar:function(){ var t=S.t, pr=S.todo?1:S.prendido, es=S.todo?1:S.estrella;
-      camara(t);
-      var prendidas=Math.round(pr*NL);
-      for(var i=0;i<NL;i++){ var L=PL[i], on=i<prendidas, tw=.6+.4*Math.sin(t*3+L.f);
-        tmp.copy(L.c).multiplyScalar(on?tw*1.1:0); pc[i*3]=tmp.r; pc[i*3+1]=tmp.g; pc[i*3+2]=tmp.b;
-        foco.setColorAt(i,on?tmp.copy(L.c).lerp(blanco,.35):gris); }
-      pg.attributes.color.needsUpdate=true; if(foco.instanceColor) foco.instanceColor.needsUpdate=true;
-      calida.intensity=.35+1.5*pr; mEst.emissiveIntensity=.1+1.6*es; luzE.intensity=2.2*es; halo.material.opacity=es; halo.scale.setScalar(1.6+1.2*es+Math.sin(t*2)*.1*es);
-      estrella.rotation.y=Math.sin(t*.8)*.35;
-      var a=ng.attributes.position.array; for(i=0;i<NN;i++){ a[i*3+1]-=.006; a[i*3]+=Math.sin(t+i)*.002; if(a[i*3+1]<0) a[i*3+1]=6; } ng.attributes.position.needsUpdate=true;
-      M.pintar(E,C); }
-  };
-}
 
 /* ---------------- la vela ----------------
    Una vela de cera de verdad sobre un platito de bronce, en una mesa de
@@ -2991,8 +2902,8 @@ function escenaArbol(){
   }
   var LUCES=[], NL=64;
   var COLS=[HX1,HX2,'#FF5A5A','#58D2FF','#FFD84D','#8CFF72',hex(mez(C1,BL,.4))];
-  /* el árbol en 3D apenas baje three.js; mientras, el de siempre */
-  var A3=null; cargar3D(function(){ try{ A3=arbol3D(S,sitio,NL); window.__arbol3D=A3; window.__arbolEsferas=function(){ return esferas().map(function(s){ return {x:s.x,y:s.y,r:s.r}; }); }; }catch(e){ A3=null; } });
+  /* dónde cae cada esfera en la pantalla (para las pruebas) */
+  window.__arbolEsferas=function(){ return esferas().map(function(s){ return {x:s.x,y:s.y,r:s.r}; }); };
   for(var i=0;i<NL;i++){
     LUCES.push({u:.1+.8*i/NL, v:Math.sin(i*.93)*.92, c:COLS[i%COLS.length], f:Math.random()*6.28});
   }
@@ -3010,7 +2921,6 @@ function escenaArbol(){
      foto rota no deja un hueco: las demás se reparten sin ella. */
   function esferas(){
     var F=fotosConSitio().slice(0,MAXE).filter(function(x){ return !x.rota; });
-    if(A3) return A3.esferas(F);
     var G=geo(), n=F.length, r=Math.max(18,Math.min(W,H)*(n<=4?.085:.07)), l=[];
     for(var i=0;i<n;i++){
       if(!F[i].lista) continue;
@@ -3031,8 +2941,8 @@ function escenaArbol(){
     return c;
   }
   function terminar(){
-    S.fin=true; S.finT=S.t; nucleo(function(N){ N.termino(); });
-    var G=geo(), E0=A3?A3.estrellaEn():{x:G.cx,y:G.top-H*.02};
+    S.fin=true; S.finT=S.t; terminoArbol();
+    var G=geo(), E0={x:G.cx,y:G.top-H*.02};
     for(var i=0;i<70;i++){ var a=Math.random()*6.283, v=1+Math.random()*3;
       S.chispas.push({x:E0.x,y:E0.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1.5,v:1,
                       c:[HX1,HX2,'#FFFFFF','#FFD84D'][i%4]}); }
@@ -3189,7 +3099,7 @@ function escenaArbol(){
   function pintarA(){
     g.globalCompositeOperation='source-over'; g.globalAlpha=1;
     var G=geo();
-    if(A3) A3.pintar(); else { arbol(G); luces(G); estrella(G); }
+    arbol(G); luces(G); estrella(G);
     esferas().forEach(function(s){ esfera(s,!!S.abiertas[s.i],S.pendiente===s.i); });
     /* chispas cuando se enciende la estrella */
     g.globalCompositeOperation='lighter';
@@ -3235,6 +3145,11 @@ function escenaArbol(){
   setTimeout(function(){
     if(!S.fin && fotosConSitio().length) pistaEscena('Toca las esferas para encender el árbol');
   },1200);
+  /* si la plaza 3D no pudo seguir, lo que ya se encontró allá queda encendido aquí */
+  ARBOL2D={marcar:function(js){
+    js.forEach(function(j){ S.abiertas[j]=1; });
+    var c=cuenta(); if(c.total && c.abiertas<c.total) pistaEscena('Toca las esferas para encender el árbol'+(c.abiertas?' · '+c.abiertas+' de '+c.total:''));
+  }};
   document.getElementById('ver').textContent='Encender el árbol';
 }
 
@@ -3516,12 +3431,100 @@ function escenaVela(){
   document.getElementById('ver').textContent='Encender la vela';
 }
 
+/* ====================== EL ÁRBOL QUE SE ENCIENDE (3D) ======================
+   El regalo tipo 'arbol' se juega en una plaza de la costa en Nochebuena (lib/arbol/ →
+   ruway-arbol.js): Don Gruñón escondió las esferas, cada una con una foto del regalo, y Ruway
+   las busca, las cuelga y enciende el árbol; la estrella trae la dedicatoria. Después de la
+   galería viene lo de siempre: el premio con la voz, la dedicatoria y "Compartir en mi estado".
+   - Se baja SOLO aquí, al tocar "Encender el árbol": three (con su huella, SEG-20), el cargador
+     de glTF, el juego y Ruway. El universo y la vela no bajan nada de esto.
+   - Respaldo: sin WebGL, si algo no baja, si la plaza tarda más de 12 s o si se pierde el 3D,
+     queda el árbol 2D de siempre (escenaArbol) con lo ya encontrado y el mismo final.
+   - En memoria (público "memoria") se queda el 2D, tranquilo: sin villano ni persecución.
+   - Lo ya visto en otra visita (N.visto) empieza colgado en el árbol. N.termino, una sola vez.
+   window.__arbolModo dice qué se está mostrando ('cargando', '3d' o '2d', y por qué). */
+var ARBOL2D=null, AJUEGO=null, ARBOL_TERMINO=false, ARBOL_EN_JUEGO=false, ARBOL_JUGO=false, ARBOL_HALLADAS={}, PAUSA_2D=false, DORMIDA_2D=false;
+var ARBOL_JS='ruway-arbol.js';
+window.__arbolModo={modo:'',motivo:''};
+function modoArbol(m,motivo){ window.__arbolModo={modo:m,motivo:motivo||''}; }
+function terminoArbol(){ if(ARBOL_TERMINO) return; ARBOL_TERMINO=true; nucleo(function(N){ N.termino(); }); }
+/* ¿Hay WebGL? Con un lienzo que se suelta enseguida (así, sin WebGL, no se baja nada). De paso, el
+   nombre de la tarjeta de video: el juego elige su calidad sin abrir otro contexto. */
+function hayWebGLU(){ try{ var c=document.createElement('canvas'), gl=c.getContext('webgl')||c.getContext('experimental-webgl');
+  if(!gl) return false; var gpu='';
+  try{ var x=gl.getExtension('WEBGL_debug_renderer_info'); gpu=String(gl.getParameter(x?x.UNMASKED_RENDERER_WEBGL:gl.RENDERER)||''); }catch(e){}
+  var l=gl.getExtension('WEBGL_lose_context'); if(l) l.loseContext(); return {gpu:gpu}; }catch(e){ return false; } }
+function cargarJSU(src,ok,mal){ if(!src){ mal(); return; } var s=document.createElement('script'); s.src=src; s.async=true;
+  s.onload=ok; s.onerror=function(){ if(s.parentNode) s.parentNode.removeChild(s); mal(); }; document.head.appendChild(s); }
+function vistasArbol(){ var N=window.Nucleo; if(!N||!N.visto) return [];
+  return fotosConSitio().slice(0,8).filter(function(f){ return N.visto(f.k); }).map(function(f){ return f.j; }); }
+/* el árbol 2D de siempre, con lo que ya se encontró en la plaza */
+function arbol2D(motivo){
+  var j=AJUEGO; AJUEGO=null; if(j) try{ j.cerrar(); }catch(e){}
+  var caja=document.getElementById('aj-caja'); if(caja&&caja.parentNode) caja.parentNode.removeChild(caja);
+  document.body.classList.remove('aj-jugando'); ARBOL_EN_JUEGO=false;
+  PAUSA_2D=false; _ultimoE=0; if(DORMIDA_2D){ DORMIDA_2D=false; dibujarEscena(); }
+  /* lo encontrado en la plaza y lo visto en visitas anteriores (lo que la plaza ya mostraba colgado) */
+  var js=Object.keys(ARBOL_HALLADAS).map(Number); vistasArbol().forEach(function(j){ if(js.indexOf(j)<0) js.push(j); });
+  if(ARBOL2D) ARBOL2D.marcar(js);
+  modoArbol('2d',motivo);
+  if(window.Nucleo && Nucleo.estado && Nucleo.estado().fin) pintarBotonCompartir();
+}
+function jugarArbol(desdeCero){
+  if(AJUEGO){ AJUEGO.pausar(false); return; }               /* volvió de la carta: la plaza sigue */
+  /* ya es 2D, o ya está cargando (tocó "Encender", volvió a la portada y entró otra vez antes de
+     que la plaza estuviera lista): no se arma otra plaza */
+  if(window.__arbolModo.modo==='2d' || window.__arbolModo.modo==='cargando') return;
+  if(MEMORIA){ modoArbol('2d','memoria'); return; }
+  var gl=hayWebGLU(); if(!gl){ modoArbol('2d','sin3d'); return; }
+  modoArbol('cargando');
+  PAUSA_2D=true; ARBOL_EN_JUEGO=true; document.body.classList.add('aj-jugando');
+  var caja=document.createElement('div'); caja.id='aj-caja';
+  var baja=document.createElement('div'); baja.id='aj-baja'; baja.textContent='Preparando la plaza…'; caja.appendChild(baja);
+  document.getElementById('s3').appendChild(caja);
+  /* el sonido del juego nace en este toque (el iPhone no lo deja nacer después) */
+  var ac=null; try{ var Ctx=window.AudioContext||window.webkitAudioContext; if(Ctx) ac=new Ctx(); }catch(e){}
+  var espera=(navigator.webdriver && window.__ARBOL_ESPERA) || 12000, vencido=false;
+  var reloj=setTimeout(function(){ if(vencido) return; vencido=true; if(ac) try{ ac.close(); }catch(e){} arbol2D('lento'); },espera);
+  function fallo(m){ if(vencido) return; vencido=true; clearTimeout(reloj); if(ac && !AJUEGO) try{ ac.close(); }catch(e){} arbol2D(m); }
+  function armar(){
+    if(vencido) return;
+    setTimeout(function(){                                 /* que se vea el aviso antes de armar la plaza */
+      if(vencido) return;
+      if(baja.parentNode) baja.parentNode.removeChild(baja);
+      try{
+        AJUEGO=Arbol.jugar({contenedor:caja, fotos:function(){ return fotosConSitio().slice(0,8); }, vistas:desdeCero?[]:vistasArbol(),
+          para:nombrePara(), msg:String((DATOS&&DATOS.msg)||''), de:String((DATOS&&DATOS.de)||''),
+          glb:urlLibU('ruway-avatar.glb'), movs:urlLibU('ruway-movs.json'), gpu:gl.gpu, ac:ac,
+          musica:!(DATOS && (DATOS.cancion||DATOS.cancionId)),
+          tapado:function(){ return !!document.querySelector('.rn-capa') || document.getElementById('s3').classList.contains('oculto'); },
+          al:{listo:function(){ clearTimeout(reloj); if(!vencido) modoArbol('3d'); },
+              vio:function(k,j){ ARBOL_HALLADAS[j]=1; nucleo(function(N){ N.vio(k); }); },
+              encendido:function(){ ARBOL_JUGO=true; terminoArbol(); },
+              /* después de la galería: la página vuelve a mostrar lo suyo y sigue el premio */
+              seguir:function(){ ARBOL_EN_JUEGO=false; pistaEscena(''); document.body.classList.remove('aj-jugando'); pintarBotonCompartir(); },
+              otraVez:function(){ var j=AJUEGO; AJUEGO=null; if(j) try{ j.cerrar(); }catch(e){} if(caja.parentNode) caja.parentNode.removeChild(caja);
+                modoArbol('',''); jugarArbol(true); },
+              fallo:function(m){ AJUEGO=null; fallo(m==='sin3d'||m==='perdido'?m:'carga'); },
+              sonido:function(mudo){ var a=document.getElementById('audio'); if(!a||!a.getAttribute('src')||a.src===SILENCIO) return;
+                if(mudo) a.pause(); else { var p=a.play(); if(p&&p['catch']) p['catch'](function(){}); } }}});
+        if(AJUEGO && AJUEGO.fallo) AJUEGO=null;             /* sin WebGL de verdad: lo avisa al.fallo */
+      }catch(e){ AJUEGO=null; fallo('carga'); }
+    },60);
+  }
+  function conJuego(){ if(vencido) return; if(window.Arbol && Arbol.jugar) armar(); else cargarJSU(urlLibU(ARBOL_JS),armar,function(){ fallo('carga'); }); }
+  cargar3D(function(){ if(vencido) return; if(THREE.GLTFLoader) conJuego(); else cargarJSU(urlLibU('GLTFLoader.js'),conJuego,function(){ fallo('carga'); }); },
+           function(){ fallo('carga'); });
+}
+
 if(TIPO==='arbol') escenaArbol();
 else if(TIPO==='vela') escenaVela();
 
 /* Un solo bucle para las tres: cada una se mueve y se pinta a su manera. */
 var _ultimoE=0;
 function dibujarEscena(){
+  /* mientras juega la plaza 3D, este bucle duerme (ni siquiera pide cuadros); arbol2D lo despierta */
+  if(PAUSA_2D){ _ultimoE=0; DORMIDA_2D=true; return; }
   requestAnimationFrame(dibujarEscena);
   if(!vivo||!W||VIDEO_OCUPA){ _ultimoE=0; return; }
   var ahora=performance.now();
@@ -3583,8 +3586,10 @@ function compartirUniverso(){
   cerrarGlobo();
   var ok=Nucleo.video.estado({fotos:fotosDelUniverso(), logo:urlLibU('ruway-logo.png'), muxer:urlLibU('mp4-muxer.min.js'),
     nombre:NOMBRE_VIDEO, titulo:NOMBRE_VIDEO, alta:(NIVEL<=1 || !!window.__RUWAY_PRUEBA_VIDEO),
-    alEmpezar:function(){ GRABANDO=true; VIDEO_OCUPA=true; },
-    alTerminar:function(){ GRABANDO=false; VIDEO_OCUPA=false; size(); }});
+    alEmpezar:function(){ GRABANDO=true; VIDEO_OCUPA=true; if(AJUEGO) AJUEGO.pausar(true); },
+    /* la plaza vuelve solo si se está viendo: si mientras se armaba el video se volvió a la portada,
+       sigue en pausa hasta que entre otra vez ("Encender el árbol" la reanuda) */
+    alTerminar:function(){ GRABANDO=false; VIDEO_OCUPA=false; size(); if(AJUEGO && !document.getElementById('s3').classList.contains('oculto')) AJUEGO.pausar(false); }});
   if(!ok){ GRABANDO=false; VIDEO_OCUPA=false; }
 }
 
@@ -3609,12 +3614,13 @@ addEventListener('ruway:fin',function(){
   /* primero se deja ver la última foto (o la estrella, o la llama) */
   (function esperar(){
     var gb=document.getElementById('globo');
-    if(gb && gb.classList.contains('on')){ setTimeout(esperar,400); return; }
+    /* en la plaza 3D, el premio espera a que la persona salga de la galería */
+    if((gb && gb.classList.contains('on')) || ARBOL_EN_JUEGO){ setTimeout(esperar,400); return; }
     setTimeout(function(){
       Nucleo.premio.mostrar({musica:document.getElementById('audio'),
         final:{titulo:TITULO_FIN, compartir:compartirUniverso}, alCerrar:pintarBotonCompartir});
       pintarBotonCompartir();
-    }, TIPO==='universo'?700:2500);
+    }, TIPO==='universo'?700:ARBOL_JUGO?600:2500);
   })();
 });
 
