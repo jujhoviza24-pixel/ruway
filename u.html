@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v44">
+<meta name="ruway-version" content="v45">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -285,6 +285,8 @@ function espera(txt, perdido) {
   var t = document.getElementById('esp-txt');
   if (t && txt) t.textContent = txt;
   if (c && perdido) c.classList.add('perdido');
+  /* la intro (si estaba) se aparta para que se lea el aviso */
+  if (perdido && window.Nucleo && Nucleo.intro) Nucleo.intro.cancelar();
 }
 
 function paramsUniverso() {
@@ -1543,6 +1545,108 @@ function traer(par, ok, mal) {
     c.querySelectorAll('.rn-tabs button').forEach(function(b){ b.onclick=function(){ ir(b.dataset.p); }; });
     ir(pestana==='pase'&&!PASE.length?'rec':(pestana||'rec')); };
 
+  /* ---------- La entrada común: «La plaza donde comienzan los recuerdos» ----------
+     La película de la Plaza de Armas (ruway-intro.js, aparte, con three.js) tapa la espera de
+     los datos y termina en la experiencia que toca. La página solo avisa:
+       N.intro.arrancar()      al empezar (antes de pedir los datos)
+       N.intro.destino(tipo)   cuando ya sabe qué experiencia es
+       N.intro.pasar()         justo antes de saltar a la otra página (u.html ⇄ x.html):
+                               la otra página la sigue desde donde iba, sin empezar de cero
+       N.intro.cancelar()      si algo falló y hay que enseñar el aviso
+       N.intro.alCubrir(fn)    lo que la página cambia mientras la luz tapa la pantalla
+       N.intro.alTerminar(fn)  cuando ya se fue (o si nunca empezó)
+     No toca datos, rutas, fotos ni audio: solo dibuja encima y se retira. Sin WebGL (o con
+     "reducir movimiento") hace una versión corta con el logo y la luz. Si sus archivos no llegan
+     en unos segundos, no se ve nada y la página sigue como siempre. Las pruebas automáticas
+     (navigator.webdriver) no la ven, salvo que la pidan con ?rintro=1. */
+  N.intro=(function(){
+    var estado='nada', ctl=null, destino=null, fins=[], cubres=[], pre=null, desde=0, info=null, enCamino=null, SS='ruway:intro';
+    var THREE_SRI='sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVYdf3hU4JjM8uEhxf9nD1/ey98U3t2vZ0qQ==';
+    function quiere(){
+      try{
+        if(/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))) return false;   /* en Apps Script no hay archivos al lado */
+        var q=String(location.search||'');
+        if(/[?&]rintro=0(&|$)/.test(q)) return false;
+        if(navigator.webdriver && !/[?&]rintro=1(&|$)/.test(q)) return false;
+        return true;
+      }catch(e){ return false; }
+    }
+    function webgl(){ try{ var c=document.createElement('canvas'); return !!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl'))); }catch(e){ return false; } }
+    function calma(){ try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } }
+    function quitarPre(){ if(!pre) return; var p=pre; pre=null; p.style.opacity='0'; setTimeout(function(){ if(p.parentNode) p.parentNode.removeChild(p); },400); }
+    function terminar(i){
+      if(estado==='fin') return; estado='fin'; info=i||{como:'nada'}; ctl=null; quitarPre();
+      var l=fins; fins=[]; cubres=[]; l.forEach(function(f){ try{ f(info); }catch(e){} });
+    }
+    function cubrir(d){ var l=cubres; cubres=[]; l.forEach(function(f){ try{ f(d); }catch(e){} }); }
+    function script(src,attr,ok,mal){ var s=document.createElement('script'); s.src=src; s.async=true; if(attr) for(var k in attr) s[k]=attr[k];
+      s.onload=ok; s.onerror=function(){ if(s.parentNode) s.parentNode.removeChild(s); mal(); }; document.head.appendChild(s); }
+    /* three.js, el mismo de las páginas y con su huella; si las páginas lo piden mientras baja,
+       esperan esta misma descarga (dos copias de THREE se pisarían) */
+    function three(ok,mal){
+      if(window.THREE){ ok(); return; }
+      enCamino=[]; var fuentes=['https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js','https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js'];
+      function listo(bien){ var l=enCamino||[]; enCamino=null; (bien?ok:mal)(); l.forEach(function(f){ try{ f(); }catch(e){} }); }
+      (function pedir(i){ script(fuentes[i],{integrity:THREE_SRI,crossOrigin:'anonymous'},function(){ listo(true); },function(){ if(i+1<fuentes.length) pedir(i+1); else listo(false); }); })(0);
+    }
+    /* sin WebGL: el logo sobre la luz cálida, y la luz que se aparta (unos 2,5 s) */
+    function sencilla(){
+      estado='viva';
+      var c=pre; pre=null; c.style.background='radial-gradient(circle at 50% 44%,#fff3dc 0%,#f2c48f 60%,#c9805a 100%)';
+      var im=document.createElement('img'); im.src='ruway-logo.png'; im.alt='Ruway'; im.onerror=function(){ im.remove(); };
+      im.style.cssText='position:absolute;left:50%;top:44%;width:min(52vw,240px);transform:translate(-50%,-50%) scale(.9);opacity:0;transition:opacity .8s,transform 2s';
+      var luz=document.createElement('div'); luz.style.cssText='position:absolute;top:0;left:0;right:0;bottom:0;opacity:0;transition:opacity .5s;background:radial-gradient(circle at 50% 46%,#fffaf0,#ffcd7a)';
+      c.appendChild(im); c.appendChild(luz);
+      setTimeout(function(){ im.style.opacity='1'; im.style.transform='translate(-50%,-50%) scale(1)'; },60);
+      var t0=Date.now(), cancelada=false;
+      ctl={ destino:function(){}, tiempo:function(){ return 0; }, cancelar:function(){ cancelada=true; }, saltar:function(){ cancelada=true; } };
+      (function mira(){
+        if(estado!=='viva') return;
+        if(!cancelada && (Date.now()-t0<1800 || (!destino && Date.now()-t0<50000))){ setTimeout(mira,120); return; }
+        luz.style.opacity='1';
+        setTimeout(function(){ if(!cancelada) cubrir(destino); c.style.transition='opacity .6s'; c.style.opacity='0';
+          setTimeout(function(){ if(c.parentNode) c.parentNode.removeChild(c); terminar({como:cancelada?'cancelada':'sencilla',destino:destino}); },650); },520);
+      })();
+    }
+    function empezar(){
+      if(estado!=='cargando') return;
+      if(!window.RuwayIntro){ terminar({como:'sin-cargar'}); return; }
+      estado='viva';
+      try{
+        ctl=window.RuwayIntro.play({ desde:desde, destino:destino, logo:'ruway-logo.png', alCubrir:cubrir, alTerminar:terminar });
+      }catch(e){ terminar({como:'error'}); return; }
+      setTimeout(quitarPre,450);
+    }
+    var I={
+      arrancar:function(){
+        if(estado!=='nada') return estado!=='fin';
+        if(!quiere()){ terminar({como:'apagada'}); return false; }
+        estado='cargando';
+        try{ var s=JSON.parse(sessionStorage.getItem(SS)||'null'); sessionStorage.removeItem(SS);
+          if(s && Date.now()-(+s.at||0)<20000) desde=Math.max(0,Math.min(10.5,+s.t||0));   /* como mucho, desde la flor ya abierta */ }catch(e){}
+        /* el telón cerrado (como el primer cuadro de la película): nada asoma mientras baja */
+        pre=document.createElement('div'); pre.id='ruway-intro-velo';
+        pre.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147482999;background:repeating-linear-gradient(90deg,#3d0712 0,#8e1a32 5.5%,#3d0712 11%);transition:opacity .35s';
+        (document.body||document.documentElement).appendChild(pre);
+        if(calma() || !webgl()){ sencilla(); return true; }
+        var plazo=setTimeout(function(){ if(estado==='cargando') terminar({como:'sin-cargar'}); }, desde?6000:4500);
+        function mal(){ clearTimeout(plazo); if(estado==='cargando') terminar({como:'sin-cargar'}); }
+        three(function(){ if(window.RuwayIntro){ clearTimeout(plazo); empezar(); return; }
+          script('ruway-intro.js',null,function(){ clearTimeout(plazo); empezar(); },mal); },mal);
+        return true;
+      },
+      destino:function(tipo){ if(typeof tipo!=='string' || !/^[a-z]{2,20}$/.test(tipo)) tipo='universo'; destino=tipo; if(ctl) ctl.destino(tipo); },
+      pasar:function(){ if(estado!=='cargando' && estado!=='viva') return; try{ sessionStorage.setItem(SS,JSON.stringify({t:ctl?ctl.tiempo():0,at:Date.now()})); }catch(e){} },
+      cancelar:function(){ if(ctl) ctl.cancelar(); else if(estado==='cargando') terminar({como:'cancelada'}); },
+      alCubrir:function(fn){ if(typeof fn==='function' && (estado==='cargando'||estado==='viva')) cubres.push(fn); },
+      alTerminar:function(fn){ if(typeof fn!=='function') return; if(estado!=='fin') fins.push(fn); else setTimeout(function(){ fn(info); },0); },   /* antes de arrancar, espera a que se decida */
+      activa:function(){ return estado==='cargando'||estado==='viva'; },
+      /* las páginas, antes de pedir three.js: si esta descarga va en camino, que la esperen */
+      esperarThree:function(fn){ if(!enCamino || typeof fn!=='function') return false; enCamino.push(fn); return true; }
+    };
+    return I;
+  })();
+
   N.ITEMS=ITEMS; N.LOGROS=LOGROS; N.toast=toast;
   window.Nucleo=N;
   var cola=window.__nucleoCola||[]; window.__nucleoCola=[]; cola.forEach(function(f){ try{ f(N); }catch(e){} });
@@ -1553,6 +1657,8 @@ function traer(par, ok, mal) {
 /* El núcleo común de Ruway (progreso, mochila, logros, audio guardado): el mismo archivo
    que usan los juegos. Si no llega, el universo sigue igual. */
 function nucleo(fn){ if(window.Nucleo){ try{ fn(window.Nucleo); }catch(e){} } else (window.__nucleoCola=window.__nucleoCola||[]).push(fn); }
+/* La entrada común de Ruway (la Plaza de Armas): empieza ya, mientras llegan los datos. */
+nucleo(function(N){ N.intro.arrancar(); });
 
 var FOTOS = [];
 
@@ -1691,13 +1797,13 @@ var Visita=(function(){
   return {empezar:empezar};
 })();
 function encender(){
-if(DATOS && (DATOS.preparando || DATOS.ocupado)){ esperarRevision(DATOS); return; }
-if(DATOS && DATOS.bloqueado){ esperarApertura(DATOS); return; }
+if(DATOS && (DATOS.preparando || DATOS.ocupado)){ nucleo(function(N){ N.intro.destino('universo'); }); esperarRevision(DATOS); return; }
+if(DATOS && DATOS.bloqueado){ nucleo(function(N){ N.intro.destino('universo'); }); esperarApertura(DATOS); return; }
 /* Pase Ruway: el mismo código trae varias experiencias que se abren una tras otra. Se muestra
    la que toca (o la pedida con ?x=, si ya se desbloqueó); si es un juego, vive en x.html. */
 if(DATOS && DATOS.ok!==false && window.Nucleo && !/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
   var toca=Nucleo.pase.destino(DATOS,new URLSearchParams(location.search).get('x'));
-  if(toca && !Nucleo.pase.enU(toca)){ location.replace(Nucleo.pase.url(toca)); return; }
+  if(toca && !Nucleo.pase.enU(toca)){ Nucleo.intro.pasar(); location.replace(Nucleo.pase.url(toca)); return; }
   if(toca) DATOS=Object.assign({},DATOS,{tipo:toca});
 }
 /* Las experiencias del llavero (juegos, planeta, bitácora, cartas…) viven en
@@ -1705,9 +1811,14 @@ if(DATOS && DATOS.ok!==false && window.Nucleo && !/(^|\.)google(usercontent)?\.c
    QR o del NFC y los mismos datos, que ya quedaron guardados en el teléfono. */
 if(DATOS && /^(constelaciones|planeta|laberinto|carrito|isla|corre|match|bitacora|cartas)$/.test(String(DATOS.tipo||''))
    && !/(^|\.)google(usercontent)?\.com$/.test(String(location.hostname||''))){
+  nucleo(function(N){ N.intro.pasar(); });   /* la intro sigue allá desde donde iba */
   location.replace('x.html'+location.search);
   return;
 }
+/* La intro ya sabe a dónde va; mientras su luz tapa la pantalla se abre el sobre (la portada
+   del conejito queda solo para cuando no hay intro: sin archivos o en Apps Script). */
+nucleo(function(N){ N.intro.destino(String((DATOS&&DATOS.tipo)||'universo'));
+  N.intro.alCubrir(function(){ var ab=document.getElementById('abrir'), p1=document.getElementById('s1'); if(ab && p1 && !p1.classList.contains('oculto')) ab.click(); }); });
 if(DATOS) Visita.empezar(DATOS);
 if(DATOS && DATOS.ok!==false) nucleo(function(N){ N.iniciar({datos:DATOS,api:(typeof API==='string'?API:''),boton:false,ambienteZ:5,
   fotos:function(){ var r=[]; if(typeof ramos==='undefined') return r; for(var i=0;i<ramos.length;i++){ var o=ramos[i]; if(!o.foto) continue; var im=IMGS[o.k]; r.push({src:(im&&im.src)||'',txt:o.txt||'',clave:o.k}); } return r; }}); });
@@ -2782,6 +2893,8 @@ function nombrePara(){
 var T3D={pidio:false,esperan:[],malos:[]};
 function cargar3D(cb,mal){
   if(window.THREE){ cb(); return; }
+  /* si la intro ya lo está bajando, se espera esa misma descarga (dos copias de THREE se pisan) */
+  if(window.Nucleo && Nucleo.intro && Nucleo.intro.esperarThree(function(){ cargar3D(cb,mal); })) return;
   T3D.esperan.push(cb); if(mal) T3D.malos.push(mal); if(T3D.pidio) return; T3D.pidio=true;
   /* Con su huella (SEG-20): si el archivo de cdnjs cambiara, el navegador no
      lo ejecuta. Si cdnjs no contesta, una vez más desde jsDelivr (la misma
