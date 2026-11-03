@@ -1569,9 +1569,11 @@ function revisarArchivos(){
     b.innerHTML='<b>⚠ Tu GitHub no está completo</b><span></span><button type="button" aria-label="Cerrar">×</button>';
     b.querySelector('span').textContent='Falta subir o actualizar: '+mal.join(', ')+'. Súbelos de la carpeta 2-github de la '+WEB.v+'.';
     b.querySelector('button').onclick=function(){ b.remove(); }; document.body.appendChild(b); }
+  /* si GitHub lo manda comprimido (los .js, .json y, desde nov-2026, los .glb), el tamaño que llega
+     no es el del archivo: entonces solo se revisa que esté */
   ks.forEach(function(k){ fetch(k+'?v='+Date.now(),{method:'HEAD',cache:'no-store'}).then(function(r){
-      var l=+(r.headers.get('content-length')||0);
-      if(!r.ok) mal.push(k); else if(l && !/\.(js|json)$/.test(k) && l!==WEB.f[k]) mal.push(k+' (versión vieja)'); })
+      var l=+(r.headers.get('content-length')||0), z=r.headers.get('content-encoding');
+      if(!r.ok) mal.push(k); else if(l && !z && !/\.(js|json)$/.test(k) && l!==WEB.f[k]) mal.push(k+' (versión vieja)'); })
     ['catch'](function(){ mal.push(k); }).then(fin); });
   /* el movimiento de caminar: si el archivo de movimientos es el viejo, no lo trae */
   cargarMovs(function(M){ if(M && !M.caminar){ mal.push('ruway-movs.json (sin el caminar nuevo)'); n++; fin(); } });
