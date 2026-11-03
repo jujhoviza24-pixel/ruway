@@ -2843,7 +2843,10 @@ C.armarFuegos = function (escena, ajuste, sonar) {
    Las fotos del regalo (de 1 a 12) salen del cofre y se acomodan en una grilla delante de la
    cámara. Cada una se pinta en un lienzo chico (4:3); si la foto no se puede usar en WebGL
    (otro dominio sin permiso, o no llegó), va una tarjeta con un corazón.
-   o.evento(nombre) avisa cada momento: 'cofre', 'killa', 'abrazo', 'fuegos'. */
+   o.evento(nombre) avisa cada momento: 'cofre', 'killa', 'abrazo', 'fuegos' y 'dedicatoria' (los dos ya
+   miran al mar: es cuando el juego escribe la dedicatoria sobre la escena).
+   o.corazones === false (el regalo no es para la pareja): en el abrazo salen chispas doradas en vez de
+   corazones. */
 (function () {
 'use strict';
 var C = window.Chasqui;
@@ -3024,7 +3027,12 @@ C.armarFinal = function (o) {
       K.ik('R', t2.copy(cK).addScaledVector(fK, .25).lerp(u.copy(espR).addScaledVector(xR, .1).addScaledVector(UP, -.02), kAbr), polo);
       A.rot('C_Neck', 0, .25 * kAbr, .12 * kAbr); A.rot('C_Head', .1 * kAbr, .45 * kAbr, .25 * kAbr);
       K.rot('C_Neck', 0, .25 * kAbr, .12 * kAbr); K.rot('C_Head', .1 * kAbr, .45 * kAbr, .25 * kAbr);
-      corT -= dt; if (corT < 0 && kAbr > .8) { corT = .35; soltarCorazon(emb.worldToLocal(u.copy(cR).add(cK).multiplyScalar(.5).addScaledVector(UP, .45))); }
+      corT -= dt;
+      if (corT < 0 && kAbr > .8) {
+        corT = .35; u.copy(cR).add(cK).multiplyScalar(.5).addScaledVector(UP, .45);
+        if (o.corazones !== false) soltarCorazon(emb.worldToLocal(u));
+        else for (var ch = 0; ch < 3; ch++) o.chispa(t2.copy(u).add(w.set((Math.random() - .5) * .3, (Math.random() - .5) * .2, (Math.random() - .5) * .3)), .35);
+      }
     }
     /* caras */
     A.gesto(dt, kAbr > .5 ? 1 : .5, t > 7 && t < 10 ? .2 : 0, 0);
@@ -3074,6 +3082,7 @@ C.armarFinal = function (o) {
       if (K) ubicar(K, posK[0], posK[1], posK[0] + 10 * km + (posR[0] - posK[0]) * (1 - km), posK[1] + (posR[1] - posK[1]) * (1 - km));
       A.rot('C_Head', -.35 * km, 0, 0); if (K) K.rot('C_Head', -.35 * km, 0, .1 * km);
     }
+    if (t >= 16.8) evento('dedicatoria');
     if (t > 27 && !terminado) { terminado = true; if (o.fuegos) o.fuegos.parar(); o.alTerminar(); }
   }
   return {
@@ -3106,6 +3115,10 @@ C.armarFinal = function (o) {
        glbRuway, glbKilla, conMusica, auto (piloto: solo capturas),
        gpu:        el nombre de la tarjeta de video, si la página ya lo sabe (elige la calidad),
        tapado():   true si algo de la página tapa el mar (entonces no se dibuja),
+       dedicatoria:{para, txt, de} — sus palabras: en el muelle, con los dos mirando el mar, se
+                   escriben letra por letra sobre la escena y "Seguir" llama a al.seguir (sin la
+                   galería: el final es uno solo). Sin esto, el final de antes con la galería,
+       pareja:     false si el regalo no es para la pareja (el abrazo va sin corazones),
        al: { listo(), recoger(i, seguir), final(), galeria(), seguir(), fallo(motivo), bajo() }
      });
      j.cerrar();   // libera todo: geometrías, materiales, texturas, sonido y el contexto WebGL
@@ -3226,6 +3239,18 @@ var ESTILO = [
   '#cq-grande figure{margin:0;width:min(380px,100%)}',
   '#cq-grande img{display:block;width:100%;border-radius:12px}',
   '#cq-grande figcaption{font:italic 19px/1.35 Georgia,serif;color:#FFF3DE;margin-top:10px;text-align:center;white-space:pre-line;overflow-wrap:anywhere}',
+  /* la dedicatoria en el muelle: escrita en el cielo, arriba, mientras los dos la miran desde el
+     embarcadero (abajo quedan ellos y el botón para seguir) */
+  '#cq-dedi{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;justify-content:space-between;padding:calc(78px + env(safe-area-inset-top,0px)) 22px calc(26px + env(safe-area-inset-bottom,0px));background:linear-gradient(180deg,rgba(12,8,24,.62),rgba(12,8,24,.34) 42%,rgba(12,8,24,0) 62%);opacity:0;transition:opacity 1.2s ease;font-family:Nunito,system-ui,sans-serif;color:#FFF3DE;text-align:center;cursor:pointer}',
+  '.cq-d-pie{display:flex;justify-content:center;min-height:52px}',
+  '#cq-dedi.ver{opacity:1}',
+  '.cq-d-cuerpo{width:min(400px,100%);margin:0 auto}',
+  '.cq-d-txt{margin:4px 0 0;font:700 25px/1.36 "Dancing Script",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;text-shadow:0 0 18px rgba(255,190,110,.55),0 2px 4px rgba(0,0,0,.55);max-height:46vh;overflow-y:auto}',
+  '.cq-d-falta{opacity:0}',
+  '.cq-d-de{margin:10px 0 0;font:italic 17px Georgia,"Times New Roman",serif;color:#FFE3A3;opacity:0;transition:opacity .8s}',
+  '.cq-d-de.ver{opacity:1}',
+  '#cq-d-seguir{border:0;border-radius:999px;padding:14px 34px;font:700 17px Fredoka,Nunito,sans-serif;color:#3A2410;background:linear-gradient(180deg,#FFE3A3,#F2B55A);box-shadow:0 10px 26px rgba(242,150,70,.4);cursor:pointer}',
+  '#cq-d-seguir:focus-visible{outline:3px solid #fff;outline-offset:3px}',
   '@media (prefers-reduced-motion: reduce){#cq *,#cq-galeria,#cq-galeria *{transition:none!important;animation:none!important}}'
 ].join('\n');
 function estilos() {
@@ -3313,6 +3338,7 @@ var fpsEl = null; if (VER_FPS) { fpsEl = el('div', '', caja); fpsEl.id = 'cq-fps
 propios.push(lienzo, hudEl, bSaltar, palanca, velo); if (fpsEl) propios.push(fpsEl);
 var galeria = null, grande = null, galeriaAbierta = false;
 var historia = [];
+var DEDI = o.dedicatoria && typeof o.dedicatoria === 'object' ? o.dedicatoria : null, dediEl = null, dediEstado = '';
 
 /* ---------- escena ----------
    La calidad se decide ANTES de crear el lienzo (el antialias no se puede cambiar después): con el
@@ -3966,8 +3992,10 @@ var final = C.armarFinal({
   cam: cam, cofre: cofre, fotos: FOTOS.slice(0, N), fuegos: fuegos,
   ruway: function () { return ruwayA; }, killa: function () { return killaA; },
   chispa: function (p, f) { chispa(p.x, p.y, p.z, (Math.random() - .5) * .6, .8 + Math.random() * 1.2 * f, (Math.random() - .5) * .6, 1.2, 1.1, 1, .85, .5, -.1); },
-  evento: function (nom) { historia.push(nom); },
-  alTerminar: abrirGaleria
+  corazones: o.pareja !== false,
+  evento: function (nom) { historia.push(nom); if (nom === 'dedicatoria') verDedicatoria(); },
+  /* con dedicatoria, el final espera en el muelle (de noche, tranquilo) a que toque "Seguir" */
+  alTerminar: function () { if (!DEDI) abrirGaleria(); }
 });
 var killaPedida = false, killaLista = null, killaFallo = false;
 function cargarKilla(cb) {
@@ -4004,8 +4032,36 @@ function empezarFinal(desde) {
 }
 function saltar() {
   if (!fin || galeriaAbierta) return;
+  /* con dedicatoria, saltar lleva a ella (los dos ya mirando el mar): sus palabras no se saltan */
+  if (DEDI) { if (!dediEl && final.activo()) final.iniciar(16.8); return; }
   final.parar(); fuegos.parar();
   abrirGaleria();
+}
+/* ---------- la dedicatoria, dentro del muelle ----------
+   Con los dos mirando el mar y los fuegos, sus palabras se escriben letra por letra sobre la escena
+   (no en una tarjeta aparte): es el momento más alto del viaje. Un toque la completa; al terminar
+   sale "Seguir" y la página sigue con su voz y compartir. Las palabras son del cliente: textContent. */
+function verDedicatoria() {
+  if (!DEDI || dediEl || !vivo || galeriaAbierta) return;
+  bSaltar.hidden = true; dediEstado = 'escribiendo'; historia.push('dedicatoria-vista');
+  if (window.Nucleo && Nucleo.video && Nucleo.video.pedir) Nucleo.video.pedir('final');   /* el muelle con los fuegos, para el final del video */
+  dediEl = el('div', '', caja); dediEl.id = 'cq-dedi'; dediEl.setAttribute('role', 'dialog'); dediEl.setAttribute('aria-label', 'Sus palabras para ti');
+  propios.push(dediEl);
+  var cuerpo = el('div', 'cq-d-cuerpo', dediEl);
+  if (DEDI.para) el('p', 'cq-mini', cuerpo, 'Para ' + String(DEDI.para).slice(0, 40));
+  var txt = String(DEDI.txt || ''), p = el('p', 'cq-d-txt', cuerpo); p.setAttribute('aria-label', txt);
+  var ya = el('span', '', p), falta = el('span', 'cq-d-falta', p, txt); falta.setAttribute('aria-hidden', 'true');
+  var firma = el('p', 'cq-d-de', cuerpo, DEDI.de ? '— ' + String(DEDI.de).slice(0, 40) : '');
+  var seg = el('button', '', el('div', 'cq-d-pie', dediEl), 'Seguir'); seg.id = 'cq-d-seguir'; seg.type = 'button'; seg.hidden = true;
+  escuchar(seg, 'click', function (e) { e.stopPropagation(); if (al.seguir) al.seguir(); });
+  var ch = Array.from ? Array.from(txt) : txt.split(''), i = 0, hecho = false;
+  var paso = Math.max(18, Math.min(48, Math.round(7500 / Math.max(1, ch.length))));
+  function completa() { if (hecho || !vivo) return; hecho = true; ya.textContent = txt; falta.textContent = ''; dediEstado = 'lista'; firma.classList.add('ver'); seg.hidden = false; try { seg.focus({ preventScroll: true }); } catch (e) {} }
+  function letra() { if (hecho || !vivo) return; i++; ya.textContent = ch.slice(0, i).join(''); falta.textContent = ch.slice(i).join('');
+    if (i >= ch.length) { completa(); return; } var c = ch[i - 1]; luego(letra, c === '\n' ? paso * 8 : /[.,;:!?…]/.test(c) ? paso * 5 : paso); }
+  escuchar(dediEl, 'click', completa);
+  requestAnimationFrame(function () { if (dediEl) dediEl.classList.add('ver'); });
+  if (red || !ch.length) completa(); else luego(letra, 1100);
 }
 function cerrarGrande() { if (grande && grande.parentNode) grande.parentNode.removeChild(grande); grande = null; }
 function verGrande(f) {
@@ -4109,6 +4165,8 @@ function bucle(ahora) {
   var cls = Math.abs(B.T) > .7 ? (serie.activa ? 'cq-nivel peligro' : 'cq-nivel peligro calma') : (serie.activa ? 'cq-nivel' : 'cq-nivel calma');
   if (cls !== nivelCls) { nivelCls = cls; nivelEl.className = cls; }
   R.render(escena, cam);
+  /* las escenas del juego para el video del estado (el núcleo decide cuándo: casi nunca hace nada) */
+  if (window.Nucleo && Nucleo.video && Nucleo.video.tomar) Nucleo.video.tomar(lienzo);
   fluidez(dtReal);
 }
 function arrancar() {
@@ -4168,7 +4226,7 @@ function cerrar() {
 
 /* ---------- para pruebas, la maqueta y sus capturas ---------- */
 var api = {
-  estado: function () { return { listo: listo, modo: '3d', corriendo: corriendo, tapado: tapado, cartas: N, recogidas: recogidas, flotando: flotando(), final: enFinal ? final.tiempo() : -1, galeria: galeriaAbierta, killa: !!killaA, jinete: cargaRuway, calidad: calidad, pr: pr, fps: fpsVisto, fpsMin: fpsMin === 999 ? null : fpsMin, x: B.x, z: B.z, v: B.v, T: B.T, ciclo: hCiclo, serie: C.serie.A, surf: B.surf, pausa: pausa, fin: fin, choque: B.choque > 0, gpu: C.gpu || '' }; },
+  estado: function () { return { listo: listo, modo: '3d', corriendo: corriendo, tapado: tapado, cartas: N, recogidas: recogidas, flotando: flotando(), final: enFinal ? final.tiempo() : -1, galeria: galeriaAbierta, dedicatoria: dediEstado, corazones: o.pareja !== false, killa: !!killaA, jinete: cargaRuway, calidad: calidad, pr: pr, fps: fpsVisto, fpsMin: fpsMin === 999 ? null : fpsMin, x: B.x, z: B.z, v: B.v, T: B.T, ciclo: hCiclo, serie: C.serie.A, surf: B.surf, pausa: pausa, fin: fin, choque: B.choque > 0, gpu: C.gpu || '' }; },
   historia: historia,
   recoger: function (i) { for (var j = 0; j < cartas.length; j++) if (cartas[j].i === i && cartas[j].viva) { recoger(cartas[j]); return true; } return false; },
   irMuelle: function () { B.x = meta.x; B.z = meta.z; B.v = 0; B.rumbo = C.EMBARCADERO.rumbo + Math.PI / 2; camRumbo = B.rumbo; camPos.set(B.x + Math.sin(B.rumbo) * 6, 4, B.z + Math.cos(B.rumbo) * 6); },

@@ -209,6 +209,8 @@ A.reiniciar = function () {
   A.U.uLucesPos.value = []; A.U.uLucesCol.value = []; A.U.uLucesRad.value = [];
   A.U.uT.value = 0; A.U.uFiesta.value = 0;
   if (A.colisiones) A.colisiones.length = 0;
+  /* lo que deja la plaza de la intro (plazaintro.js): el borde y el piso vuelven a los de siempre */
+  A.borde = null; if (A._pisoPropio) A.alturaPiso = A._pisoPropio;
 };
 
 /* ---------- el registro de luces ---------- */
@@ -1095,7 +1097,13 @@ A.empujar = function (p, rad) {
       }
     }
   }
-  /* el borde: hasta las fachadas */
+  /* el borde: hasta las fachadas (en la plaza de la intro, hasta su sardinel: A.borde) */
+  var B = A.borde;
+  if (B) {
+    if (p.x > B.x1) { p.x = B.x1; hubo = true; } if (p.x < B.x0) { p.x = B.x0; hubo = true; }
+    if (p.z > B.z1) { p.z = B.z1; hubo = true; } if (p.z < B.z0) { p.z = B.z0; hubo = true; }
+    return hubo;
+  }
   var L = P.fachada - .45;
   if (p.x > L) { p.x = L; hubo = true; } if (p.x < -L) { p.x = -L; hubo = true; }
   if (p.z > L) { p.z = L; hubo = true; } if (p.z < -L) { p.z = -L; hubo = true; }
@@ -1633,6 +1641,121 @@ A.armarResplandores = function (escena, lista) {
   });
   var pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.renderOrder = 5; escena.add(pts);
   return { puntos: pts, medir: function (pr, alto) { m.uniforms.uPr.value = pr; m.uniforms.uAlto.value = alto; } };
+};
+})();
+
+;
+/* El árbol que se enciende — plazaintro.js: el juego pasa en LA MISMA Plaza de Armas de la intro.
+
+   La película del comienzo (lib/intro, ruway-intro.js) muestra la Plaza de Armas de Trujillo al
+   atardecer, a tamaño real: el Monumento a la Libertad en el centro, los ocho caminos con sus
+   bancas y faroles, las palmeras, la Catedral al norte y las casonas de colores. El juego del muki
+   ahora pasa ahí mismo, de noche: el árbol de Navidad está al final del camino norte, frente a la
+   Catedral; el muki corre alrededor del monumento y las esferas se esconden por la plaza.
+
+   Cómo encaja sin rehacer el juego: el juego sigue en SUS coordenadas (el árbol en (0, −9)); la
+   plaza de la intro se pone corrida 35 m al sur (y 14 cm más abajo, para que su piso quede en 0).
+   Así, en coordenadas de la intro, el árbol queda en (0, −44) y el monumento en el (0, 0) de
+   siempre. Quedan del árbol de antes: el árbol, el puesto de chocolate, el nacimiento, los
+   foquitos, el cielo y los efectos; la plaza propia (piso, casas, torre, pileta, palmeras) no se
+   arma. Si ruway-intro.js no llegó, el juego usa su plaza de siempre.
+
+   De noche: los mismos materiales que la intro (Lambert con el color en los vértices), iluminados
+   por la luna, el cielo y las luces cercanas del registro (A.agregarLuz): cada farol es una luz
+   y un resplandor. Las ventanas de las casonas ('luz') brillan solas. */
+(function () {
+'use strict';
+var A = window.Arbol;
+
+A.PLAZA_INTRO = { dz: 35, dy: -.14, centro: new THREE.Vector3(0, 0, 35), anillo: 13.4,
+  /* el trineo de adorno (trineo-plaza.glb, «Santa's sleigh» de Brian Seoane, CC BY 4.0), a un lado del
+     árbol, en coordenadas del juego: x, z, giro y escala */
+  trineo: { x: 6.4, z: -4.6, giro: .35, escala: 1.25 } };
+
+/* lo que hay que dejar libre en la plaza de la intro (en SUS coordenadas): el árbol, el puesto de
+   chocolate y el nacimiento del juego */
+var DESPEJAR = [[0, -44, 4.6], [12.42, -34.3, 3.6], [-13.15, -33.58, 3.9], [6.4, -39.6, 2.8]];   /* el árbol, el chocolate, el nacimiento y el trineo */
+
+function materiales(I, aj, uT) {
+  var texs = { estuco: I.texEstuco(), hojas: I.texHojas(), relieve: I.texRelieve(), ciudad: I.texCiudad(), globo: I.texGlobo(), piedra: I.texGrano(11, .24), hoja: I.texGrano(3, .4),
+    madera: I.texMadera(), celosia: I.texCelosia(), losas: I.texLosas(), palma: I.texHojaPalma(), flores: I.texFlores() };
+  texs.losas.repeat.set(.55, .55);
+  function L(o) { return new THREE.MeshLambertMaterial(Object.assign({ vertexColors: true }, o)); }
+  var m = {
+    estuco: L({ map: texs.estuco }), piedra: L({ map: texs.piedra }), losa: L({ map: texs.losas }),
+    madera: L({ map: texs.madera }), celosia: L({ map: texs.celosia }), verde: L({ map: texs.hoja }),
+    tronco: L({ map: texs.piedra }), flores: L({ map: texs.flores }), cerro: L({}),
+    vidrio: new THREE.MeshBasicMaterial({ vertexColors: true, color: '#8a8f9c' }),
+    /* las ventanas encendidas y las linternas de los faroles: brillan solas de noche */
+    luz: new THREE.MeshBasicMaterial({ vertexColors: true }),
+    metal: L({}),
+    bronce: new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 18, specular: '#6b5a3c' }),
+    palma: L({ alphaMap: texs.palma, alphaTest: .5, side: THREE.DoubleSide }),
+    hojas: L({ map: texs.hojas, alphaTest: .45, side: THREE.DoubleSide }),
+    relieve: new THREE.MeshPhongMaterial({ map: texs.relieve, shininess: 22, specular: '#6b5a3c' }),
+    ciudad: L({ map: texs.ciudad }),
+    globo: new THREE.MeshPhongMaterial({ map: texs.globo, shininess: 24, specular: '#6b5a3c' })
+  };
+  /* las hojas de las palmeras se mecen (en la tarjeta gráfica, como en la intro) */
+  m.palma.onBeforeCompile = m.hojas.onBeforeCompile = function (s) {
+    s.uniforms.uT = uT;
+    s.vertexShader = 'attribute float meceo;\nuniform float uT;\n' + s.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n transformed += vec3(sin(uT * 1.3 + position.x * .21) * .32, sin(uT * 2.1 + position.z * .3) * .06, cos(uT * 1.1 + position.z * .19) * .22) * meceo;');
+  };
+  return m;
+}
+
+A.armarPlazaIntro = function (escena, aj) {
+  var I = window.__RI; if (!I || !I.createTrujilloPlaza || !I.Obra) return null;
+  var PI = A.PLAZA_INTRO, DZ = PI.dz, DY = PI.dy;
+  var g = new THREE.Group(); g.position.set(0, DY, DZ); escena.add(g);
+  /* menos segmentos en las figuras del monumento y en las bancas, y sin las otras cuadras: la intro
+     dura 17 s, el juego varios minutos (en bajo, de 297 mil triángulos a menos de la mitad) */
+  var P;
+  I.DETALLE = aj.nombre === 'alto' ? .8 : aj.nombre === 'medio' ? .6 : .45;
+  try { P = I.createTrujilloPlaza(g, { baja: aj.nombre === 'bajo', despejar: DESPEJAR, sinCiudad: true }); } finally { I.DETALLE = 1; }
+  var mats = materiales(I, aj, A.U.uT);
+  var mallas = P.obra.mallas(mats, g);
+  for (var k in mallas) if (!mats[k]) { mats[k] = new THREE.MeshLambertMaterial({ vertexColors: true }); mallas[k].material = mats[k]; }
+  g.updateMatrixWorld(true);
+
+  /* cada farol: una luz cálida del registro y un resplandor */
+  var resplandores = [];
+  for (var i = 0; i < P.luces.length; i += 3) {
+    var x = P.luces[i], y = P.luces[i + 1] + DY, z = P.luces[i + 2] + DZ;
+    resplandores.push([x, y, z, 1.5]); A.agregarLuz(x, y - .3, z, '#FFB25C', .95, 8);
+  }
+
+  /* el monumento, iluminado de noche desde sus escalinatas y con una luz sobre la Libertad */
+  for (var q = 0; q < 4; q++) { var aq = q * Math.PI / 2; A.agregarLuz(Math.sin(aq) * 10.6, 1.0, DZ + Math.cos(aq) * 10.6, '#FFD9A0', .8, 7.5); }
+  A.agregarLuz(0, 15.5, DZ + 4, '#FFE7C0', .9, 13);
+  /* los choques (en coordenadas del juego): el monumento, troncos, bancas, faroles */
+  A.colisiones.push({ t: 0, x: 0, z: DZ, r: 11.7 });
+  P.sombras.forEach(function (s) { A.colisiones.push({ t: 0, x: s[0], z: s[1] + DZ, r: s[2] < 3 ? .45 : .6 }); });
+  P.bancas.forEach(function (b) { A.colisiones.push({ t: 1, x: b[0], z: b[1] + DZ, hx: .95, hz: .3, c: Math.cos(b[2]), s: Math.sin(b[2]) }); });
+  P.faroles.forEach(function (f) { A.colisiones.push({ t: 0, x: f[0], z: f[1] + DZ, r: .3 }); });
+  /* el borde: la plaza entera (hasta el sardinel) */
+  A.borde = { x0: -48.6, x1: 48.6, z0: -48.6 + DZ, z1: 48.6 + DZ };
+  /* el piso: la plaza está en 0; afuera, la pista, un poco más abajo */
+  if (!A._pisoPropio) A._pisoPropio = A.alturaPiso;
+  A.alturaPiso = function (px, pz) { return Math.abs(px) <= 50 && Math.abs(pz - DZ) <= 50 ? 0 : -.16; };
+
+  /* el trineo ya tiene su choque y su luz aunque el archivo no llegue (o llegue después) */
+  var T = PI.trineo, cT = Math.cos(T.giro), sT = Math.sin(T.giro);
+  A.colisiones.push({ t: 1, x: T.x, z: T.z, hx: 1.25, hz: .62, c: cT, s: sT });
+  A.agregarLuz(T.x - sT * 1.8, 2.4, T.z + cT * 1.8, '#FFD9A0', .7, 6);
+  return { grupo: g, resplandores: resplandores, bancas: P.bancas, faroles: P.faroles, mallas: mallas,
+    /* de coordenadas de la intro a las del juego */
+    aJuego: function (x, y, z) { return [x, y, z + DZ]; } };
+};
+/* pone el trineo cuando llega su archivo: un solo material con los colores en los vértices, como la plaza */
+A.ponerTrineo = function (escena, sc) {
+  var T = A.PLAZA_INTRO.trineo, mat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  sc.traverse(function (o) { if (o.isMesh) { if (o.material && o.material.dispose) o.material.dispose(); o.material = mat; o.castShadow = false; } });
+  var caja = new THREE.Box3().setFromObject(sc), c = caja.getCenter(new THREE.Vector3());
+  var g = new THREE.Group(); sc.position.set(-c.x, -caja.min.y, -c.z); g.add(sc);
+  g.scale.setScalar(T.escala); g.rotation.y = T.giro; g.position.set(T.x, 0, T.z); escena.add(g);
+  return g;
 };
 })();
 
@@ -2608,7 +2731,9 @@ A.armarGrunon = function (escena, aj, env) {
   function rot(n, x, y, z) { if (!H[n]) return; e.set(x || 0, y || 0, z || 0); meta[n].copy(base[n]).multiply(q.setFromEuler(e)); }
   var t = 0, fase = 0, parpa = 2, caderaY0 = H.cadera.position.y, caderaY = caderaY0, primera = true;
   /* resortes del pelo de la espalda ("bufanda") y de los costados ("trenzas") */
-  var res = { buf: [0, 0, 0, 0], bufV: [0, 0, 0, 0], tri: [0, 0, 0], triV: [0, 0, 0] };
+  var res = { buf: [0, 0, 0, 0], bufV: [0, 0, 0, 0], tri: [0, 0, 0], triV: [0, 0, 0], g: 0, gV: 0, l: 0, lV: 0 };
+  /* con el cuerpo del gnomo (vestir): dónde agarra y dónde está su cara */
+  var agarre = null, puntoCara = null;
   var G = {
     raiz: raiz, huesos: H, mats: mats, alto: GANCHO, gancho: GANCHO,
     estado: 'quieto', vel: 0, giroV: 0,
@@ -2713,8 +2838,17 @@ A.armarGrunon = function (escena, aj, env) {
         res.triV[b] += ((obj2 - res.tri[b]) * 70 - res.triV[b] * 8) * dtr; res.tri[b] += res.triV[b] * dtr;
         rot('trenzaI' + b, res.tri[b], 0, -.03); rot('trenzaD' + b, res.tri[b], 0, .03);
       }
+      /* el gnomo no tiene párpados: el ojo se achica de arriba abajo al parpadear */
+      if (H.ojoI) { var ab = Math.max(.08, Math.min(1, (1 - G.cara.parpado) / .55)); H.ojoI.scale.y = ab; H.ojoD.scale.y = ab; }
+      /* y su gorro: la punta se queda atrás al correr y se mece al girar */
+      if (H.gorro1) {
+        var eg = Math.min(1.4, v * .45);
+        res.gV += ((eg * .5 + Math.sin(fase * .5) * .08 * A1 + Math.sin(t * 1.7) * .03 - res.g) * 50 - res.gV * 7) * dtr; res.g += res.gV * dtr;
+        res.lV += ((-G.giroV * .12 - res.l) * 50 - res.lV * 7) * dtr; res.l += res.lV * dtr;
+        rot('gorro1', -res.g * .6, 0, res.l); rot('gorro2', -res.g, 0, res.l * 1.4);
+      }
       k = primera ? 1 : 1 - Math.exp(-dt * (anda ? 16 : 9)); primera = false;
-      for (n in meta) H[n].quaternion.slerp(meta[n], n.indexOf('parpado') === 0 || n === 'boca' ? 1 : k);
+      for (n in meta) H[n].quaternion.slerp(meta[n], n.indexOf('parpado') === 0 || n === 'boca' || n.indexOf('gorro') === 0 ? 1 : k);
       caderaY += (caderaY0 + sube - caderaY) * Math.min(1, dt * 14); H.cadera.position.y = caderaY;
     },
     /* la lamparita: sigue a la cabeza; se apaga si él no se ve. Se llama cada cuadro (sin crear nada) */
@@ -2723,10 +2857,57 @@ A.armarGrunon = function (escena, aj, env) {
       luzLamp.p.copy(lampLocal); H.cabeza.localToWorld(luzLamp.p); luzLamp.on = 1; luzLamp.i = .85 * raiz.scale.x;
     },
     /* la luz de su material (para atenuarlo en la portada, por ejemplo) */
-    luz: function (k) { mats.forEach(function (m) { if (m.uniforms.uLuz) m.uniforms.uLuz.value = k; }); },
+    luz: function (k) { mats.forEach(function (m) { if (m.uniforms && m.uniforms.uLuz) m.uniforms.uLuz.value = k; else if (m.isMeshLambertMaterial) m.color.setScalar(k); }); },
     /* dónde está su mano izquierda en el mundo (para poner la esfera o la taza) */
-    puntoMano: function (out) { return H.manoI.getWorldPosition(out || new V3()); },
-    cabezaMundo: function (out) { return H.cabeza.getWorldPosition(out || new V3()); }
+    puntoMano: function (out) { return (agarre || H.manoI).getWorldPosition(out || new V3()); },
+    cabezaMundo: function (out) { return (puntoCara || H.cabeza).getWorldPosition(out || new V3()); }
+  };
+
+  /* ---------- su cuerpo de ahora: el gnomo ----------
+     El muki de Ruway usa el modelo «Gnomo - Libel Academy» de ElPinguinoCoyosaurio (Sketchfab,
+     CC BY 4.0), aligerado y con huesos propios de los mismos nombres que este muki (cadera,
+     columna, pecho, cabeza, hombro/codo/mano, muslo/rodilla/pie, cejas, boca), así sus poses de
+     arriba le sirven tal cual; tiene además los ojos (parpadea achicándolos) y el gorro (punta con
+     resorte). El crédito sale en la galería del árbol. Llega aparte (ruway-muki.glb): hasta que
+     llega, o si no llega, queda el muki hecho por código. */
+  G.vestir = function (sc) {
+    var nuevos = {}, mallas = [];
+    sc.traverse(function (o) { if (o.isBone) nuevos[o.name] = o; if (o.isSkinnedMesh) mallas.push(o); });
+    if (!nuevos.cadera || !nuevos.cabeza || !nuevos.manoI || !mallas.length) return false;
+    /* fuera el de antes */
+    [cuerpo, duro].concat(conchas).forEach(function (m) { raiz.remove(m); });
+    raiz.remove(huesos[0]); geo.suave.dispose(); geo.duro.dispose(); mats.forEach(function (m) { m.dispose(); });
+    /* el nuevo: la escena entera del GLB (huesos y mallas juntos: la piel queda como se armó) */
+    raiz.add(sc);
+    mats = [];
+    mallas.forEach(function (m) {
+      m.frustumCulled = false;
+      var v = m.material;
+      /* la córnea transparente no hace falta de noche (y en Lambert se vería opaca) */
+      if (/ScleraTransparent/i.test(v.name || '')) { m.visible = false; return; }
+      /* Lambert, como Ruway: barato, con un brillo propio bajito para que de noche no se apague */
+      var l = new THREE.MeshLambertMaterial({ map: v.map || null, color: v.map ? 0xffffff : v.color.getHex(), skinning: true,
+        emissive: new THREE.Color(v.map ? '#3a3a3a' : '#555555'), emissiveMap: v.map || null });
+      m.material = l; v.dispose(); mats.push(l);
+    });
+    G.mats = mats;
+    H = nuevos; G.huesos = H; G.mano = H.manoI;
+    base = {}; meta = {};
+    Object.keys(H).forEach(function (n) { base[n] = H[n].quaternion.clone(); meta[n] = H[n].quaternion.clone(); });
+    caderaY0 = caderaY = H.cadera.position.y; primera = true;
+    /* agarra con el guante (la muñeca queda detrás) y la "cabeza" para globos y abrazos es la cara */
+    agarre = new THREE.Object3D(); agarre.position.set(-.03, -.05, .08); H.manoI.add(agarre);
+    puntoCara = new THREE.Object3D(); puntoCara.position.set(0, .15, .08); H.cabeza.add(puntoCara);
+    /* se cuelga del árbol por la punta del gorro */
+    sc.updateMatrixWorld(true); var caja = new THREE.Box3(); mallas.forEach(function (m) { m.geometry.computeBoundingBox(); caja.union(m.geometry.boundingBox); });
+    G.gancho = G.alto = caja.max.y;
+    /* la lamparita de minero, en la frente del gorro: de ahí sale su luz */
+    var lamp = new THREE.Group();
+    lamp.add(new THREE.Mesh(new THREE.CylinderGeometry(.032, .036, .03, 12).rotateX(Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#3b3330' })));
+    lamp.add(new THREE.Mesh(new THREE.CircleGeometry(.026, 14).translate(0, 0, .0155), new THREE.MeshBasicMaterial({ color: '#FFE7A8' })));
+    lamp.position.set(0, .255, .2); lamp.rotation.x = -.18; H.cabeza.add(lamp);
+    lampLocal.set(0, .255, .23);
+    return true;
   };
   return G;
 };
@@ -3382,12 +3563,205 @@ A.Audio = {
 })();
 
 ;
+/* El árbol que se enciende — retablo.js: el retablo ayacuchano del final.
+
+   Después de los fuegos aparece, junto al árbol, una mesita con su mantel de colores, la
+   chocolatada (dos tazas enlozadas) y un panetón; encima, un retablo: un cajón pintado con flores,
+   con techo a dos aguas y dos puertas. Las puertas se abren y adentro, en dos pisos, está la
+   Navidad de esta plaza hecha figuritas: arriba el árbol con su estrella y "Feliz Navidad";
+   abajo Ruway y el muki compartiendo el chocolate y el panetón. Ahí se escribe la dedicatoria
+   (la pone juego.js con Nucleo.dedicatoria, la misma de todos los juegos).
+
+   Es geometría simple y texturas pintadas en un lienzo: no baja archivos y son pocas piezas. Sin
+   luces nuevas (cada luz encarece todos los píxeles de la plaza en un celular barato): los
+   materiales no dependen de las luces (MeshBasic, como algo iluminado por el árbol) y, al abrirse,
+   el interior "se enciende" subiendo su brillo.
+   Colores del arte ayacuchano: rojo, amarillo, verde, azul y rosa. El panetón no lleva marca. */
+(function () {
+'use strict';
+var A = window.Arbol;
+
+/* una flor de retablo: cinco pétalos y su centro */
+function flor(x, cx, cy, r, color, centro) {
+  x.fillStyle = color;
+  for (var i = 0; i < 5; i++) { var a = i / 5 * Math.PI * 2 - Math.PI / 2; x.beginPath(); x.ellipse(cx + Math.cos(a) * r * .55, cy + Math.sin(a) * r * .55, r * .48, r * .3, a, 0, 7); x.fill(); }
+  x.fillStyle = centro || '#FFD23F'; x.beginPath(); x.arc(cx, cy, r * .28, 0, 7); x.fill();
+}
+function hoja(x, cx, cy, r, a) { x.fillStyle = '#2E9E5B'; x.beginPath(); x.ellipse(cx, cy, r, r * .38, a, 0, 7); x.fill(); }
+var COL = ['#E8476F', '#FFD23F', '#3A7BD5', '#FFFFFF', '#FF8A3D'];
+
+/* la cara de afuera de una puerta: fondo rojo, guarda amarilla y un ramo que sube */
+function texPuerta() {
+  var c = A.lienzo(128, 256), x = c.getContext('2d');
+  x.fillStyle = '#C8102E'; x.fillRect(0, 0, 128, 256);
+  x.strokeStyle = '#FFD23F'; x.lineWidth = 8; x.strokeRect(6, 6, 116, 244);
+  x.strokeStyle = '#2E9E5B'; x.lineWidth = 4; x.beginPath(); x.moveTo(64, 236); x.bezierCurveTo(40, 170, 88, 110, 64, 40); x.stroke();
+  for (var i = 0; i < 5; i++) { var y = 210 - i * 40, lado = i % 2 ? 1 : -1; hoja(x, 64 + lado * 20, y + 8, 14, lado * .6); flor(x, 64 - lado * 18, y - 8, 17, COL[i % COL.length]); }
+  flor(x, 64, 34, 22, '#E8476F');
+  return A.texDe(c);
+}
+/* la cara de adentro de una puerta (se ve al abrirla): azul con florcitas */
+function texPuertaIn() {
+  var c = A.lienzo(128, 256), x = c.getContext('2d');
+  x.fillStyle = '#2F5FB0'; x.fillRect(0, 0, 128, 256);
+  x.strokeStyle = '#FFD23F'; x.lineWidth = 6; x.strokeRect(5, 5, 118, 246);
+  for (var i = 0; i < 9; i++) flor(x, 32 + (i % 2) * 64, 30 + Math.floor(i / 2) * 50, 12, COL[(i + 2) % COL.length]);
+  return A.texDe(c);
+}
+/* la madera pintada del cajón y del techo */
+function texCajon() {
+  var c = A.lienzo(256, 128), x = c.getContext('2d');
+  x.fillStyle = '#9C2A1C'; x.fillRect(0, 0, 256, 128);
+  x.fillStyle = '#FFD23F'; x.fillRect(0, 0, 256, 10); x.fillRect(0, 118, 256, 10);
+  for (var i = 0; i < 6; i++) { hoja(x, 20 + i * 44, 70, 11, .5); flor(x, 30 + i * 44, 56, 15, COL[i % COL.length]); }
+  return A.texDe(c, true, true);
+}
+/* el fondo de adentro: arriba la noche con estrellas y "Feliz Navidad"; abajo una pared tibia */
+function texFondo() {
+  var c = A.lienzo(256, 256), x = c.getContext('2d');
+  var g = x.createLinearGradient(0, 0, 0, 128); g.addColorStop(0, '#0E1A4A'); g.addColorStop(1, '#2A3F8F');
+  x.fillStyle = g; x.fillRect(0, 0, 256, 128);
+  x.fillStyle = '#FFF4C2'; for (var i = 0; i < 26; i++) { x.beginPath(); x.arc((i * 97) % 256, 8 + (i * 53) % 100, i % 4 ? 1.6 : 2.6, 0, 7); x.fill(); }
+  x.fillStyle = '#FFD23F'; x.font = '700 22px Georgia, serif'; x.textAlign = 'center'; x.fillText('Feliz Navidad', 128, 30);
+  var g2 = x.createLinearGradient(0, 128, 0, 256); g2.addColorStop(0, '#F6DDA6'); g2.addColorStop(1, '#E9B96E');
+  x.fillStyle = g2; x.fillRect(0, 128, 256, 128);
+  for (var j = 0; j < 4; j++) flor(x, 32 + j * 64, 150, 10, COL[j % COL.length]);
+  return A.texDe(c);
+}
+/* el mantel: franjas como las de una manta andina */
+function texMantel() {
+  var c = A.lienzo(256, 256), x = c.getContext('2d'), F = ['#C8102E', '#FFD23F', '#2E9E5B', '#3A7BD5', '#E8476F', '#FF8A3D'];
+  for (var i = 0; i < 16; i++) { x.fillStyle = F[i % F.length]; x.fillRect(0, i * 16, 256, 16); }
+  x.fillStyle = 'rgba(255,255,255,.55)'; for (var k = 0; k < 16; k++) for (var m = 0; m < 16; m++) if ((k + m) % 2) x.fillRect(m * 16 + 6, k * 16 + 6, 4, 4);
+  return A.texDe(c, true, true);
+}
+/* el papel del panetón: azul con estrellitas doradas, sin marca */
+function texPaneton() {
+  var c = A.lienzo(256, 64), x = c.getContext('2d');
+  x.fillStyle = '#1F3A93'; x.fillRect(0, 0, 256, 64);
+  x.fillStyle = '#FFD23F'; x.fillRect(0, 4, 256, 5); x.fillRect(0, 55, 256, 5);
+  x.fillStyle = '#FFE9A8'; for (var i = 0; i < 12; i++) { var cx = 12 + i * 21, cy = 32; x.beginPath(); for (var p = 0; p < 10; p++) { var a = p / 10 * Math.PI * 2 - Math.PI / 2, r = p % 2 ? 3.5 : 8; x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } x.fill(); }
+  return A.texDe(c, true, true);
+}
+
+/* un material que no depende de las luces; su brillo se gradúa con el color (base × k) */
+function mat(op, k) { var m = new THREE.MeshBasicMaterial(op); m.userData.base = new THREE.Color(op.color || '#ffffff'); m.color.copy(m.userData.base).multiplyScalar(k); return m; }
+
+A.armarRetablo = function (escena, donde, rumbo) {
+  var raiz = new THREE.Group(); raiz.position.copy(donde); raiz.rotation.y = rumbo || 0; raiz.visible = false; escena.add(raiz);
+  var mats = [], interior = [];
+  /* afuera, a 85 % (de noche, junto al árbol encendido); adentro empieza en penumbra */
+  function M(op, adentro) { var m = mat(op, adentro ? .4 : .85); mats.push(m); if (adentro) interior.push(m); return m; }
+
+  /* ---------- la mesita ---------- */
+  var tMantel = texMantel(); tMantel.repeat.set(1.5, 1.5);
+  var mMadera = M({ color: '#5A3420' });
+  raiz.add(new THREE.Mesh(new THREE.CylinderGeometry(.4, .4, .03, 28).translate(0, .73, 0), M({ color: '#ffffff', map: tMantel })));
+  raiz.add(new THREE.Mesh(new THREE.CylinderGeometry(.41, .39, .1, 28, 1, true).translate(0, .68, 0), M({ color: '#ffffff', map: tMantel, side: THREE.DoubleSide })));
+  raiz.add(new THREE.Mesh(A.unir([new THREE.CylinderGeometry(.035, .04, .66, 8).translate(0, .33, 0), new THREE.CylinderGeometry(.2, .22, .03, 16).translate(0, .015, 0)]), mMadera));
+  var mesa = .745;
+
+  /* ---------- el panetón y las tazas ---------- */
+  var tPap = texPaneton();
+  /* a los costados del retablo, para que no tapen las figuritas de abajo */
+  var pan = new THREE.Group(); pan.position.set(-.28, mesa, .12); raiz.add(pan);
+  pan.add(new THREE.Mesh(new THREE.CylinderGeometry(.085, .085, .11, 22, 1, true).translate(0, .055, 0), M({ color: '#ffffff', map: tPap })));
+  var copa = new THREE.SphereGeometry(.088, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2); copa.scale(1, .5, 1); copa.translate(0, .108, 0);
+  pan.add(new THREE.Mesh(copa, M({ color: '#B8681F' })));
+  /* frutitas confitadas y pasas asomando */
+  var fr = []; for (var i = 0; i < 9; i++) { var a = i * 2.39, r = .03 + (i % 3) * .018; fr.push(A.pintar(new THREE.SphereGeometry(.007, 5, 4).translate(Math.cos(a) * r, .148 - r * .35, Math.sin(a) * r), ['#D7263D', '#2E9E5B', '#3B1E10'][i % 3])); }
+  pan.add(new THREE.Mesh(A.unir(fr), M({ color: '#ffffff', vertexColors: true })));
+  var tazas = [];
+  [[.27, .16, .4], [.31, -.02, -1.1]].forEach(function (q) {
+    var tz = new THREE.Group(); tz.position.set(q[0], mesa, q[1]); tz.rotation.y = q[2]; raiz.add(tz);
+    tz.add(new THREE.Mesh(A.geoTaza, M({ color: '#ffffff', vertexColors: true }))); tz.scale.setScalar(1.25);
+    tz.add(new THREE.Mesh(new THREE.CircleGeometry(.043, 14).rotateX(-Math.PI / 2).translate(0, .08, 0), M({ color: '#4A2414' })));
+    tazas.push(tz);
+  });
+
+  /* ---------- el retablo (sobre la mesa, hacia atrás) ---------- */
+  var W = .42, H = .4, D = .16, e = .014;
+  /* sobre una peana pintada: así el piso de abajo queda por encima del panetón y las tazas */
+  var tCaj = texCajon(), mCaj = M({ color: '#ffffff', map: tCaj }), peana = .07;
+  raiz.add(new THREE.Mesh(new THREE.BoxGeometry(W + .07, peana, D + .06).translate(0, mesa + peana / 2, -.1), mCaj));
+  var ret = new THREE.Group(); ret.position.set(0, mesa + peana, -.1); raiz.add(ret);
+  ret.add(new THREE.Mesh(A.unir([
+    new THREE.BoxGeometry(W + .03, .022, D + .02).translate(0, .011, 0),          /* la base */
+    new THREE.BoxGeometry(W + .03, .02, D + .02).translate(0, H + .01, 0),        /* el techo de adentro */
+    new THREE.BoxGeometry(e, H, D).translate(-W / 2 + e / 2, H / 2, 0),          /* los costados */
+    new THREE.BoxGeometry(e, H, D).translate(W / 2 - e / 2, H / 2, 0)
+  ]), mCaj));
+  /* el techo a dos aguas, con su cruz de flores en la punta */
+  var tri = new THREE.Shape(); tri.moveTo(-W / 2 - .03, 0); tri.lineTo(W / 2 + .03, 0); tri.lineTo(0, .15); tri.lineTo(-W / 2 - .03, 0);
+  var gTri = new THREE.ExtrudeGeometry(tri, { depth: D + .02, bevelEnabled: false }); gTri.translate(0, H + .02, -(D + .02) / 2);
+  ret.add(new THREE.Mesh(gTri, mCaj));
+  var cima = new THREE.Mesh(new THREE.OctahedronGeometry(.03), M({ color: '#FFD23F' })); cima.position.set(0, H + .2, 0); ret.add(cima);
+  /* adentro: el fondo pintado y el piso del medio */
+  var tFon = texFondo();
+  ret.add(new THREE.Mesh(new THREE.PlaneGeometry(W - 2 * e, H - .02).translate(0, H / 2, -D / 2 + .004), M({ color: '#ffffff', map: tFon }, true)));
+  ret.add(new THREE.Mesh(new THREE.BoxGeometry(W - 2 * e, .012, D - .01).translate(0, H * .5, 0), M({ color: '#E9B96E' }, true)));
+
+  /* las figuritas, como las de pasta de papa pintada */
+  var fig = [];
+  function caja(g, hex) { fig.push(A.pintar(g, hex)); }
+  /* arriba: el árbol con su estrella y sus luces */
+  var yA = H * .5 + .006;
+  caja(new THREE.ConeGeometry(.055, .13, 10).translate(0, yA + .075, -.02), '#1F7A3E');
+  caja(new THREE.CylinderGeometry(.012, .014, .02, 6).translate(0, yA + .01, -.02), '#6B3A1F');
+  caja(new THREE.OctahedronGeometry(.016).translate(0, yA + .15, -.02), '#FFD23F');
+  for (var k = 0; k < 7; k++) { var ak = k * 2.2, hk = .03 + k * .013, rk = .05 * (1 - (hk - .01) / .14); caja(new THREE.SphereGeometry(.006, 5, 4).translate(Math.cos(ak) * rk, yA + .02 + hk, -.02 + Math.sin(ak) * rk), COL[k % COL.length]); }
+  /* abajo: Ruway (polera roja, pelo negro) y el muki (poncho, barba blanca, casco con su lamparita) */
+  var yB = .022;
+  caja(new THREE.CylinderGeometry(.02, .024, .065, 10).translate(-.075, yB + .0325, .01), '#D7263D');
+  caja(new THREE.SphereGeometry(.021, 10, 8).translate(-.075, yB + .085, .01), '#F1C9A5');
+  caja(new THREE.SphereGeometry(.023, 10, 8, 0, Math.PI * 2, 0, Math.PI * .55).translate(-.075, yB + .088, .008), '#1B1B1F');
+  caja(new THREE.ConeGeometry(.032, .06, 10).translate(.075, yB + .03, .01), '#8E3B2A');
+  caja(new THREE.SphereGeometry(.019, 10, 8).translate(.075, yB + .072, .01), '#F1C9A5');
+  caja(new THREE.SphereGeometry(.018, 8, 6).scale(1, 1.2, .7).translate(.075, yB + .06, .024), '#EDE6D6');
+  caja(new THREE.CylinderGeometry(.021, .023, .016, 10).translate(.075, yB + .092, .01), '#7A5A1E');
+  caja(new THREE.SphereGeometry(.006, 6, 5).translate(.075, yB + .094, .032), '#FFE36E');
+  /* entre los dos: la mesita con el panetón y dos tacitas */
+  caja(new THREE.CylinderGeometry(.03, .03, .006, 12).translate(0, yB + .03, .02), '#6B3A1F');
+  caja(new THREE.CylinderGeometry(.004, .004, .03, 5).translate(0, yB + .015, .02), '#6B3A1F');
+  caja(new THREE.CylinderGeometry(.012, .012, .014, 10).translate(0, yB + .04, .02), '#1F3A93');
+  caja(new THREE.SphereGeometry(.0125, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, .6, 1).translate(0, yB + .047, .02), '#B8681F');
+  caja(new THREE.CylinderGeometry(.006, .005, .01, 8).translate(-.022, yB + .038, .028), '#F4F4F0');
+  caja(new THREE.CylinderGeometry(.006, .005, .01, 8).translate(.022, yB + .038, .028), '#F4F4F0');
+  ret.add(new THREE.Mesh(A.unir(fig), M({ color: '#ffffff', vertexColors: true }, true)));
+
+  /* las puertas: giran sobre sus bisagras hacia afuera */
+  var tP = texPuerta(), tPi = texPuertaIn(), mBorde = M({ color: '#7A2016' });
+  var mFuera = M({ color: '#ffffff', map: tP }), mDentro = M({ color: '#ffffff', map: tPi });
+  var puertas = [-1, 1].map(function (lado) {
+    var bis = new THREE.Group(); bis.position.set(lado * W / 2, 0, D / 2 + .007); ret.add(bis);
+    var hoj = new THREE.Mesh(new THREE.BoxGeometry(W / 2, H, .012), [mBorde, mBorde, mBorde, mBorde, mFuera, mDentro]);
+    hoj.position.set(-lado * W / 4, H / 2, 0); bis.add(hoj);
+    return { bis: bis, lado: lado };
+  });
+
+  var abierto = 0, brillo = 0;
+  return {
+    raiz: raiz,
+    tazas: tazas,
+    /* dónde mirar para encuadrarlo (en el mundo) */
+    centro: function (v) { return ret.localToWorld(v.set(0, H * .55, 0)); },
+    mostrar: function (si) { raiz.visible = !!si; },
+    /* k: 0 cerrado → 1 abierto (cada puerta gira 110° hacia afuera) */
+    abrir: function (k) { abierto = k; puertas.forEach(function (p) { p.bis.rotation.y = -p.lado * k * 1.92; }); },
+    /* k: 0 → 1, el interior se enciende */
+    luz: function (k) { brillo = k; interior.forEach(function (m) { m.color.copy(m.userData.base).multiplyScalar(.4 + .6 * k); }); cima.material.color.copy(cima.material.userData.base).multiplyScalar(.85 + .15 * k); },
+    estado: function () { return { visible: raiz.visible, abierto: abierto, luz: brillo }; },
+    liberar: function () { mats.forEach(function (m) { if (m.map) m.map.dispose(); m.dispose(); }); }
+  };
+};
+})();
+
+;
 /* El árbol que se enciende — final.js: el final, cuando todas las esferas ya están en el árbol.
 
     0–3 s   Don Gruñón, el muki, llega con la estrella, cabizbajo.
     3–6,5   Mira las fotos del árbol y se ablanda ("Esas fotos… brillan más que el oro").
-    6,5–11  Pide perdón y devuelve la estrella, que queda flotando entre los dos. La estrella trae
-            la dedicatoria de quien regala: se lee en la plaza de 9,6 a 18,6 s (o.dedicatoria).
+    6,5–11  Pide perdón y devuelve la estrella, que queda flotando entre los dos.
     11–15,5 Ruway le ofrece una taza de chocolate caliente; él la toma ("¡Mmm…!").
     15,5–19 Se abrazan (corazoncitos).
     19–23   Ruway lo levanta: se achica con chispas y queda colgado del árbol por el gancho de su
@@ -3395,7 +3769,12 @@ A.Audio = {
     23–27   La estrella sube en espiral a la punta: el árbol se enciende entero, con campanas.
     29–39   Cuenta regresiva a las doce (el reloj de la torre también avanza).
     39–     ¡Feliz Navidad! Campanadas, fuegos artificiales con corazones y estrellas, nieve
-            dorada; la cámara se eleva despacio. A los 52 s, la galería.
+            dorada; la cámara se eleva despacio.
+    43,5    Junto al árbol aparece la mesita de la chocolatada con el retablo ayacuchano (retablo.js).
+    46,4–48 La cámara llega al retablo, sus puertas se abren y se enciende por dentro.
+    48,4    La dedicatoria se escribe sobre el retablo (o.dedicatoria, la del núcleo: la misma de
+            todos los juegos). Su "Seguir" abre la galería. Sin dedicatoria, la galería a los 52 s.
+            Antes la dedicatoria salía a los 9,6 s, en una tarjeta en medio del diálogo del chocolate.
 
    Todo se mueve con los huesos de cada uno (sin clips nuevos) y una cámara por llaves.
    Las frases son textos fijos (no vienen del cliente); el nombre del saludo y la dedicatoria
@@ -3429,14 +3808,20 @@ var CAM = [
   [27.0, [0, 1.6, .6], [0, 5.6, -9.0]],
   [30.0, [5.2, 2.2, 3.0], [0, 4.4, -9.5]],
   [39.0, [5.8, 2.3, 3.8], [0, 6.2, -11.0]],
-  [52.0, [2.5, 3.0, 6.0], [0, 7.0, -12.0]],
-  [70.0, [3.5, 3.4, 7.0], [0, 7.4, -12.5]]
+  /* del cielo con fuegos baja hasta el retablo; el árbol encendido queda detrás. El retablo va
+     algo más abajo del centro: arriba se escribe la dedicatoria */
+  [43.5, [5.2, 2.1, 2.2], [.8, 3.6, -9.0]],
+  /* a 1,8 m, mirando un poco por encima: el retablo queda en el tercio de abajo, bien grande */
+  [46.6, [2.41, 1.55, -3.65], [1.6, 1.51, -5.3]],
+  [400, [2.3, 1.57, -3.85], [1.6, 1.52, -5.3]]
 ];
+/* dónde va la mesita del retablo, y hacia dónde mira (hacia la cámara de arriba) */
+var RET_P = [1.6, 0, -5.35], RET_RUMBO = Math.atan2(2.41 - 1.6, -3.65 + 5.35);
 
 A.armarFinal = function (o) {
   /* o: { escena, cam, ruway(), grunon, arbol, chispas, fuegos, nieve, vapor, torre, decir(quien, txt, ms, punto), alTerminar(), cuenta(n|null), feliz(si), fiesta(k), dedicatoria(si), alEncender() } */
   var t = -1, activo = false, listo = false, hecho = {};
-  var taza = null, vTaza = null, corazones = [], tc = null;
+  var taza = null, vTaza = null, corazones = [], tc = null, ret = null, vRet = [], esperaDedica = false;
   var v = new THREE.Vector3(), w = new THREE.Vector3(), u = new THREE.Vector3(), cPos = new THREE.Vector3(), cMira = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
   /* el encuentro va a 4–5 m del tronco: más cerca, las ramas de abajo los tapan */
   var pR = new THREE.Vector3(-.6, 0, -4.0), pG0 = new THREE.Vector3(-3.3, 0, -6.4), pG = new THREE.Vector3(.35, 0, -4.8);
@@ -3452,6 +3837,8 @@ A.armarFinal = function (o) {
     tc = texCorazon();
     for (var i = 0; i < 10; i++) { var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tc, transparent: true, depthWrite: false })); sp.visible = false; o.escena.add(sp); corazones.push({ s: sp, t: -1, vx: 0, vy: 0, vz: 0 }); }
     o.arbol.lugarGrunon(colgar);
+    ret = A.armarRetablo(o.escena, new THREE.Vector3(RET_P[0], A.alturaPiso(RET_P[0], RET_P[2]), RET_P[2]), RET_RUMBO);
+    ret.tazas.forEach(function () { vRet.push(o.vapor.fuente(new THREE.Vector3(), 0)); });
     if (R) { R.raiz.position.copy(pR); R.raiz.rotation.set(0, Math.PI - .25, 0); R.modo = 'quieto'; R.vel = 0; R.pose = null; }
     G.raiz.visible = true; G.raiz.scale.setScalar(1); G.raiz.position.copy(pG0); G.raiz.rotation.set(0, Math.atan2(pG.x - pG0.x, pG.z - pG0.z), 0);
     o.arbol.estrella.visible = true; o.arbol.estrellaOn(.25);
@@ -3544,9 +3931,7 @@ A.armarFinal = function (o) {
     var cabG = G.cabezaMundo(u).addScaledVector(UP, .32 * G.raiz.scale.y);
     una('f1', 3.6, function () { o.decir('Don Gruñón', 'Esas fotos… brillan más que el oro.', 2700); });
     una('f2', 6.7, function () { o.decir('Don Gruñón', 'Perdón. Allá abajo, en la mina, todo es oscuro y solito…', 2600); A.Audio.uf(); });
-    una('f3', 9.0, function () { o.decir('Don Gruñón', 'Toma. La estrella es de ustedes… y trae un mensaje.', 2200); });
-    una('dedica', 9.6, function () { if (o.dedicatoria) o.dedicatoria(true); });
-    una('sinDedica', 18.6, function () { if (o.dedicatoria) o.dedicatoria(false); });
+    una('f3', 9.0, function () { o.decir('Don Gruñón', 'Toma. La estrella es de ustedes.', 2200); });
     una('f4', 11.0, function () { o.decir('Ruway', '¡Para usted, don muki! Un chocolate calientito.', 2200, 'ruway'); });
     una('mmm', 14.0, function () { A.Audio.mmm(); o.decir('Don Gruñón', '¡Mmm… esto calienta más que mi lamparita!', 2000); });
     una('f6', 21.8, function () { o.decir('Don Gruñón', '¡Desde aquí les alumbro la Navidad!', 2200); });
@@ -3554,16 +3939,24 @@ A.armarFinal = function (o) {
     /* ---------- cuenta regresiva y fiesta ---------- */
     if (t >= 29 && t < 39.2) {
       var n = Math.max(0, 10 - Math.floor(t - 29));
-      if (n !== ultCuenta) { ultCuenta = n; o.cuenta(n); A.Audio.tic(n === 0); o.torre.reloj.dibujar(11, 59, 50 + (10 - n)); }
+      if (n !== ultCuenta) { ultCuenta = n; o.cuenta(n); A.Audio.tic(n === 0); if (o.torre) o.torre.reloj.dibujar(11, 59, 50 + (10 - n)); }
     }
     una('feliz', 39.2, function () {
-      o.cuenta(null); o.feliz(true); A.Audio.campanadas(); o.torre.reloj.dibujar(12, 0, 0);
+      o.cuenta(null); o.feliz(true); A.Audio.campanadas(); if (o.torre) o.torre.reloj.dibujar(12, 0, 0);
       o.fuegos.empezar(new THREE.Vector3(0, 0, -30), 48, o.cam);
       o.chispas.estallido(AR.punta, 80, 3, [1, .7, .5]);
     });
     una('nieve', 41.5, function () { o.nieve.caer(1, new THREE.Vector3(0, 0, -4)); });
     una('sinFeliz', 47.5, function () { o.feliz(false); });
-    una('galeria', 52, function () { if (o.alTerminar) o.alTerminar(); });
+    /* ---------- el retablo ---------- */
+    una('retablo', 43.5, function () { ret.mostrar(true); o.chispas.estallido(ret.centro(u), 70, 2.2, [1, .85, .5]); A.Audio.encontrar(); });
+    if (t >= 43.5) {
+      ret.abrir(S(46.4, 48.0, t)); ret.luz(S(46.8, 48.4, t));
+      ret.tazas.forEach(function (tz, j) { vRet[j].k = 1; tz.getWorldPosition(vRet[j].p); vRet[j].p.y += .13; });
+    }
+    una('abre', 46.5, function () { A.Audio.enciende(); });
+    una('dedicaRetablo', 48.4, function () { o.chispas.estallido(ret.centro(u), 40, 1.4, [1, .9, .6]); esperaDedica = !!(o.dedicatoria && o.dedicatoria(true)); });
+    una('galeria', 52, function () { if (!esperaDedica && o.alTerminar) o.alTerminar(); });
     /* ---------- corazones ---------- */
     corazones.forEach(function (c) {
       if (c.t < 0) return; c.t += dt; if (c.t > 2) { c.t = -1; c.s.visible = false; return; }
@@ -3580,11 +3973,15 @@ A.armarFinal = function (o) {
     o.cam.position.copy(cPos); o.cam.lookAt(cMira);
   }
   return {
-    iniciar: function (desde) { activo = true; t = desde || 0; hecho = {}; ultCuenta = 11; if (desde) { hecho.f1 = hecho.f2 = hecho.f3 = hecho.f4 = hecho.mmm = hecho.f6 = desde > 22 ? 1 : 0; hecho.dedica = hecho.sinDedica = desde > 18.6 ? 1 : 0; if (desde > 18.6 && o.dedicatoria) o.dedicatoria(false); } },
+    iniciar: function (desde) { activo = true; t = desde || 0; hecho = {}; ultCuenta = 11; esperaDedica = false;
+      if (desde) { hecho.f1 = hecho.f2 = hecho.f3 = hecho.f4 = hecho.mmm = hecho.f6 = desde > 22 ? 1 : 0; }
+      /* volver a empezar desde antes del retablo: se esconde y se cierra */
+      if (ret && t < 43.5) { ret.mostrar(false); ret.abrir(0); ret.luz(0); vRet.forEach(function (f) { f.k = 0; }); } },
     cuadro: cuadro,
     activo: function () { return activo; },
     tiempo: function () { return t; },
-    subio: function () { return estrellaSubio; }
+    subio: function () { return estrellaSubio; },
+    retablo: function () { return ret ? ret.estado() : { visible: false, abierto: 0, luz: 0 }; }
   };
 };
 })();
@@ -3672,7 +4069,7 @@ var CSS = [
 '#aj .aj-tarjeta p:empty{display:none}',
 '#aj .aj-tarjeta button,#aj .aj-boton{width:100%;appearance:none;border:0;border-radius:12px;padding:14px;font-weight:650;font-size:16px;color:#3A2410;',
 '  background:linear-gradient(180deg,#FFE3A3,#F2B55A);box-shadow:0 10px 30px rgba(242,150,70,.32),inset 0 1px 0 rgba(255,255,255,.7);cursor:pointer}',
-/* la cuenta regresiva, el saludo y la dedicatoria que trae la estrella */
+/* la cuenta regresiva y el saludo (la dedicatoria la escribe el núcleo sobre el retablo) */
 '#aj-cuenta{position:absolute;left:50%;top:17%;transform:translate(-50%,-50%);font-family:var(--serif);font-weight:600;font-size:110px;line-height:1;color:#FFF3D6;',
 '  text-shadow:0 0 30px rgba(255,190,100,.95),0 0 80px rgba(255,140,60,.6),0 3px 6px rgba(0,0,0,.4);pointer-events:none;z-index:5}',
 '#aj-cuenta.aj-late{animation:aj-late .9s ease-out}',
@@ -3682,16 +4079,6 @@ var CSS = [
 '  text-shadow:0 0 26px rgba(255,190,100,.95),0 0 60px rgba(255,120,80,.55),0 2px 4px rgba(0,0,0,.45);pointer-events:none;z-index:5;opacity:0;transition:opacity 1.2s;overflow-wrap:anywhere}',
 '#aj-feliz.aj-ver{opacity:1}',
 '#aj-feliz small{display:block;font-size:.5em;font-style:italic;font-weight:400;color:var(--oro2);margin-top:8px}',
-/* abajo, sobre el piso de la plaza y encima de "Saltar": arriba chocaba con los globos de diálogo
-   (van sobre las cabezas) y con la mochila y el Pase del núcleo */
-'#aj-dedica{position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));width:min(340px,calc(100% - 32px));transform:translate(-50%,10px);z-index:5;',
-'  padding:14px 18px 16px;border-radius:16px;text-align:center;background:linear-gradient(180deg,rgba(255,249,236,.95),rgba(244,230,203,.95));color:#3A2410;',
-'  box-shadow:0 16px 40px rgba(0,0,0,.4),0 0 0 1px rgba(200,150,60,.4) inset,0 0 40px rgba(255,200,110,.35);opacity:0;transition:opacity .9s,transform .9s;cursor:pointer}',
-'#aj-dedica.aj-ver{opacity:1;transform:translate(-50%,0)}',
-'#aj-dedica small{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9A6A2E;margin-bottom:6px}',
-'#aj-dedica p{margin:0;font-family:var(--serif);font-style:italic;font-size:18px;line-height:1.38;white-space:pre-line;overflow-wrap:anywhere;max-height:9.6em;overflow:hidden}',
-'#aj-dedica .aj-firma{margin-top:8px;font-size:14px;font-family:var(--serif);color:#7A4E1E}',
-'#aj-dedica .aj-firma:empty{display:none}',
 '#aj-velo{position:absolute;inset:0;background:#05060d;opacity:0;transition:opacity .7s ease;pointer-events:none;z-index:7}',
 '#aj-velo.aj-ver{opacity:1}',
 /* la galería */
@@ -3702,6 +4089,7 @@ var CSS = [
 '#aj .aj-mini{letter-spacing:.3em;text-transform:uppercase;font-size:11px;color:var(--oro2);opacity:.92;margin:0 0 10px}',
 '#aj .aj-sub{margin:0 0 16px;font-size:14px;opacity:.85}',
 '#aj-gal-lista{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
+'#aj-gal-credito{margin:10px 0 0;font-size:10px;line-height:1.4;opacity:.55;text-align:center}',
 '#aj .aj-foto{appearance:none;border:0;padding:6px 6px 8px;border-radius:12px;background:linear-gradient(180deg,#FFF9EC,#F4E6CB);color:#3A2410;cursor:pointer;text-align:left}',
 '#aj .aj-foto:first-child{grid-column:1/3}',
 '#aj .aj-foto img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px}',
@@ -3713,7 +4101,7 @@ var CSS = [
 '#aj-grande figcaption{font-family:var(--serif);font-style:italic;font-size:19px;color:#FFF3DE;margin-top:10px;text-align:center;overflow-wrap:anywhere}',
 '#aj-fps{position:absolute;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));font:11px/1.3 ui-monospace,Consolas,monospace;color:#CFFFD8;background:rgba(0,0,0,.55);padding:4px 7px;border-radius:6px;pointer-events:none;z-index:9}',
 '@media (prefers-reduced-motion: reduce){#aj *{transition:none!important;animation:none!important}}',
-'@media (orientation:landscape) and (max-height:500px){#aj-cuenta{font-size:80px}#aj-dedica,#aj-dedica.aj-ver{bottom:12px;left:auto;right:12px;transform:none;width:min(300px,45%)}}'
+'@media (orientation:landscape) and (max-height:500px){#aj-cuenta{font-size:80px}}'
 ].join('\n');
 
 function estilos() {
@@ -3755,11 +4143,9 @@ A.armarPantalla = function (caja) {
   var num = el('div', 'carta-num', 'aj-num', tj); el('i', null, null, num); el('span', 'carta-num-txt', null, num, 'Esfera 1');
   var fo = el('img', 'carta-foto', null, tj); fo.alt = '';
   el('p', 'carta-frase', null, tj); el('button', 'carta-seguir', null, tj, 'Seguir buscando').type = 'button';
-  /* la cuenta regresiva, el saludo y la dedicatoria */
+  /* la cuenta regresiva y el saludo */
   var cuenta = el('div', 'cuenta', null, raiz); cuenta.hidden = true; el('span', 'cuenta-n', null, cuenta, '10'); el('span', 'cuenta-rot', null, cuenta, 'para las doce');
   var feliz = el('div', 'feliz', null, raiz); el('span', 'feliz-txt', null, feliz, '¡Feliz Navidad!'); el('small', 'feliz-sub', null, feliz, 'y que nadie pase la Navidad solito');
-  var dedica = el('div', 'dedica', null, raiz); dedica.hidden = true; dedica.setAttribute('role', 'status');
-  el('small', null, null, dedica, '⭐ La estrella trae un mensaje'); el('p', 'dedica-txt', null, dedica); el('div', 'dedica-firma', 'aj-firma', dedica);
   var velo = el('div', 'velo', null, raiz); velo.hidden = true;
   /* la galería */
   var gal = el('div', 'galeria', 'aj-capa', raiz); gal.hidden = true;
@@ -3769,6 +4155,8 @@ A.armarPantalla = function (caja) {
   var bts = el('div', null, 'aj-botones', gg);
   el('button', 'gal-seguir', 'aj-boton', bts, 'Seguir').type = 'button';
   el('button', 'gal-otra', 'aj-otra', bts, 'Jugar otra vez').type = 'button';
+  /* el crédito que pide la licencia del modelo del muki (CC BY 4.0) */
+  el('p', 'gal-credito', 'aj-credito', gg, 'El muki está hecho a partir de «Gnomo - Libel Academy», de ElPinguinoCoyosaurio, y el trineo de la plaza a partir de «Santa\'s sleigh», de Brian Seoane (los dos en Sketchfab, con licencia CC BY 4.0, y modificados).');
   var grande = el('div', 'grande', 'aj-capa aj-ver', raiz); grande.hidden = true;
   var fig = el('figure', null, null, grande); var gi = el('img', 'grande-img', null, fig); gi.alt = ''; el('figcaption', 'grande-txt', null, fig);
   var fps = el('div', 'fps', null, raiz); fps.hidden = true;
@@ -3800,6 +4188,7 @@ A.armarPantalla = function (caja) {
        vistas:     los j de las fotos que ya se vieron (un regalo de antes): empiezan colgadas,
        para, msg, de: el nombre del saludo, la dedicatoria y la firma (siempre como texto),
        glb, movs:  dónde están Ruway y sus movimientos,
+       muki:       dónde está el muki (ruway-muki.glb, el gnomo con huesos; si no llega, el de código),
        gpu:        el nombre de la tarjeta de video, si la página ya lo sabe (elige la calidad),
        musica:     false si el regalo trae su propia canción (el juego no pone la suya),
        ac:         un AudioContext creado en un toque de la página (el iPhone lo exige),
@@ -3893,15 +4282,16 @@ escena.add(new THREE.HemisphereLight(A.U.uCieloCol.value, A.U.uSueloCol.value, 1
 var luna = new THREE.DirectionalLight(A.U.uLunaCol.value, 1); luna.position.copy(A.U.uLuna.value).multiplyScalar(50); escena.add(luna);
 
 var cielo = A.armarCielo(escena, R, AJ);
-A.armarPiso(escena);
-var casas = A.armarCasas(escena, AJ);
-var balcones = A.armarBalcones(escena, casas.lista);
-var torre = A.armarTorre(escena);
+/* la plaza: la misma Plaza de Armas de la intro (plazaintro.js), de noche; si ruway-intro.js no
+   llegó, la plaza propia de siempre (con su piso, sus casas, su torre y su pileta) */
+var plazaI = o.plaza !== 'propia' ? A.armarPlazaIntro(escena, AJ) : null;
+var casas = null, balcones = null, torre = null;
+if (!plazaI) { A.armarPiso(escena); casas = A.armarCasas(escena, AJ); balcones = A.armarBalcones(escena, casas.lista); torre = A.armarTorre(escena); }
 var F = A.Foquitos();
-A.guirnaldasFachadas(F, casas.lista);
+if (casas) A.guirnaldasFachadas(F, casas.lista);
 rtEnv = new THREE.WebGLCubeRenderTarget(AJ.cubo, { generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, encoding: THREE.sRGBEncoding });
 var camEnv = new THREE.CubeCamera(.2, 200, rtEnv); camEnv.position.set(0, 2.2, -3.2); escena.add(camEnv);
-var adornos = A.armarAdornos(escena, AJ, rtEnv.texture, F);
+var adornos = plazaI ? { resplandores: plazaI.resplandores, agua: [] } : A.armarAdornos(escena, AJ, rtEnv.texture, F);
 A.armarNacimiento(escena);
 var puesto = A.armarPuesto(escena, F);
 var foquitos = F.armar(escena);
@@ -3933,7 +4323,17 @@ function pintarEnv() {
 /* ---------- las fotos y sus esferas ----------
    Cada foto ocupa un escondite fijo (la tercera es siempre la tercera). Estado de cada una:
    'pendiente' (en camino) → 'escondida' → 'mano' / 'robada' → 'vuela' → 'colgada'; o 'rota'. */
-var ESCONDITES = [
+var ESCONDITES = plazaI ? [
+  /* en la plaza de la intro (en coordenadas del juego: la de la intro + 35 m en z) */
+  { id: 'monumento', nom: 'en las gradas del monumento', p: [.8, .3, 35 - 11.0], r: 1.5, acc: 'recoger' },
+  { id: 'banca', nom: 'debajo de una banca', p: [17.5, .14, 35 - 2.6], r: 1.4, acc: 'recoger' },
+  { id: 'palmera', nom: 'al pie de una palmera', p: [5.3, .26, 35 - 29.2], r: 1.4, acc: 'recoger' },
+  { id: 'trineo', nom: 'junto al trineo', p: [A.PLAZA_INTRO.trineo.x - 1.55, .26, A.PLAZA_INTRO.trineo.z + 1.0], r: 1.4, acc: 'recoger' },
+  { id: 'farol', nom: 'junto a un farol', p: [-20.6, .26, 35 - 2.4], r: 1.4, acc: 'recoger' },
+  { id: 'bancaNO', nom: 'sobre una banca', p: [-14.2, .38, 35 - 10.54], r: 1.4, acc: 'recoger' },
+  { id: 'chocolatada', nom: 'entre los panetones', p: [12.42, 1.13, .7], r: 1.5, acc: 'recoger' },
+  { id: 'nacimiento', nom: 'junto al nacimiento', p: [-13.15, .5, 1.42], r: 1.5, acc: 'recoger' }
+] : [
   { id: 'nacimiento', nom: 'junto al nacimiento', p: [-13.15, .5, 1.42], r: 1.5, acc: 'recoger' },
   { id: 'banca', nom: 'debajo de una banca', p: [9.4, .2, 5.5], r: 1.4, acc: 'recoger' },
   { id: 'balcon', nom: 'colgada de un balcón', p: [balcones.norte.x, 2.28, balcones.norte.z + .05], r: 1.5, acc: 'saltar' },
@@ -4004,7 +4404,7 @@ function revisarFotos() {
 }
 
 /* ---------- estado del juego ---------- */
-var estado = 'portada', t = 0, tEstado = 0, cargaRuway = 'esperando', listo = false;
+var estado = 'portada', t = 0, tEstado = 0, cargaRuway = 'esperando', listo = false, mukiGLB = false;
 function cambiar(e) { estado = e; tEstado = 0; pintarSaltar(); }
 var RW = { x: 0, z: 6.5, rumbo: Math.PI, v: 0, y: 0 }, vRw = new V3(), mano = new V3();
 var GR = { x: .9, z: -6.3, rumbo: 0, v: 0, ang: 0, dir: 1, cansado: 0, sigR: 0, t: 0, esfera: null, burla: false };
@@ -4035,7 +4435,7 @@ function pintarHud() {
   $('esferas').className = 'aj-pill' + (encontradas ? ' aj-brilla' : '');
 }
 /* "Saltar": en la intro y en el final (el final es largo antes de la voz) */
-function pintarSaltar() { var b = $('saltar'); if (b) b.hidden = !(estado === 'intro' || (estado === 'final' && finalT() < 50)); }
+function pintarSaltar() { var b = $('saltar'); if (b) b.hidden = !(estado === 'intro' || (estado === 'final' && finalT() < 48.4 && !dedicaVista)); }
 escuchar($('saltar'), 'click', function () {
   A.Audio.iniciar(o.ac);
   if (estado === 'intro') saltarIntro();
@@ -4165,7 +4565,24 @@ function camaraCuadro(dt) {
   var D = 5.2 * orb.dist, el = A.lim(.42 + orb.pitch, .05, 1.35), ang = camRumbo + Math.PI + orb.yaw;
   vObj.set(RW.x + Math.sin(ang) * Math.cos(el) * D, RW.y + 1.0 + Math.sin(el) * D, RW.z + Math.cos(ang) * Math.cos(el) * D);
   /* que no se meta en las casas ni bajo el piso */
-  var L = P.fachada - .6; vObj.x = A.lim(vObj.x, -L, L); vObj.z = A.lim(vObj.z, -L, L); vObj.y = Math.max(vObj.y, .6);
+  if (A.borde) { vObj.x = A.lim(vObj.x, A.borde.x0 - 7, A.borde.x1 + 7); vObj.z = A.lim(vObj.z, A.borde.z0 - 7, A.borde.z1 + 7); }
+  else { var L = P.fachada - .6; vObj.x = A.lim(vObj.x, -L, L); vObj.z = A.lim(vObj.z, -L, L); }
+  vObj.y = Math.max(vObj.y, .6);
+  /* en la plaza de la intro, que no se meta dentro del monumento (su terraza mide 1,9 m): se le
+     saca hacia afuera, al borde de las gradas */
+  if (plazaI) { var mx = vObj.x - CX, mz = vObj.z - CZ, mr = Math.hypot(mx, mz); if (mr < 11.9 && vObj.y < 3.2) { var mk = 11.9 / (mr || 1); vObj.x = CX + mx * mk; vObj.z = CZ + mz * mk; } }
+  /* ...ni detrás de un farol o del tronco de una palmera (taparían a Ruway): si alguno se cruza entre
+     Ruway y la cámara, la cámara se pone delante de él (más cerca de Ruway). Sin crear nada por cuadro. */
+  if (plazaI) {
+    var sx = vObj.x - RW.x, sz = vObj.z - RW.z, sl2 = sx * sx + sz * sz, tMin = 1;
+    if (sl2 > .01) for (var ci = 0; ci < A.colisiones.length; ci++) {
+      var co = A.colisiones[ci]; if (co.t !== 0 || co.r > 1) continue;
+      var ox = co.x - RW.x, oz = co.z - RW.z, tc = (ox * sx + oz * sz) / sl2; if (tc < .05 || tc > 1.15) continue;
+      var dx = ox - sx * tc, dz = oz - sz * tc, rr = co.r + .4, d2 = dx * dx + dz * dz; if (d2 >= rr * rr) continue;
+      var th = tc - Math.sqrt((rr * rr - d2) / sl2); if (th < tMin) tMin = th;
+    }
+    if (tMin < 1) { tMin = Math.max(.3, tMin); vObj.x = RW.x + sx * tMin; vObj.z = RW.z + sz * tMin; vObj.y = RW.y + 1.0 + (vObj.y - RW.y - 1.0) * Math.max(.55, tMin); }
+  }
   vM.set(RW.x + Math.sin(camRumbo) * 1.2, RW.y + 1.05, RW.z + Math.cos(camRumbo) * 1.2);
   if (camCine) { kCine = Math.min(1, kCine + dt * 1.4); } else kCine = Math.max(0, kCine - dt * 1.2);
   if (kCine > 0 && camCine) { var ks = A.suave(0, 1, kCine); vObj.lerp(camCine.p, ks); vM.lerp(camCine.m, ks); }
@@ -4196,7 +4613,9 @@ function brujulaCuadro() {
 
 /* ---------- encontrar una esfera ---------- */
 var ESTRELLA_ESC = new V3(-13.15, .55, 1.42), estrellaHallada = false;
-var robables = nPed === 1 ? [0] : nPed < 5 ? [1] : [1, 4], robos = 0, grunonDespues = false, RADIO_P = 4.25, ultimoRobo = -99;
+var robables = nPed === 1 ? [0] : nPed < 5 ? [1] : [1, 4], robos = 0, grunonDespues = false, ultimoRobo = -99;
+/* la persecución da vueltas alrededor de la pileta (plaza propia) o del Monumento a la Libertad */
+var RADIO_P = plazaI ? A.PLAZA_INTRO.anillo : 4.25, CX = 0, CZ = plazaI ? A.PLAZA_INTRO.centro.z : 0;
 function buscarCerca() {
   if (estado !== 'juego' || !ruwayA) return;
   for (var i = 0; i < ES.length; i++) {
@@ -4277,8 +4696,8 @@ escuchar($('carta-seguir'), 'click', function () {
   if (encontradas >= totalValidas) { cambiar('cine'); luego(empezarFinal, 600); return; }
   cambiar('juego');
   if (grunonDespues) { grunonDespues = false; irseGrunon(); }
-  var faltan = totalValidas - encontradas;
-  aviso(faltan === 1 ? '¡Falta una sola esfera!' : 'Faltan ' + faltan + ' esferas. Sigue la flecha', 'oro', 2600);
+  var faltan = totalValidas - encontradas, k = avance();
+  aviso(faltan === 1 ? '¡Falta una sola esfera! El muki ya no se ríe tanto…' : 'Faltan ' + faltan + ' esferas' + (k >= .5 ? '. Al muki se le escapa una sonrisa' : '. Sigue la flecha'), 'oro', 2800);
 });
 
 /* ---------- Don Gruñón: el robo y la persecución ---------- */
@@ -4292,12 +4711,12 @@ function empezarRobo(e) {
   grunon.raiz.visible = true; grunon.raiz.scale.setScalar(1); grunon.estado = 'rie';
   chispas.estallido(vT.set(GR.x, .7, GR.z), 50, 2.2, [.9, .95, 1]);
   e.estado = 'robada';
-  A.Audio.risa(); decir('Don Gruñón', '¡Je, je! ¡Esta también brilla!', 2200);
+  A.Audio.risa(); decir('Don Gruñón', robos <= 1 ? '¡Je, je! ¡Esta también brilla!' : robos === 2 ? '¡Esta también es mía! …creo.' : 'Solo quiero mirarla un ratito…', 2200);
   cine(RW.x + (GR.x - RW.x) * .3 - dz / l * 3.2, 1.6, RW.z + (GR.z - RW.z) * .3 + dx / l * 3.2, (RW.x + GR.x) / 2, .9, (RW.z + GR.z) / 2);
   luego(function () {
     if (estado !== 'robo') return;
     camCine = null; cambiar('persecucion'); A.Audio.musica('persecucion');
-    GR.ang = Math.atan2(GR.z, GR.x); GR.dir = A.angDif(Math.atan2(RW.z, RW.x), GR.ang) > 0 ? 1 : -1;
+    GR.ang = Math.atan2(GR.z - CZ, GR.x - CX); GR.dir = A.angDif(Math.atan2(RW.z - CZ, RW.x - CX), GR.ang) > 0 ? 1 : -1;
     aviso('¡Don Gruñón se lleva una esfera! Alcánzalo', 'caza', 2600);
   }, 2300);
 }
@@ -4305,9 +4724,9 @@ function persecucionCuadro(dt) {
   GR.t += dt;
   var dR = Math.hypot(RW.x - GR.x, RW.z - GR.z);
   /* corre alrededor de la pileta, siempre hacia el lado contrario a Ruway */
-  if (GR.t - GR.sigR > 1.6) { GR.sigR = GR.t; var da = A.angDif(Math.atan2(RW.z, RW.x), Math.atan2(GR.z, GR.x)); GR.dir = da >= 0 ? 1 : -1; }
-  var metaAng = Math.atan2(GR.z, GR.x) + GR.dir * .75;
-  vT.set(Math.cos(metaAng) * RADIO_P, 0, Math.sin(metaAng) * RADIO_P);
+  if (GR.t - GR.sigR > 1.6) { GR.sigR = GR.t; var da = A.angDif(Math.atan2(RW.z - CZ, RW.x - CX), Math.atan2(GR.z - CZ, GR.x - CX)); GR.dir = da >= 0 ? 1 : -1; }
+  var metaAng = Math.atan2(GR.z - CZ, GR.x - CX) + GR.dir * .75;
+  vT.set(CX + Math.cos(metaAng) * RADIO_P, 0, CZ + Math.sin(metaAng) * RADIO_P);
   var objRumbo = Math.atan2(vT.x - GR.x, vT.z - GR.z);
   /* fácil: se cansa (para a resoplar), va más lento si Ruway está lejos y a los 22 s se tropieza */
   var objV = dR > 9 ? 1.7 : dR < 4 ? 3.0 : 2.6;
@@ -4325,14 +4744,19 @@ function persecucionCuadro(dt) {
 }
 function atrapado() {
   cambiar('atrapado'); GR.v = 0; A.Audio.musica('calma'); ultimoRobo = t;
-  grunon.estado = 'encoge'; A.Audio.ay(); decir('Don Gruñón', '¡Ay, ay! ¡Está bien, está bien!', 2000);
+  grunon.estado = 'encoge'; A.Audio.ay(); decir('Don Gruñón', avance() < .34 ? '¡Ay, ay! ¡Está bien, está bien!' : '¡Ay! Tómala… brilla más contigo.', 2000);
   var e = GR.esfera; GR.esfera = null;
   e.estado = 'suelta'; e.vy = 2.2; e.escala = .55;
   luego(function () { e.estado = 'escondida'; e.p.y = .3; e.esc = { r: 9, acc: 'recoger', id: 'suelta' }; RW.rumbo = Math.atan2(e.p.x - RW.x, e.p.z - RW.z); grunonDespues = true; cambiar('juego'); destino = destinoV.set(e.p.x, 0, e.p.z); }, 1300);
 }
+/* cuánto del árbol ya volvió (0 a 1): el muki se va ablandando y lo dice (como los personajes de
+   Hades, que comentan cómo vas) */
+function avance() { return totalValidas ? encontradas / totalValidas : 0; }
 function irseGrunon() {
   /* refunfuña y se va caminando a esconderse detrás del árbol; ahí desaparece */
-  grunon.estado = 'anda'; GR.v = 1; GR.yendo = true; decir('Don Gruñón', '¡Bah! Ya verás…', 1600); A.Audio.bah();
+  var k = avance();
+  grunon.estado = 'anda'; GR.v = 1; GR.yendo = true; A.Audio.bah();
+  decir('Don Gruñón', k < .34 ? '¡Bah! Ya verás…' : k < .67 ? 'Esa foto se veía bonita… ¡pero la estrella sigue siendo mía!' : 'Hmm… quizá las luces brillan más cuando son de todos.', 2200);
 }
 function grunonCuadro(dt) {
   if (estado === 'persecucion') persecucionCuadro(dt);
@@ -4393,21 +4817,23 @@ var final = A.armarFinal({
   cuenta: function (n) { var el = $('cuenta'); if (n === null) { el.hidden = true; return; } el.hidden = false; $('cuenta-n').textContent = n; $('cuenta-rot').textContent = n ? 'para las doce' : '¡las doce!'; el.classList.remove('aj-late'); void el.offsetWidth; el.classList.add('aj-late'); },
   feliz: function (si) { var p = DATOS.para; $('feliz-txt').textContent = '¡Feliz Navidad' + (p ? ', ' + p : '') + '!'; $('feliz').className = si ? 'aj-ver' : ''; },
   fiesta: function (k) { metaFiesta = k; },
-  /* la estrella que devuelve Don Gruñón trae la dedicatoria de quien regala */
-  dedicatoria: function (si) { dedicatoria(si); },
+  /* la dedicatoria de quien regala se escribe sobre el retablo; true: su "Seguir" abrirá la galería */
+  dedicatoria: function (si) { return dedicatoria(si); },
   alEncender: function () { if (terminado) return; terminado = true; if (al.encendido) al.encendido(); },
   alTerminar: function () { abrirGaleria(); }
 });
+/* La dedicatoria, escrita sobre el retablo abierto con el estilo de todos los juegos (la del
+   núcleo: letra por letra, un toque la completa, "Seguir"). Sin dedicatoria escrita, el núcleo pone
+   la nota cariñosa con su nombre. Su "Seguir" abre la galería. Antes era una tarjeta crema que salía
+   en medio del diálogo del chocolate. Devuelve true si quedó a cargo de abrir la galería. */
 function dedicatoria(si) {
-  var d = $('dedica');
-  if (si) {
-    if (!DATOS.msg) return;
-    dedicaVista = true;
-    $('dedica-txt').textContent = DATOS.msg; $('dedica-firma').textContent = DATOS.de ? '— ' + DATOS.de : '';
-    d.hidden = false; requestAnimationFrame(function () { d.classList.add('aj-ver'); });
-  } else if (!d.hidden) { d.classList.remove('aj-ver'); luego(function () { if (!d.classList.contains('aj-ver')) d.hidden = true; }, 900); }
+  if (!si || dedicaVista || !window.Nucleo || !Nucleo.dedicatoria) return false;
+  dedicaVista = true; pintarSaltar();
+  if (Nucleo.video && Nucleo.video.pedir) Nucleo.video.pedir('final');   /* el retablo y el árbol, para el final del video */
+  var mem = !!(DATOS.extra && DATOS.extra.publico === 'memoria');
+  Nucleo.dedicatoria({ titulo: mem ? 'Con todo el cariño, en Navidad' : 'Esta Navidad, para ti', alSeguir: function () { abrirGaleria(); } });
+  return true;
 }
-escuchar($('dedica'), 'click', function () { dedicatoria(false); });
 function finalT() { return final.activo() ? final.tiempo() : -1; }
 function empezarFinal(desde) {
   if (estado === 'final') return;
@@ -4421,18 +4847,17 @@ function empezarFinal(desde) {
     luego(function () { velo.classList.remove('aj-ver'); luego(function () { velo.hidden = true; }, 700); }, 200);
   }, desde ? 50 : 800);
 }
-/* Saltar en el final: primero al árbol ya encendido con el "¡Feliz Navidad!"; otra vez, a la galería */
+/* Saltar en el final: directo al retablo abierto, con el árbol ya encendido detrás, donde se
+   escribe la dedicatoria (su "Seguir" lleva a la galería) */
 function saltarFinal() {
-  var ft = finalT(); if (ft < 0) return;
-  dedicatoria(false); globo.t = 0;
-  if (ft < 43.5) { final.iniciar(44); pintarSaltar(); }
-  else abrirGaleria();
+  var ft = finalT(); if (ft < 0 || ft >= 48.4) return;
+  globo.t = 0; final.iniciar(48.35); pintarSaltar();
 }
 /* ---------- la galería ---------- */
 var galeriaAbierta = false;
 function abrirGaleria() {
   if (galeriaAbierta || estado === 'libre') return;
-  cambiar('galeria'); galeriaAbierta = true; dedicatoria(false);
+  cambiar('galeria'); galeriaAbierta = true;
   var g = $('galeria'), lista = $('gal-lista');
   while (lista.firstChild) lista.removeChild(lista.firstChild);
   fotos.filter(function (f) { return f.estado === 'lista' && f.img; }).forEach(function (f, i) {
@@ -4489,7 +4914,7 @@ var vFoco = new V3(), envListo = false, portadaAng = 0, hacesL = [];
 ES.forEach(function (e) { hacesL.push({ p: e.p, k: 0 }); });
 var hacesEst = { p: ESTRELLA_ESC, k: 0 }; hacesL.push(hacesEst);   /* una sola lista, armada una vez */
 var tapadoT = 0, tapadoYa = false, pausaFuera = false, antes = 0, saltarVisto = true, cuadros = 0;
-function pintarSaltarSiCambia() { var v = finalT() < 50; if (v !== saltarVisto) { saltarVisto = v; pintarSaltar(); } }
+function pintarSaltarSiCambia() { var v = finalT() < 48.4; if (v !== saltarVisto) { saltarVisto = v; pintarSaltar(); } }
 function bucle(ahora) {
   if (!corriendo) return;
   raf = requestAnimationFrame(bucle);
@@ -4531,11 +4956,14 @@ function bucle(ahora) {
   cielo.cuadro(dt, cam);
   arbol.cuadro(dt, cam);
   chispas.cuadro(dt); fuegos.cuadro(dt); nieve.cuadro(dt, cam); vapor.cuadro(dt);
-  if (A.Audio.listo()) A.Audio.pileta(1 - Math.min(1, Math.hypot(RW.x, RW.z) / 12));
+  /* el rumor de la pileta (la plaza de la intro no tiene pileta: su monumento no suena) */
+  if (A.Audio.listo()) A.Audio.pileta(plazaI ? 0 : 1 - Math.min(1, Math.hypot(RW.x, RW.z) / 12));
   if (avisoT > 0) { avisoT -= dt; if (avisoT <= 0) $('aviso').className = ''; }
   globoCuadro(dt);
   if (globo.t > 0 && estado !== 'final') globoEn(grunon.cabezaMundo(vT).add(fw.set(0, .36, 0)));
   R.render(escena, cam); cuadros++;
+  /* las escenas del juego para el video del estado (el núcleo decide cuándo: casi nunca hace nada) */
+  if (window.Nucleo && Nucleo.video && Nucleo.video.tomar) Nucleo.video.tomar(R.domElement);
   if (!listo) { listo = true; plazaLista(); }
   fluidez(dt);
 }
@@ -4558,13 +4986,25 @@ function perdido() { if (!vivo) return; var f = al.fallo; cerrar(); if (f) f('pe
 function plazaLista() {
   var c = $('carga'); c.classList.add('aj-plaza'); $('carga-txt').textContent = 'Trayendo a Ruway…';
   if (al.listo) al.listo();
+  /* se empieza cuando están los dos: Ruway (sin él no hay juego) y el muki */
+  var faltan = 2, empezo = false;
+  function llegoUno() { if (--faltan > 0 || empezo || !vivo) return; empezo = true; c.classList.add('aj-fuera'); luego(function () { c.hidden = true; }, 700); empezar(); }
+  /* el muki de ahora (el gnomo con huesos) baja aparte; si tarda más de 12 s o no llega, sigue el
+     de código y, si llega después, se viste ahí mismo */
+  var esperaMuki = true; luego(function () { if (esperaMuki) { esperaMuki = false; llegoUno(); } }, 12000);
+  A.cargarGLB(o.muki || 'ruway-muki.glb', function (sc) {
+    if (!vivo) { if (sc) liberar(sc); return; }
+    if (sc) { try { mukiGLB = !!grunon.vestir(sc); } catch (e) { mukiGLB = false; } if (!mukiGLB) liberar(sc); }
+    if (esperaMuki) { esperaMuki = false; llegoUno(); }
+  });
+  /* el trineo de adorno de la plaza: no se le espera */
+  if (plazaI) A.cargarGLB(o.trineo || 'trineo-plaza.glb', function (sc) { if (!sc) return; if (!vivo) { liberar(sc); return; } try { A.ponerTrineo(escena, sc); } catch (e) { liberar(sc); } });
   A.cargarGLB(o.glb || 'ruway-avatar.glb', function (sc) {
     if (!vivo) { if (sc) liberar(sc); return; }
     if (sc) { try { ruwayA = A.armarRuway(sc, { alto: 1.45, movs: o.movs || 'ruway-movs.json' }); escena.add(ruwayA.raiz); cargaRuway = 'listo'; } catch (e) { cargaRuway = 'error'; liberar(sc); } }
     else cargaRuway = 'error';
     if (cargaRuway === 'error') { var f = al.fallo; cerrar(); if (f) f('ruway'); return; }
-    c.classList.add('aj-fuera'); luego(function () { c.hidden = true; }, 700);
-    empezar();
+    llegoUno();
   });
 }
 
@@ -4588,7 +5028,7 @@ function cerrar() {
 /* ---------- para pruebas (solo con navigator.webdriver o __RUWAY_PRUEBA) ---------- */
 api = {
   estado: function () { return { listo: listo, ruway: cargaRuway, estado: estado, encontradas: encontradas, total: totalValidas, calidad: calidad, conchas: AJ.conchas, corriendo: corriendo,
-    pr: pr, fps: fpsVisto, fpsMin: fpsMin === 999 ? null : fpsMin, final: finalT(), galeria: galeriaAbierta, terminado: terminado, dedicatoria: dedicaVista, desdeRobo: t - ultimoRobo, gpu: A.gpu || '', cuadros: cuadros, pausa: pausaFuera, dib: R ? R.info.render.calls : 0, tri: R ? R.info.render.triangles : 0 }; },
+    pr: pr, fps: fpsVisto, fpsMin: fpsMin === 999 ? null : fpsMin, final: finalT(), galeria: galeriaAbierta, terminado: terminado, dedicatoria: dedicaVista, retablo: final.retablo(), muki: mukiGLB ? 'gnomo' : 'codigo', desdeRobo: t - ultimoRobo, gpu: A.gpu || '', cuadros: cuadros, pausa: pausaFuera, dib: R ? R.info.render.calls : 0, tri: R ? R.info.render.triangles : 0 }; },
   fotos: function () { return fotos.map(function (f) { return { src: f.img ? f.img.src : '', txt: f.frase, k: f.k, j: f.j, estado: f.estado }; }); },
   esferas: function () { return ES.map(function (e) { return { estado: e.estado, x: e.p.x, y: e.p.y, z: e.p.z, esc: e.esc && e.esc.id }; }); },
   saltarIntro: saltarIntro,

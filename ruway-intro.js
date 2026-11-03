@@ -663,7 +663,11 @@ function capsula(a, b, r1, r2) {
   return [g, s1, s2].map(function (x) { return orientar(x, mid, d); });
 }
 /* un volumen ovalado: centro, eje largo (dir), y sus tres radios (ancho, largo, fondo) */
-function ovalo(c, dir, rx, ry, rz) { var g = new THREE.SphereGeometry(1, 12, 9); g.scale(rx, ry, rz); return orientar(g, c, dir); }
+/* I.DETALLE (1 en la intro): el juego del árbol, que dibuja la plaza muchos minutos y no 17 s, la
+   arma con menos segmentos en las figuras del monumento y en las bancas (en un celular barato el
+   monumento solo eran 94 mil triángulos). Q(n): segmentos según ese detalle. */
+function Q(n, min) { return Math.max(min || 3, Math.round(n * (I.DETALLE || 1))); }
+function ovalo(c, dir, rx, ry, rz) { var g = new THREE.SphereGeometry(1, Q(12, 6), Q(9, 5)); g.scale(rx, ry, rz); return orientar(g, c, dir); }
 function V(a) { return new THREE.Vector3(a[0], a[1], a[2]); }
 /* perfiles de anatomía (t de -1 a 1 a lo alto del tronco): ancho y fondo */
 function perfil(tab, t) { for (var i = 1; i < tab.length; i++) if (t <= tab[i][0]) { var a = tab[i - 1], b = tab[i], f = (t - a[0]) / (b[0] - a[0]); f = f * f * (3 - 2 * f); return a[1] + (b[1] - a[1]) * f; } return tab[tab.length - 1][1]; }
@@ -673,7 +677,7 @@ var FONDO_T = [[-1, .3], [-.8, .7], [-.55, .76], [-.15, .6], [.25, .7], [.55, .7
 function tronco(cad, pec, lado, k) {
   var up = pec.clone().sub(cad), L = up.length(); up.normalize();
   var x = lado.clone().sub(up.clone().multiplyScalar(lado.dot(up))).normalize(), z = new THREE.Vector3().crossVectors(x, up);
-  var g = new THREE.SphereGeometry(1, 20, 18), p = g.attributes.position;
+  var g = new THREE.SphereGeometry(1, Q(20, 8), Q(18, 8)), p = g.attributes.position;
   for (var i = 0; i < p.count; i++) {
     var X = p.getX(i), Y = p.getY(i), Z = p.getZ(i), w = perfil(ANCHO_T, Y), d = perfil(FONDO_T, Y);
     if (Z > 0 && Y > .2 && Y < .65) d *= 1.1;                   /* pecho */
@@ -689,12 +693,13 @@ function tronco(cad, pec, lado, k) {
 /* un miembro con su músculo: un torno de a a b, de radio r0 a r1, con un abultamiento en bp */
 function miembro(a, b, r0, r1, bulto, bp) {
   var d = new THREE.Vector3().subVectors(b, a), L = d.length(), pts = [];
-  for (var i = 0; i <= 14; i++) {
-    var s = i / 14, r = (r0 + (r1 - r0) * s) * (1 + bulto * Math.exp(-Math.pow((s - bp) / .26, 2)));
+  var N = Q(14, 6);
+  for (var i = 0; i <= N; i++) {
+    var s = i / N, r = (r0 + (r1 - r0) * s) * (1 + bulto * Math.exp(-Math.pow((s - bp) / .26, 2)));
     var cap = s < .08 ? Math.sqrt(1 - Math.pow(1 - s / .08, 2)) : s > .92 ? Math.sqrt(1 - Math.pow((s - .92) / .08, 2)) : 1;
     pts.push(new THREE.Vector2(Math.max(.001, r * cap), s * L - L / 2));
   }
-  var g = new THREE.LatheGeometry(pts, 12);
+  var g = new THREE.LatheGeometry(pts, Q(12, 5));
   return orientar(g, a.clone().add(b).multiplyScalar(.5), d);
 }
 /* una figura desde sus articulaciones; obra, material, color, matriz */
@@ -736,7 +741,7 @@ function figura(obra, mat, col, m, J, op) {
 }
 /* la roca tallada sobre la que se apoyan los grupos */
 function roca(obra, m, x, y, z, s, sem) {
-  var rnd = I.azar(sem), ru = I.ruido(6, rnd), g = new THREE.SphereGeometry(s, 14, 9), p = g.attributes.position;
+  var rnd = I.azar(sem), ru = I.ruido(6, rnd), g = new THREE.SphereGeometry(s, Q(14, 7), Q(9, 5)), p = g.attributes.position;
   for (var i = 0; i < p.count; i++) { var f = .85 + ru(p.getX(i) * 2 + 3, p.getZ(i) * 2 + p.getY(i)) * .3; p.setXYZ(i, p.getX(i) * f * 1.15, Math.max(-s * .2, p.getY(i)) * f * .55, p.getZ(i) * f); }
   g.computeVertexNormals(); g.translate(x, y, z); obra.pieza('piedra', g, PIEDRAo, m);
 }
@@ -937,7 +942,7 @@ I.createBench = function (obra, x, z, giro, sem) {
   var m = I.marco(x, z, giro), rnd = I.azar(sem || Math.round(x * 31 + z * 17));
   if (!costadoBanca) costadoBanca = formaCostado();
   [-1, 1].forEach(function (s) {
-    var g = new THREE.ExtrudeGeometry(costadoBanca, { depth: .045, bevelEnabled: true, bevelThickness: .008, bevelSize: .006, bevelSegments: 1, curveSegments: 6 });
+    var g = new THREE.ExtrudeGeometry(costadoBanca, { depth: .045, bevelEnabled: (I.DETALLE || 1) >= 1, bevelThickness: .008, bevelSize: .006, bevelSegments: 1, curveSegments: Q(6, 2) });
     g.rotateY(Math.PI / 2); g.translate(s * .86 - .022, 0, 0); obra.pieza('metal', g, MET, m);
     /* apoyabrazos curvo */
     var ap = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(s * .86, .68, -.25), new THREE.Vector3(s * .86, .72, 0), new THREE.Vector3(s * .86, .62, .22)]), 8, .022, 6, false);
@@ -1107,7 +1112,12 @@ function ciudad(obra, rnd, baja) {
 /* ---------- la plaza completa ---------- */
 I.createTrujilloPlaza = function (escena, op) {
   op = op || {};
-  var obra = new I.Obra(), luces = [], sombras = [];
+  var obra = new I.Obra(), luces = [], sombras = [], bancas = [], faroles = [];
+  /* op.despejar: [[x, z, radio], …] donde no va ni palmera, ni árbol, ni arbusto, ni farol, ni banca
+     (el juego del árbol pone ahí el árbol de Navidad, el puesto de chocolate y el nacimiento).
+     La intro no lo usa: su plaza queda igual. */
+  var DESP = op.despejar || [];
+  function libre(x, z) { for (var i = 0; i < DESP.length; i++) { var d = DESP[i]; if ((x - d[0]) * (x - d[0]) + (z - d[1]) * (z - d[1]) < d[2] * d[2]) return false; } return true; }
   /* suelo: calles, veredas y la plaza con su sardinel amarillo */
   var asf = new THREE.PlaneGeometry(700, 700); asf.rotateX(-Math.PI / 2); asf.translate(0, -.02, 0); obra.pieza('piedra', asf, C('#4a4a4c'));
   var vereda = function (cx, cz, w, d) { var g = new THREE.BoxGeometry(w, .18, d); g.translate(cx, .09, cz); obra.pieza('piedra', g, C('#b9b2a6')); };
@@ -1125,17 +1135,17 @@ I.createTrujilloPlaza = function (escena, op) {
   var MO = I.createPlazaMonument(obra);
   /* palmeras reales, árboles de copa ancha y arbustos recortados */
   var palmas = [[-22, 28, 17], [24, 30, 18], [-34, -18, 16], [33, -22, 19], [-12, -36, 17.5], [14, 40, 16.5], [-40, 8, 18.5], [41, 11, 17], [-26, -40, 18], [30, -40, 16], [6, -30, 18], [-8, 24, 16.4], [44, 38, 15.5], [-44, 40, 17.2]];
-  palmas.forEach(function (p, i) { I.createPalmTree(obra, p[0], p[1], p[2], 31 + i); sombras.push([p[0], p[1], 2.2]); });
-  [[-20, 18, 4.2], [21, 19, 4.4], [-30, -30, 4.0], [28, -28, 4.3], [-38, 30, 3.6], [36, 33, 3.8]].forEach(function (t, i) { I.createTree(obra, t[0], t[1], t[2], 51 + i); sombras.push([t[0], t[1], t[2] * 1.1]); });
-  J.forEach(function (j, i) { for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + i, x = j.cx + Math.cos(a) * 6.2, z = j.cz + Math.sin(a) * 6.2; I.createShrub(obra, x, z, .55 + (k % 2) * .2, i * 4 + k); } });
+  palmas.forEach(function (p, i) { if (!libre(p[0], p[1])) return; I.createPalmTree(obra, p[0], p[1], p[2], 31 + i); sombras.push([p[0], p[1], 2.2]); });
+  [[-20, 18, 4.2], [21, 19, 4.4], [-30, -30, 4.0], [28, -28, 4.3], [-38, 30, 3.6], [36, 33, 3.8]].forEach(function (t, i) { if (!libre(t[0], t[1])) return; I.createTree(obra, t[0], t[1], t[2], 51 + i); sombras.push([t[0], t[1], t[2] * 1.1]); });
+  J.forEach(function (j, i) { for (var k = 0; k < 4; k++) { var a = k * Math.PI / 2 + i, x = j.cx + Math.cos(a) * 6.2, z = j.cz + Math.sin(a) * 6.2; if (libre(x, z)) I.createShrub(obra, x, z, .55 + (k % 2) * .2, i * 4 + k); } });
   /* faroles: el borde de la plaza y a lo largo de los caminos */
-  for (var s = -40; s <= 40; s += 13.3) { [[s, 48.5], [s, -48.5], [48.5, s], [-48.5, s]].forEach(function (p) { I.createStreetLamp(obra, p[0], p[1], luces); }); }
-  for (var k2 = 0; k2 < 8; k2++) { var a = k2 * Math.PI / 4; [21, 33].forEach(function (r) { var dx = Math.cos(a), dz = Math.sin(a); I.createStreetLamp(obra, dx * r - dz * 2.4, dz * r + dx * 2.4, luces); }); }
+  for (var s = -40; s <= 40; s += 13.3) { [[s, 48.5], [s, -48.5], [48.5, s], [-48.5, s]].forEach(function (p) { if (!libre(p[0], p[1])) return; I.createStreetLamp(obra, p[0], p[1], luces); faroles.push([p[0], p[1]]); }); }
+  for (var k2 = 0; k2 < 8; k2++) { var a = k2 * Math.PI / 4; [21, 33].forEach(function (r) { var dx = Math.cos(a), dz = Math.sin(a); var fx = dx * r - dz * 2.4, fz = dz * r + dx * 2.4; if (!libre(fx, fz)) return; I.createStreetLamp(obra, fx, fz, luces); faroles.push([fx, fz]); }); }
   /* bancas junto a los jardines */
   for (k2 = 0; k2 < 8; k2++) { var b = k2 * Math.PI / 4; [17.5, 27, 38].forEach(function (r, j) { var dx = Math.cos(b), dz = Math.sin(b), sx = (j % 2 ? 1 : -1) * 2.6;
     /* mira hacia el camino: su frente (+Z local) apunta al eje del camino */
     var px = -dz, pz = dx, sg = sx > 0 ? 1 : -1;
-    I.createBench(obra, dx * r + px * sx, dz * r + pz * sx, Math.atan2(-sg * px, -sg * pz)); }); }
+    var bx = dx * r + px * sx, bz = dz * r + pz * sx, bg = Math.atan2(-sg * px, -sg * pz); if (!libre(bx, bz)) return; I.createBench(obra, bx, bz, bg); bancas.push([bx, bz, bg]); }); }
 
   /* la catedral (al norte, algo a la izquierda) y las casonas */
   I.createCatedral(obra, -24, -62.5, 0);
@@ -1175,13 +1185,14 @@ I.createTrujilloPlaza = function (escena, op) {
   E.forEach(function (e, i) { I.createCornerHouse(obra, Object.assign({ alto: H2, pisos: 2, balcon: i % 3 === 0 ? 'cajon' : i % 3 === 1 ? 'abierto' : null, sem: 300 + i, luz: .35 }, e)); });
   /* la ciudad de alrededor: las otras cuadras del damero, con casas de verdad en sus cuatro lados */
   var rnd = I.azar(9), n;
-  ciudad(obra, rnd, op.baja);
-  for (n = 0; n < 26; n++) {
+  /* op.sinCiudad: el juego del árbol (de noche, dentro de la plaza) no necesita las otras cuadras ni los cerros */
+  if (!op.sinCiudad) ciudad(obra, rnd, op.baja);
+  for (n = 0; n < (op.sinCiudad ? 0 : 26); n++) {
     var a3 = -Math.PI * .95 + n / 26 * Math.PI * 1.25, R = 720 + rnd() * 160, ex = Math.cos(a3) * R, ez = Math.sin(a3) * R;
     var cono = new THREE.ConeGeometry(160 + rnd() * 160, 34 + rnd() * 60, 6);   /* cerros bajos y lejanos, que no compitan con la Catedral */ cono.rotateY(rnd() * 3); cono.translate(ex, 30, ez);
     obra.pieza('cerro', cono, C(rnd() < .5 ? '#8f8a8e' : '#9c938c'));
   }
-  return { obra: obra, luces: luces, sombras: sombras, monumento: MO };
+  return { obra: obra, luces: luces, sombras: sombras, monumento: MO, bancas: bancas, faroles: faroles };
 };
 })();
 
