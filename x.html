@@ -5266,8 +5266,8 @@ function carrera3D(){
   var CIR=null, karts=[], yo=null, jugando=false, eligiendo=true, fin=false, cuenta=0, turbo=3, turboT=0, izq=false, der=false, lugar=8, t=0, arcos=[], arcoG=[], TOTAL=1, mot=null;
   function limpiar(o){ o.traverse(function(x){ if(x.geometry) x.geometry.dispose(); if(x.material){ (Array.isArray(x.material)?x.material:[x.material]).forEach(function(m){ m.dispose(); }); } }); }
   function montar(nom){
-    if(E){ limpiar(E); } TN=PISTAS3[nom]?nom:propia; MW=Mundos.MUNDOS[PISTAS3[TN].m];
-    E=new THREE.Scene(); Mundos.preparar(R3,MW); CI=Mundos.pista(E,MW);
+    if(podioG) podioG.userData.tex.forEach(function(x){ x.dispose(); }); if(E){ limpiar(E); } TN=PISTAS3[nom]?nom:propia; MW=Mundos.MUNDOS[PISTAS3[TN].m];
+    E=new THREE.Scene(); Mundos.preparar(R3,MW); CI=Mundos.pista(E,MW); podioG=null;
     karts=[]; for(var i=0;i<8;i++){ var g=kart(i?COLS3[i]:null,i>1); E.add(g); karts.push({g:g,s:0,x:0,v:0,prog:0,vmax:VMAX*(.84+.018*i),linea:[-.45,.45,0][i%3],yo:!i}); }
     yo=karts[0];
     /* quien juega maneja el rosado; su pareja, el azul */
@@ -5286,17 +5286,31 @@ function carrera3D(){
     var cintaA=new THREE.Mesh(new THREE.TorusGeometry(CI.W/2+.35,.07,8,32,Math.PI),mA); cintaA.position.y=2.6; arco.add(cintaA);
     E.add(arco); arcoG.push(arco);
     reiniciar(); }
-  function reiniciar(){ fin=false; turbo=3; turboT=0; lugar=8; cuenta=3.6; yaCont=0; jugando=false; pintarTurbo();
+  function reiniciar(){ fin=false; turbo=3; turboT=0; lugar=8; cuenta=3.6; yaCont=0; jugando=false; lentoT=0; pintarTurbo(); armarAlbum();
     arcos.forEach(function(a){ a.hecho=false; }); H0.puntos(0);
     karts.forEach(function(k,i){ var fila=7-i; k.prog=-2.2-fila*2.1; k.s=k.prog; k.x=fila%2?-.45:.45; k.v=0; });
     ponerArco(); }
   function ponerArco(){ var a=arcos.filter(function(q){ return !q.hecho; })[0], g=arcoG[0]; if(!g) return; g.visible=!!a; if(!a) return;
     var sa=a.prog%CI.L, p=CI.pos(sa,0), d=CI.dir(sa); g.position.set(p.x,0,p.z); g.rotation.y=Math.atan2(d.x,d.z); }
-  /* ---- el motor: un zumbido grave que sube con la velocidad (se apaga con 🔊) ---- */
-  function motor(){ var c=audioCtx(); if(!c || mot) return; try{ var o=c.createOscillator(), o2=c.createOscillator(), gn=c.createGain(), f=c.createBiquadFilter();
-    o.type='sawtooth'; o2.type='square'; f.type='lowpass'; f.frequency.value=420; gn.gain.value=0; o.connect(f); o2.connect(f); f.connect(gn); gn.connect(c.destination); o.start(); o2.start(); mot={o:o,o2:o2,g:gn}; }catch(e){ mot=null; } }
+  /* ---- el sonido de la carrera: todo pasa por un solo bus con un limitador, así nada satura ni ensordece.
+     Antes el choque sonaba en CADA cuadro (60 veces por segundo con dos autos pegados en la largada), los pitidos
+     del semáforo eran de onda cuadrada (la más áspera) y el motor llevaba un gruñido de onda cuadrada debajo. ---- */
+  var BUS=null;
+  function bus(){ if(BUS) return BUS; var c=audioCtx(); if(!c) return null;
+    try{ var g=c.createGain(), lim=c.createDynamicsCompressor(); g.gain.value=.85;
+      lim.threshold.value=-20; lim.knee.value=8; lim.ratio.value=12; lim.attack.value=.004; lim.release.value=.2;
+      g.connect(lim); lim.connect(c.destination); BUS=g; }catch(e){ BUS=null; } return BUS; }
+  function pip(f,d,vol,tipo,f2){ var c=audioCtx(), b=bus(); if(!c||!b) return;
+    try{ var o=c.createOscillator(), v=c.createGain(), t0=c.currentTime; o.type=tipo||'sine'; o.frequency.setValueAtTime(f,t0); if(f2) o.frequency.exponentialRampToValueAtTime(f2,t0+d);
+      v.gain.setValueAtTime(0,t0); v.gain.linearRampToValueAtTime(vol,t0+.012); v.gain.exponentialRampToValueAtTime(.0001,t0+d);
+      o.connect(v); v.connect(b); o.start(t0); o.stop(t0+d+.03); }catch(e){} }
+  var choqueT=-9, nChoques=0;
+  function choque(){ var c=audioCtx(); if(!c) return; if(c.currentTime-choqueT<.35) return; choqueT=c.currentTime; nChoques++; pip(130,.12,.045,'triangle',70); }   /* un golpe sordo, como mucho ~3 por segundo */
+  /* ---- el motor: un zumbido suave que sube con la velocidad (se apaga con 🔊) ---- */
+  function motor(){ var c=audioCtx(), b=bus(); if(!c || !b || mot) return; try{ var o=c.createOscillator(), o2=c.createOscillator(), gn=c.createGain(), f=c.createBiquadFilter();
+    o.type='sawtooth'; o2.type='triangle'; f.type='lowpass'; f.frequency.value=340; f.Q.value=.7; gn.gain.value=0; o.connect(f); o2.connect(f); f.connect(gn); gn.connect(b); o.start(); o2.start(); mot={o:o,o2:o2,g:gn}; }catch(e){ mot=null; } }
   function motorAl(v){ if(!mot) return; var c=audioCtx(); if(!c) return; var k=v/VMAX, on=ambQuiere && jugando && !document.hidden;
-    mot.o.frequency.setTargetAtTime(48+k*70,c.currentTime,.08); mot.o2.frequency.setTargetAtTime(24+k*35,c.currentTime,.08); mot.g.gain.setTargetAtTime(on?.012+.016*k:0,c.currentTime,.15); }
+    mot.o.frequency.setTargetAtTime(52+k*68,c.currentTime,.08); mot.o2.frequency.setTargetAtTime(104+k*136,c.currentTime,.08); mot.g.gain.setTargetAtTime(on?.007+.011*k:0,c.currentTime,.15); }
   /* ---- la elección de pista ---- */
   var sel=document.createElement('div'); sel.id='pistas'; sel.hidden=true;
   sel.innerHTML='<div class="pi-c"><h2>Elige tu pista</h2><p>Cada una pasa por un lugar del Perú</p><div class="pi-g"></div></div>';
@@ -5317,27 +5331,115 @@ function carrera3D(){
     [[-20,-24],[0,-26],[20,-24],[34,-16],[38,-2],[32,10],[20,12],[12,20],[16,30],[6,36],[-8,32],[-14,20],[-26,22],[-36,12],[-38,-4],[-32,-18],[-20,-24]].forEach(function(p,i){ var X=160+p[0]*2.1, Y=92+p[1]*2.1; if(i) x.lineTo(X,Y); else x.moveTo(X,Y); }); x.stroke();
     x.strokeStyle=Mm.acento; x.lineWidth=3; x.stroke();
     b.addEventListener('click',function(){ empezar(nom); }); grilla.appendChild(b); });
-  function elegir(){ jugando=false; eligiendo=true; sel.hidden=false; pad.style.visibility='hidden'; document.body.classList.remove('c3-va'); }
+  function elegir(){ jugando=false; eligiendo=true; sel.hidden=false; pad.style.visibility='hidden'; document.body.classList.remove('c3-va'); album.hidden=true; }
   if(!document.getElementById('c3-css')){ var st3=document.createElement('style'); st3.id='c3-css';
-    st3.textContent='.hud h1,.hud small{transition:opacity .6s}body.c3-va .hud h1,body.c3-va .hud small{opacity:0}'; document.head.appendChild(st3); }
+    st3.textContent='.hud h1,.hud small{transition:opacity .6s}body.c3-va .hud h1,body.c3-va .hud small{opacity:0}'+
+      /* el álbum de la esquina: un marco por foto */
+      '#c3-album{position:fixed;right:10px;top:112px;z-index:5;display:flex;flex-direction:column;gap:7px;pointer-events:none}#c3-album[hidden]{display:none}'+
+      '#c3-album i{display:block;width:46px;height:46px;border-radius:10px;border:2px dashed rgba(255,255,255,.65);background:rgba(20,12,30,.25);overflow:hidden;box-shadow:0 3px 10px rgba(0,0,0,.25);transition:transform .3s}'+
+      '#c3-album i.on{border:2px solid #fff;background:#fff;transform:scale(1.08)}#c3-album i img{width:100%;height:100%;object-fit:cover;display:block}'+
+      /* la foto que aparece al pasar el arco y vuela al álbum */
+      '.c3-vuela{position:fixed;z-index:9;left:50%;top:40%;width:min(62vw,290px);box-sizing:border-box;background:#fff;padding:9px 9px 40px;border-radius:6px;box-shadow:0 14px 34px rgba(0,0,0,.4);transform:translate(-50%,-50%) rotate(-3deg) scale(.6);opacity:0;transition:transform .35s cubic-bezier(.2,1.4,.4,1),opacity .25s;pointer-events:none}'+
+      '.c3-vuela.on{transform:translate(-50%,-50%) rotate(-3deg) scale(1);opacity:1}.c3-vuela .im{aspect-ratio:1;overflow:hidden;border-radius:3px;background:#eee}.c3-vuela .im img{width:100%;height:100%;object-fit:cover;display:block}'+
+      '.c3-vuela p{position:absolute;left:8px;right:8px;bottom:9px;margin:0;text-align:center;font:600 18px Caveat,"Baloo 2",cursive;color:#5a4636;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .2s}'+
+      '.c3-vuela.va{transition:left .7s cubic-bezier(.6,0,.3,1),top .7s cubic-bezier(.6,0,.3,1),width .7s cubic-bezier(.6,0,.3,1),padding .7s,transform .7s,opacity .7s;padding:0;opacity:.4;transform:translate(-50%,-50%) rotate(0) scale(1)}.c3-vuela.va p{opacity:0}'+
+      '#c3-flash{position:fixed;inset:0;z-index:8;background:#fff;opacity:0;pointer-events:none;transition:opacity .5s}#c3-flash.on{opacity:.5;transition:none}'+
+      /* la llegada, el podio y las postales */
+      '#c3-meta{position:fixed;left:0;right:0;top:32%;z-index:9;text-align:center;font:900 56px "Baloo 2",Fredoka,sans-serif;color:#fff;-webkit-text-stroke:2px rgba(20,12,30,.7);text-shadow:0 6px 18px rgba(0,0,0,.35);opacity:0;transform:scale(.6);transition:all .4s cubic-bezier(.2,1.4,.4,1);pointer-events:none}#c3-meta.on{opacity:1;transform:scale(1)}'+
+      '#c3-podio{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:40px 16px calc(20px + env(safe-area-inset-bottom));background:linear-gradient(rgba(20,12,30,0),rgba(20,12,30,.78) 35%);color:#fff;text-align:center;font-family:"Baloo 2",Fredoka,sans-serif}#c3-podio[hidden]{display:none}'+
+      '#c3-podio h2{margin:0 0 8px;font-size:30px;line-height:1.1}#c3-podio ol{list-style:none;margin:0 0 14px;padding:0;display:flex;justify-content:center;flex-wrap:wrap;gap:8px}'+
+      '#c3-podio li{background:rgba(255,255,255,.16);border-radius:14px;padding:6px 12px;font-weight:800;font-size:16px}#c3-podio li.yo{background:#FF7AA8}'+
+      '#c3-podio button,#c3-post button{border:0;border-radius:999px;padding:12px 24px;font:800 18px "Baloo 2",Fredoka,sans-serif;background:#FF5C93;color:#fff;box-shadow:0 4px 0 #C23A6C;cursor:pointer}'+
+      '#c3-post{position:fixed;inset:0;z-index:12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:rgba(20,12,30,.62);padding:20px}#c3-post[hidden]{display:none}'+
+      '#c3-post .c3-pn{color:#FFF1DA;font:800 13px "Baloo 2",sans-serif;letter-spacing:.08em;text-transform:uppercase}'+
+      '#c3-post .pc{position:relative;width:min(84vw,380px);box-sizing:border-box;background:#FFFDF8;padding:12px 12px 58px;border-radius:8px;box-shadow:0 18px 50px rgba(0,0,0,.45);transform:rotate(-1.5deg);animation:c3pc .5s cubic-bezier(.2,1.3,.4,1)}'+
+      '@keyframes c3pc{from{transform:rotate(4deg) scale(.85);opacity:0}}#c3-post .im{aspect-ratio:1;overflow:hidden;border-radius:4px;background:#eee}'+
+      '#c3-post .im img{width:100%;height:100%;object-fit:cover;display:block;animation:c3kb 6s ease-out both}@keyframes c3kb{from{transform:scale(1.12)}to{transform:scale(1)}}'+
+      '#c3-post .tx{position:absolute;left:14px;right:86px;bottom:14px;font:600 22px/1.1 Caveat,"Baloo 2",cursive;color:#4a3a2c}'+
+      '@media (prefers-reduced-motion:reduce){#c3-post .pc,#c3-post .im img{animation:none}.c3-vuela,.c3-vuela.va{transition:none}}'+
+      '#c3-post .sello{position:absolute;right:12px;bottom:10px;width:66px;height:42px;border:2px dashed #C9A27A;border-radius:6px;color:#9A6B43;font:800 10px/1.15 "Baloo 2",sans-serif;display:flex;align-items:center;justify-content:center;text-align:center;transform:rotate(6deg)}';
+    document.head.appendChild(st3); }
   function empezar(nom){ document.body.classList.remove('c3-va'); try{ localStorage.setItem('ruway:pista',nom); }catch(e){}
     cuandoAuto(function(){ if(nom!==TN || !CI) montar(nom); else reiniciar();
-    sel.hidden=true; eligiendo=false; pad.style.visibility=''; apagarAmbiente(0); ambiente(MW.id); motor();
+    sel.hidden=true; eligiendo=false; pad.style.visibility=''; album.hidden=!n; apagarAmbiente(0); ambiente(MW.id); motor();
     nucleo(function(N){ if(!N.tono()) cartelMundo(MW,'Con '+pjAl().replace(/^(al|a la|a) /,'')); });
     pista('Mantén ◀ ▶ para doblar · 🔥 turbo · las curvas te empujan hacia afuera'); setTimeout(function(){ pista(''); },5000); }); }
   /* ---- los recuerdos y la meta ---- */
-  function abrir(k){ jugando=false; var cuantos=arcos.filter(function(a){ return a.hecho; }).length; H0.puntos(cuantos); nucleo(function(N){ N.gano('estrella'); });
-    campanita([660,830,990]); ponerArco();
-    setTimeout(function(){ recuerdo(k,'Recuerdo '+(k+1)+' de '+n,cuantos>=n?'¡A la meta!':'Seguir manejando',function(){ jugando=true; }); },250); }
-  function terminar(){ fin=true; jugando=false;
-    for(var k=0;k<30;k++) setTimeout(function(){ nota(700+Math.random()*500,.08,'triangle',.03); },k*40);
-    setTimeout(function(){ final(lugar===1?'¡Ganaste la carrera, y a mí también!':'Llegaste '+lugar+'º, pero en mi corazón vas primero','Correr otra vez',function(){ pintarTurbo(); elegir(); }); },900); }
+  /* Antes, cada arco PARABA la carrera y mostraba la foto en grande (el dueño: «pierde la emoción del juego»).
+     Ahora la carrera sigue: medio segundo en cámara lenta, un destello, la foto aparece con su frase y vuela a su
+     marco del álbum de la esquina. En la meta: la llegada, el podio y después las fotos como postales, una por una. */
+  var album=document.createElement('div'); album.id='c3-album'; album.hidden=true; document.body.appendChild(album);
+  var flash=document.createElement('div'); flash.id='c3-flash'; document.body.appendChild(flash);
+  var metaDom=document.createElement('div'); metaDom.id='c3-meta'; metaDom.setAttribute('role','status'); metaDom.setAttribute('aria-live','polite'); document.body.appendChild(metaDom);
+  var podioDom=document.createElement('div'); podioDom.id='c3-podio'; podioDom.hidden=true; document.body.appendChild(podioDom);
+  var post=document.createElement('div'); post.id='c3-post'; post.hidden=true; document.body.appendChild(post);
+  var lentoT=0, podioG=null, podioOn=false, podioT=0;
+  function armarAlbum(){ album.innerHTML=''; for(var i=0;i<n;i++) album.appendChild(document.createElement('i')); }
+  function destello(){ if(QUIETO) return; flash.classList.add('on'); requestAnimationFrame(function(){ requestAnimationFrame(function(){ flash.classList.remove('on'); }); }); }
+  function vuelaFoto(k){ var f=FOTOS[k]||{}, hueco=album.children[k]; if(!hueco) return;
+    var v=document.createElement('div'); v.className='c3-vuela'; v.innerHTML='<div class="im"></div><p></p>'; fotoEn(v.querySelector('.im'),f); v.querySelector('p').textContent=f.txt||'';
+    document.body.appendChild(v); requestAnimationFrame(function(){ requestAnimationFrame(function(){ v.classList.add('on'); }); });
+    setTimeout(function(){ var r=hueco.getBoundingClientRect(); v.classList.add('va'); v.style.left=(r.left+r.width/2)+'px'; v.style.top=(r.top+r.height/2)+'px'; v.style.width=r.width+'px'; },1150);
+    setTimeout(function(){ if(v.parentNode) v.parentNode.removeChild(v); hueco.innerHTML=''; fotoEn(hueco,f); hueco.classList.add('on'); pip(1320,.12,.03,'sine'); },1900); }
+  function abrir(k){ var cuantos=arcos.filter(function(a){ return a.hecho; }).length; H0.puntos(cuantos);
+    nucleo(function(N){ N.gano('estrella'); if(FOTOS[k]) N.vio(k); });   /* el progreso del regalo, como hacía la tarjeta */
+    [660,830,990].forEach(function(f,i){ setTimeout(function(){ pip(f,.35,.05,'sine'); },i*90); });
+    lentoT=.55; destello(); vuelaFoto(k); setTimeout(ponerArco,900);
+    if(cuantos>=n) setTimeout(function(){ if(!fin) aviso('¡Todos tus recuerdos! Ahora, a la meta'); },2000); }
+  function nomDe(k){ var id=k.yo?PJ.id:k.pid; return (AVATARES[id]&&AVATARES[id].nom)||(k.yo?'Tú':'Piloto invitado'); }
+  function terminar(){ fin=true; jugando=false; lentoT=0; destello();
+    metaDom.textContent=lugar===1?'¡Ganaste!':'¡Llegaste '+lugar+'º!'; metaDom.classList.add('on');
+    for(var k=0;k<30;k++) setTimeout(function(){ pip(700+Math.random()*500,.08,.03,'triangle'); },k*40);
+    setTimeout(function(){ metaDom.classList.remove('on'); verPodio(); },1700); }
+  /* el podio: sobre la pista, pasando la meta, bajo el arco de largada; la cámara lo mira desde la línea */
+  function armarPodio(){ var G=new THREE.Group(), cols=['#FFD23F','#DCE3EC','#E3A36C'], altos=[1,.66,.4], xs=[0,-1.35,1.35];
+    G.userData.lugares=[]; G.userData.tex=[];
+    for(var i=0;i<3;i++){ var c=document.createElement('canvas'); c.width=c.height=128; var x=c.getContext('2d'); x.fillStyle=cols[i]; x.fillRect(0,0,128,128);
+      x.fillStyle='rgba(20,12,30,.85)'; x.font='900 84px "Baloo 2",Fredoka,sans-serif'; x.textAlign='center'; x.textBaseline='middle'; x.fillText(String(i+1),64,70);
+      var tx=new THREE.CanvasTexture(c); tx.encoding=THREE.sRGBEncoding; G.userData.tex.push(tx);
+      var mL=new THREE.MeshStandardMaterial({color:cols[i],roughness:.45,metalness:.15}), mF=new THREE.MeshStandardMaterial({map:tx,roughness:.5});
+      var b=new THREE.Mesh(new THREE.BoxGeometry(1.25,altos[i],1.45),[mL,mL,mL,mL,mF,mL]); b.position.set(xs[i],altos[i]/2,0); b.castShadow=true; b.receiveShadow=true; G.add(b);
+      G.userData.lugares.push([xs[i],altos[i],0]); }
+    G.userData.lugares.push([0,0,1.8]);   /* quien juega, si no subió al podio: delante, en la alfombra */
+    var al=new THREE.Mesh(new THREE.PlaneGeometry(4.4,3.4),new THREE.MeshStandardMaterial({color:'#C2185B',roughness:.9})); al.rotation.x=-Math.PI/2; al.position.set(0,.06,.9); al.receiveShadow=true; G.add(al);
+    /* papel picado de los colores del mundo */
+    var NP=Mundos.calidad()==='baja'?80:160, ps=new Float32Array(NP*3), cs=new Float32Array(NP*3), cc=new THREE.Color(), pal=(MW.regalos&&MW.regalos.length?MW.regalos:COLS3);
+    for(var j=0;j<NP;j++){ ps[j*3]=(Math.random()-.5)*5; ps[j*3+1]=Math.random()*5; ps[j*3+2]=(Math.random()-.5)*3+.6; cc.set(pal[j%pal.length]); cs[j*3]=cc.r; cs[j*3+1]=cc.g; cs[j*3+2]=cc.b; }
+    var gp=new THREE.BufferGeometry(); gp.setAttribute('position',new THREE.BufferAttribute(ps,3)); gp.setAttribute('color',new THREE.BufferAttribute(cs,3));
+    var conf=new THREE.Points(gp,new THREE.PointsMaterial({size:.11,vertexColors:true})); G.add(conf); G.userData.conf=conf;
+    var p=CI.pos(7,0), d=CI.dir(7); G.position.set(p.x,0,p.z); G.rotation.y=Math.atan2(-d.x,-d.z);   /* el frente mira hacia la línea */
+    G.updateMatrixWorld(true); E.add(G); return G; }
+  function verPodio(){ var orden=karts.slice().sort(function(a,b){ return b.prog-a.prog; }), tres=orden.slice(0,3);
+    if(!podioG) podioG=armarPodio(); podioG.visible=true; arcoG.forEach(function(a){ a.visible=false; });
+    karts.forEach(function(k){ k.g.visible=false; k.podio=null; });
+    tres.forEach(function(k,i){ k.g.visible=true; k.podio=i; });
+    if(tres.indexOf(yo)<0){ yo.g.visible=true; yo.podio=3; }
+    podioOn=true; podioT=0; album.hidden=true; pad.style.visibility='hidden'; pista('');
+    podioDom.innerHTML='<h2>'+(lugar===1?'¡Ganaste la carrera!':'Llegaste '+lugar+'º')+'</h2><ol>'+tres.map(function(k,i){ return '<li'+(k.yo?' class="yo"':'')+'>'+(i+1)+'º '+esc(nomDe(k))+'</li>'; }).join('')+
+      (tres.indexOf(yo)<0?'<li class="yo">'+lugar+'º '+esc(nomDe(yo))+'</li>':'')+'</ol><button type="button">'+(n?'Ver tus recuerdos ›':'Seguir ›')+'</button>';
+    podioDom.hidden=false; var bp=podioDom.querySelector('button'); bp.onclick=function(){ podioDom.hidden=true; verPostales(0); }; bp.focus();
+    [523,659,784,1046].forEach(function(f,i){ setTimeout(function(){ pip(f,.4,.05,'triangle'); },i*120); }); }
+  function verPostales(i){ if(i>=n){ post.hidden=true; cerrarCarrera(); return; }
+    var f=FOTOS[i]||{};
+    post.innerHTML='<div class="c3-pn">Tus recuerdos de la carrera · '+(i+1)+' de '+n+'</div><div class="pc"><div class="im"></div><div class="tx"></div><div class="sello">'+esc(MW.nombre||PISTAS3[TN].nom)+'<br>RUWAY</div></div><button type="button">'+(i+1<n?'Siguiente ›':'Seguir ›')+'</button>';
+    fotoEn(post.querySelector('.im'),f); post.querySelector('.tx').textContent=f.txt||''; post.hidden=false; pip(880,.25,.04,'sine');
+    var bs=post.querySelector('button'); bs.onclick=function(){ verPostales(i+1); }; bs.focus(); }
+  function cerrarCarrera(){ final(lugar===1?'¡Ganaste la carrera, y a mí también!':'Llegaste '+lugar+'º, pero en mi corazón vas primero','Correr otra vez',function(){ salirPodio(); pintarTurbo(); elegir(); }); }
+  function salirPodio(){ podioOn=false; if(podioG) podioG.visible=false; podioDom.hidden=true; post.hidden=true; karts.forEach(function(k){ k.g.visible=true; k.podio=null; }); primera=true; }
+  var vPod=new THREE.Vector3(), vMir=new THREE.Vector3();
+  function animarPodio(dt){ podioT+=dt; motorAl(0); var G=podioG; if(!G) return; var L4=G.userData.lugares;
+    karts.forEach(function(k,j){ if(k.podio==null) return; var q=L4[k.podio], salto=k.podio<3?Math.max(0,Math.sin(podioT*(k.podio?6:7.5)+j))*(k.podio?.1:.18):0;
+      vPod.set(q[0],q[1]+salto,q[2]); G.localToWorld(vPod); k.g.position.copy(vPod); k.g.rotation.y=G.rotation.y; k.g.userData.cuerpo.rotation.z=0; k.g.userData.cuerpo.position.y=0; });
+    var cf=G.userData.conf, pa=cf.geometry.attributes.position.array; for(var i=0;i<pa.length;i+=3){ pa[i+1]-=dt*(.8+(i%7)*.08); pa[i]+=Math.sin(podioT*2+i)*dt*.15; if(pa[i+1]<0) pa[i+1]+=5; } cf.geometry.attributes.position.needsUpdate=true;
+    CI.pos(.4,Math.sin(podioT*.35)*.12,C.position); C.position.y=1.9; G.localToWorld(vMir.set(0,.85,0)); C.lookAt(vMir);
+    CI.actualizar(dt,t,G.position.x,G.position.z,C.position); }
   /* ---- cada cuadro ---- */
   var vP=new THREE.Vector3(), vD=new THREE.Vector3(), camP=new THREE.Vector3(), camM=new THREE.Vector3(), primera=true;
   function actualizar(dt){
     if(!CI) return; var L=CI.L;
+    if(podioOn){ animarPodio(dt); return; }
     if(!eligiendo && !fin && cuenta>0 && !document.querySelector('#recuerdo:not([hidden])')){ var antes=Math.ceil(cuenta); cuenta-=dtReal; var ahora=Math.ceil(cuenta);   /* el semáforo cuenta segundos de verdad */
-      CI.semaforo(cuenta<=0?6:Math.min(5,(4-Math.ceil(cuenta))*2)); if(ahora!==antes) nota(cuenta<=0?880:440,.18,'square',.05);
+      CI.semaforo(cuenta<=0?6:Math.min(5,(4-Math.ceil(cuenta))*2)); if(ahora!==antes) pip(cuenta<=0?784:523,cuenta<=0?.45:.2,cuenta<=0?.07:.05,'triangle');   /* pitidos suaves; el de «¡ya!», más largo */
       if(cuenta<=0){ jugando=true; document.body.classList.add('c3-va'); } }   /* arrancó: el título de arriba se va (deja ver la pista) */
     if(jugando){
       var giro=(izq?-1:0)+(der?1:0);
@@ -5351,7 +5453,7 @@ function carrera3D(){
         k.s+=k.v*dt; k.prog+=k.v*dt; });
       /* los choques entre autitos: se empujan de costado y el de atrás frena */
       for(var a=0;a<karts.length;a++) for(var b=a+1;b<karts.length;b++){ var A=karts[a], B=karts[b], dsp=B.prog-A.prog, dxp=(B.x-A.x)*CI.W/2;
-        if(Math.abs(dsp)<1.15 && Math.abs(dxp)<.72){ var emp=(dxp>=0?1:-1)*.06; A.x-=emp; B.x+=emp; if(dsp>0) A.v*=.93; else B.v*=.93; if(A.yo||B.yo) nota(150,.07,'square',.04); } }
+        if(Math.abs(dsp)<1.15 && Math.abs(dxp)<.72){ var emp=(dxp>=0?1:-1)*.06; A.x-=emp; B.x+=emp; if(dsp>0) A.v*=.93; else B.v*=.93; if(A.yo||B.yo) choque(); } }
       if(turboT>0) turboT-=dt;
       arcos.forEach(function(q,k){ if(!q.hecho && yo.prog>=q.prog){ q.hecho=true; abrir(k); } });
       lugar=1+karts.filter(function(k){ return !k.yo && k.prog>yo.prog; }).length;
@@ -5371,7 +5473,7 @@ function carrera3D(){
   }
   /* ---- el tablero: vuelta, puesto, velocidad, turbo y el minimapa ---- */
   function tablero(){ var w=hc.clientWidth, h=hc.clientHeight, d=Math.min(devicePixelRatio||1,2); if(hc.width!==Math.round(w*d)){ hc.width=Math.round(w*d); hc.height=Math.round(h*d); }
-    hx.setTransform(d,0,0,d,0,0); hx.clearRect(0,0,w,h); if(!CI || eligiendo) return;
+    hx.setTransform(d,0,0,d,0,0); hx.clearRect(0,0,w,h); if(!CI || eligiendo || podioOn) return;
     function txt(s,x,y,tam,col,al){ hx.font='900 '+tam+'px "Baloo 2",Fredoka,Nunito,sans-serif'; hx.textAlign=al||'left'; hx.lineWidth=5; hx.strokeStyle='rgba(20,12,30,.75)'; hx.strokeText(s,x,y); hx.fillStyle=col; hx.fillText(s,x,y); }
     var vu=Math.min(VUELTAS,Math.max(1,Math.floor(Math.max(0,yo.prog)/CI.L)+1)), y0=h-150;
     txt(lugar+'º',w-16,y0,54,lugar===1?'#FFD23F':'#FFFFFF','right'); txt('de 8',w-16,y0+22,16,'#FFF1DA','right');
@@ -5392,9 +5494,10 @@ function carrera3D(){
   var dtReal=0;
   (function cuadro(){ requestAnimationFrame(cuadro); var d0=reloj.getDelta(), dt=Math.min(.05,d0); dtReal=Math.min(.3,d0); t+=dt;
     if(jugando && cuenta<=0 && cuenta>-1){ if(!yaCont) yaCont=performance.now(); if(performance.now()-yaCont>1300) cuenta=-2; }   /* el «¡YA!» dura un segundo de verdad */
-    actualizar(dt); if(E) R3.render(E,C); tablero(); })();
+    var dtJ=dt; if(lentoT>0){ lentoT-=dtReal; dtJ=dt*.3; }   /* medio segundo en cámara lenta al pasar un arco */
+    actualizar(dtJ); if(E) R3.render(E,C); tablero(); })();
   function pintarTurbo(){ var b=document.getElementById('turbo'); b.textContent='🔥 ×'+turbo; b.disabled=!turbo; }
-  function usarTurbo(){ if(!turbo || !jugando) return; turbo--; turboT=2.2; pintarTurbo(); nota(520,.25,'sawtooth',.05); }
+  function usarTurbo(){ if(!turbo || !jugando) return; turbo--; turboT=2.2; pintarTurbo(); pip(330,.45,.06,'triangle',880); }   /* un «fuuum» que sube */
   function mantener(id,fn){ var b=document.getElementById(id);
     b.addEventListener('pointerdown',function(e){ e.preventDefault(); despertarAudio(); fn(true); });
     ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ fn(false); }); }); }
@@ -5405,10 +5508,10 @@ function carrera3D(){
   addEventListener('keydown',function(e){ if(e.key==='ArrowLeft') izq=true; if(e.key==='ArrowRight') der=true; if(e.key===' '){ e.preventDefault(); usarTurbo(); } });
   addEventListener('keyup',function(e){ if(e.key==='ArrowLeft') izq=false; if(e.key==='ArrowRight') der=false; });
   /* solo para las pruebas (lo mismo que la carrera retro, más el mundo) */
-  window.__carro={tresD:true,elegir:empezar,estado:function(){ return {tema:TN,mundo:MW?MW.id:'',pilotos:karts.map(function(k){ return k.yo?PJ.id:(k.pid||''); }),conPersonaje:karts.filter(function(k){ return !!k.g.userData.piloto; }).length,N:CI?CI.K:0,jugando:jugando,eligiendo:eligiendo,dist:yo?yo.prog:0,lugar:lugar,pX:yo?yo.x:0,mapa:CI?CI.mini.length:0,cuenta:cuenta,fin:fin,v:yo?yo.v:0}; },
+  window.__carro={tresD:true,elegir:empezar,estado:function(){ return {tema:TN,mundo:MW?MW.id:'',pilotos:karts.map(function(k){ return k.yo?PJ.id:(k.pid||''); }),conPersonaje:karts.filter(function(k){ return !!k.g.userData.piloto; }).length,N:CI?CI.K:0,jugando:jugando,eligiendo:eligiendo,dist:yo?yo.prog:0,lugar:lugar,pX:yo?yo.x:0,mapa:CI?CI.mini.length:0,cuenta:cuenta,fin:fin,v:yo?yo.v:0,album:arcos.filter(function(a){ return a.hecho; }).length,podio:podioOn}; },
     saltar:function(d){ if(!yo) return; yo.prog+=d; yo.s+=d; }, lado:function(v){ if(yo) yo.x=v; },
-    sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); return e; },
-    escena:function(){ return {E:E,C:C,CI:CI,karts:karts,yo:yo,arco:arcoG[0]}; }};   /* t-carrera-pista revisa qué hay encima de la pista */
+    sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); e.bus=!!BUS; e.choques=nChoques; return e; },
+    escena:function(){ return {E:E,C:C,CI:CI,karts:karts,yo:yo,arco:arcoG[0]}; }, choque:function(){ choque(); return nChoques; }};   /* t-carrera-pista revisa qué hay encima de la pista */
   /* el autito llega aparte; mientras, se elige la pista (detrás se ve la pista guardada o la del mundo de la pareja) */
   var autoListo=false, esperaAuto=[];
   function cuandoAuto(fn){ if(autoListo) fn(); else esperaAuto.push(fn); }
