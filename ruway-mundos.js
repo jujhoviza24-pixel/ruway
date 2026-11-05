@@ -929,7 +929,8 @@ LEJOS.mar = function (E, mundo, o) {
   gt.fillStyle = 'rgba(90,60,30,.8)'; [30, 64, 98].forEach(function (y) { gt.fillRect(0, y, 64, 5); });
   malla(JC, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.tex(tt, true, true), roughness: .9 }), E);
   /* cerros pálidos detrás de la playa */
-  M.terreno(E, mundo, { cx: o.cx, cz: o.cz, r0: Math.max(o.medioX, o.medioZ) + 6, r1: 40, amp: 16, sem: 151, hazeExtra: 0, solo: function (x, z) { return M.suave(3, 11, z); },
+  /* r1 nunca antes que r0: en la carrera (medio 44) el 40 fijo dejaba las lomas DENTRO, encima de la pista */
+  M.terreno(E, mundo, { cx: o.cx, cz: o.cz, r0: Math.max(o.medioX, o.medioZ) + 6, r1: Math.max(40, Math.max(o.medioX, o.medioZ) + 20), amp: 16, sem: 151, hazeExtra: 0, solo: function (x, z) { return M.suave(3, 11, z); },
     colores: { bajo: M.col('#c9a77e'), medio: M.col('#b48e66'), roca: M.col('#9a7756') } });
   return { actualizar: function (dt, t) { nm.offset.set(t * .012, t * .02); te.offset.x = t * .01; franja.material.opacity = .6 + Math.sin(t * .9) * .25; franja.position.z = orilla + .3 + Math.sin(t * .9) * .25; } };
 };
@@ -942,6 +943,7 @@ LEJOS.dunas = function (E, mundo, o) {
   var JT = new M.Junta(), k;
   for (k = 0; k < 9; k++) {
     var a = rnd() * 6.283, dd = 11 + rnd() * 8, x = o.cx + Math.cos(a) * dd, z = o.cz + Math.sin(a) * dd, h = 1.4 + rnd() * .8;
+    if (o.libre && !o.libre(x, z, 1.8)) continue;                          /* en la carrera: nunca encima de la pista */
     var tr = new THREE.CylinderGeometry(.08, .16, h, 6, 3); tr.translate(0, h / 2, 0); M.torcer(tr, function (v) { v.x += Math.sin(v.y * 2.4) * .12; });
     JT.pieza(tr, M.col('#5a4632'), new M4().makeTranslation(x, 0, z));
     for (var c2 = 0; c2 < 5; c2++) { var co = new THREE.IcosahedronGeometry(.6 + rnd() * .4, 0); co.scale(1.4, .45, 1.2); co.translate((rnd() - .5) * 1.2, h + (rnd() - .2) * .3, (rnd() - .5) * 1.2); JT.pieza(co, M.col(['#5f6e34', '#71803c', '#566430'][c2 % 3]), new M4().makeTranslation(x, 0, z)); }
@@ -1019,6 +1021,7 @@ LEJOS.arboles = function (E, mundo, o) {
   var mf = M.muros(mundo).variantes[0][1].mat; hojas.map = mf.map;
   for (var k = 0; k < 13; k++) {
     var a = (k / 13) * 6.283 + rnd() * .3, d = Math.max(o.medioX, o.medioZ) + 3 + rnd() * 7, x = o.cx + Math.cos(a) * d, z = o.cz + Math.sin(a) * d, h = 7 + rnd() * 5;
+    if (o.libre && !o.libre(x, z, 3.5)) continue;                          /* en la carrera: nunca encima de la pista */
     var tr = new THREE.CylinderGeometry(.28, .45, h, 9, 6); tr.translate(0, h / 2, 0); M.torcer(tr, function (v) { v.x += Math.sin(v.y * .5 + k) * .15; });
     JT.pieza(tr, M.col('#6b5a45', .85 + rnd() * .2), new M4().makeTranslation(x, 0, z), 2);
     for (var r = 0; r < 4; r++) { var ra = new THREE.BoxGeometry(.08, 1.4, 1.1); ra.translate(0, .55, .55); M.torcer(ra, function (v) { v.z *= 1 - v.y * .35; }); JT.pieza(ra, M.col('#5f4f3c'), new M4().makeRotationY(r / 4 * 6.283 + rnd() * .5).setPosition(x, 0, z), 2); }
@@ -1037,7 +1040,9 @@ LEJOS.arboles = function (E, mundo, o) {
   /* más allá: una muralla de copas redondas (el bosque visto desde adentro) */
   var JF = new M.Junta(), hz = haze(mundo);
   for (k = 0; k < 70; k++) {
-    var a2 = rnd() * 6.283, d2 = 19 + rnd() * 12, x2 = o.cx + Math.cos(a2) * d2, z2 = o.cz + Math.sin(a2) * d2, r2 = 2.2 + rnd() * 2.6, y2 = 3 + rnd() * 6;
+    /* a 19-31 del centro: en el laberinto es lejos; la carrera, que es más grande, pide desde dónde (copasDesde) */
+    var a2 = rnd() * 6.283, d2 = (o.copasDesde || 19) + rnd() * 12, x2 = o.cx + Math.cos(a2) * d2, z2 = o.cz + Math.sin(a2) * d2, r2 = 2.2 + rnd() * 2.6, y2 = 3 + rnd() * 6;
+    if (o.libre && !o.libre(x2, z2, r2 + .5)) continue;
     var b2 = new THREE.IcosahedronGeometry(r2, 1); b2.scale(1, .8, 1); b2.translate(x2, y2, z2);
     JF.pieza(b2, hz(M.mezclaCol(M.col('#24461f'), M.col('#4f7f3a'), rnd()), Math.hypot(x2 - o.cx, z2 - o.cz), .45));
     var tr2 = new THREE.CylinderGeometry(.25, .4, y2, 6); tr2.translate(x2, y2 / 2, z2); JF.pieza(tr2, hz(M.col('#4a3c2c'), d2, .45));
@@ -1045,7 +1050,8 @@ LEJOS.arboles = function (E, mundo, o) {
   malla(JF, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false }), E);
 };
 
-/* M.lejos(E, mundo, {cx, cz, medioX, medioZ}) → { actualizar(dt, t) } */
+/* M.lejos(E, mundo, {cx, cz, medioX, medioZ, libre?, copasDesde?}) → { actualizar(dt, t) }
+   libre(x, z, margen): la carrera la pasa para que nada caiga encima de la pista (el laberinto no la usa). */
 M.lejos = function (E, mundo, o) { var r = LEJOS[mundo.lejos](E, mundo, o); return r && r.actualizar ? r : { actualizar: function () {} }; };
 })();
 
@@ -1447,7 +1453,9 @@ M.pista = function (E, mundo, o) {
   var cielo = M.cielo(E, mundo), luces = M.luces(E, mundo);
   E.fog.near = mundo.niebla.cerca * 1.6; E.fog.far = mundo.niebla.lejos * 1.7;   /* en la carrera se mira más lejos */
   M.suelo(E, mundo, { cx: 0, cz: 0, r: 50, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
-  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 54 : 44, medioZ: mundo.id === 'selva' ? 54 : 42 });   /* los árboles gigantes, lejos de la cámara */
+  /* lo lejano se hizo para el laberinto (14 × 14): acá se le dice qué tan grande es esto y dónde no poner nada */
+  function libre(x, z, margen) { return lejosDePista(x, z) > W / 2 + .55 + (margen || 0); }
+  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 54 : 44, medioZ: mundo.id === 'selva' ? 54 : 42, libre: libre, copasDesde: 48 });   /* los árboles gigantes, lejos de la cámara */
   var vidaG = new THREE.Group(), vida = M.vida ? M.vida(vidaG, mundo, { cx: 0, cz: 0, w: 14, h: 14 }) : null; E.add(vidaG);
 
   /* ---------- el asfalto y los bordillos ---------- */
@@ -1494,12 +1502,13 @@ M.pista = function (E, mundo, o) {
   var cols = mundo.regalos, acento = mundo.acento;
   var arco = new THREE.Group(), pA = pos(1.2, 0), dA = dir(1.2); arco.position.set(pA.x, 0, pA.z); arco.rotation.y = Math.atan2(dA.x, dA.z); E.add(arco);
   var mPil = new THREE.MeshStandardMaterial({ color: '#2b2f3a', roughness: .5, metalness: .3 });
-  [-1, 1].forEach(function (l) { var pil = new THREE.Mesh(new THREE.BoxGeometry(.35, 3.4, .35), mPil); pil.position.set(l * (W / 2 + .9), 1.7, 0); pil.castShadow = true; arco.add(pil); });
+  /* alto: la cámara va a 1,75 y el semáforo a 2,55 le tapaba media pantalla al pasar; todo va por encima de 3,2 */
+  [-1, 1].forEach(function (l) { var pil = new THREE.Mesh(new THREE.BoxGeometry(.35, 4.6, .35), mPil); pil.position.set(l * (W / 2 + .9), 2.3, 0); pil.castShadow = true; arco.add(pil); });
   var letrero = new THREE.Mesh(new THREE.BoxGeometry(W + 2.2, .9, .18), [mPil, mPil, mPil, mPil, new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') }), new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') })]);
-  letrero.position.y = 3.2; arco.add(letrero);
+  letrero.position.y = 4.3; arco.add(letrero);
   var focos = [];
-  for (k = 0; k < 5; k++) { var fm = new THREE.MeshBasicMaterial({ color: '#3a1010' }), f = new THREE.Mesh(new THREE.SphereGeometry(.13, 12, 8), fm); f.position.set(-1 + k * .5, 2.55, .12); arco.add(f); focos.push(fm); }
-  var caja = new THREE.Mesh(new THREE.BoxGeometry(2.8, .42, .16), mPil); caja.position.set(0, 2.55, 0); arco.add(caja);
+  for (k = 0; k < 5; k++) { var fm = new THREE.MeshBasicMaterial({ color: '#3a1010' }), f = new THREE.Mesh(new THREE.SphereGeometry(.13, 12, 8), fm); f.position.set(-1 + k * .5, 3.55, .12); arco.add(f); focos.push(fm); }
+  var caja = new THREE.Mesh(new THREE.BoxGeometry(2.8, .42, .16), mPil); caja.position.set(0, 3.55, 0); arco.add(caja);
   function semaforo(n) { focos.forEach(function (m, k) { m.color.set(n >= 6 ? '#3cff6a' : (k < n ? '#ff3030' : '#3a1010')); }); }
   /* tribunas a los dos lados de la recta de largada, con techito del color del mundo y público */
   var gente = [], GENTE_N = 0, mPer = null, imPer = null;
@@ -1529,13 +1538,16 @@ M.pista = function (E, mundo, o) {
     for (var k = 0; k < 4; k++) { var gl = new THREE.Mesh(new THREE.SphereGeometry(.28, 14, 10), new THREE.MeshStandardMaterial({ color: cols[(j + k) % cols.length], roughness: .25, metalness: .05 })); gl.scale.y = 1.2; gl.position.set((k % 2 - .5) * .45, 2.6 + (k >> 1) * .5, (k >> 1) * .2); gg.add(gl); }
     var hilo = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, 2.4, 4), new THREE.MeshBasicMaterial({ color: '#ffffff' })); hilo.position.y = 1.3; gg.add(hilo); E.add(gg); globos.push(gg); });
 
-  /* ---------- banderines cruzando la pista (una malla por cada cruce) ---------- */
+  /* ---------- banderines cruzando la pista, solo en la recta de la largada ----------
+     Antes eran siete cruces por la vuelta, a 3,1 de alto: en el celular vertical se veían enormes y tapaban el cielo.
+     Ahora dos, más altos y más chicos: se ven de lejos y pasan por encima. */
   var JBn = new M.Junta();
-  for (k = 0; k < (baja ? 4 : 7); k++) { var sb = L * (k + .5) / (baja ? 4 : 7); if (Math.abs(curva(sb)) > .05) sb += 6;
-    var pi = pos(sb, -1 - 1.1 / (W / 2)), pd = pos(sb, 1 + 1.1 / (W / 2)), alto = 3.1;
+  function enRecta(s) { for (var i = 0; i < 8 && Math.abs(curva(s)) > .05; i++) s += 2; return s; }   /* que no caigan en una curva */
+  [enRecta(8), enRecta(L - 22)].forEach(function (sb, k) {
+    var pi = pos(sb, -1 - 1.1 / (W / 2)), pd = pos(sb, 1 + 1.1 / (W / 2)), alto = 4.6;
     [pi, pd].forEach(function (p) { JBn.pieza(new THREE.CylinderGeometry(.05, .06, alto, 6).translate(p.x, alto / 2, p.z), M.col('#ffffff')); });
-    for (var q = 0; q < 14; q++) { var u = (q + .5) / 14, x = pi.x + (pd.x - pi.x) * u, z = pi.z + (pd.z - pi.z) * u, y = alto - .1 - Math.sin(u * Math.PI) * .45;
-      var tri = new THREE.ConeGeometry(.16, .34, 3); tri.rotateX(Math.PI); tri.translate(x, y - .17, z); JBn.pieza(tri, M.col(cols[(q + k) % cols.length])); } }
+    for (var q = 0; q < 16; q++) { var u = (q + .5) / 16, x = pi.x + (pd.x - pi.x) * u, z = pi.z + (pd.z - pi.z) * u, y = alto - .1 - Math.sin(u * Math.PI) * .35;
+      var tri = new THREE.ConeGeometry(.11, .24, 3); tri.rotateX(Math.PI); tri.translate(x, y - .12, z); JBn.pieza(tri, M.col(cols[(q + k) % cols.length])); } });
   E.add(new THREE.Mesh(JBn.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6, side: THREE.DoubleSide })));
 
   /* ---------- carteles de curva (flechas rojas y blancas) y flores ---------- */
@@ -1557,11 +1569,18 @@ M.pista = function (E, mundo, o) {
 
   var mo = new M4(), q4 = new THREE.Quaternion(), e3 = new V3(), vT = new V3(1, 1, 1);
   return {
-    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces,
+    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG,
     actualizar: function (dt, t, x, z, cam) {
       if (cielo) cielo.actualizar(t, cam || { x: x, z: z });
       if (lejos) lejos.actualizar(dt, t);
       luces.seguir(x, z); vidaG.position.set(x, 0, z); if (vida) vida(dt, t, cam);
+      /* lo que vuela se hizo para el laberinto y acá sigue al auto: lo que pasa pegado a la cámara se esconde
+         (una mariposa a un metro llenaba la pantalla). Solo se esconde y se vuelve a mostrar lo escondido aquí:
+         la estrella fugaz maneja su propio «visible». */
+      if (cam) for (var j = 0; j < vidaG.children.length; j++) { var vo = vidaG.children[j]; if (!(vo.isSprite || vo.isMesh)) continue;
+        var gp = vo.geometry && vo.geometry.parameters, tam = vo.isSprite ? Math.max(vo.scale.x, vo.scale.y) : ((gp && gp.width) || 2);   /* los rayos de luz: altos y angostos, cuenta su ancho */
+        var dx = x + vo.position.x - cam.x, dy = vo.isSprite ? vo.position.y - cam.y : 0, dz = z + vo.position.z - cam.z, lim = 3.4 + tam * .6, cerca = dx * dx + dy * dy + dz * dz < lim * lim;
+        if (cerca) { if (vo.visible) { vo.visible = false; vo.userData.ocultoCam = true; } } else if (vo.userData.ocultoCam) { vo.visible = true; vo.userData.ocultoCam = false; } }
       if (imPer) { for (var j = 0; j < GENTE_N; j++) { var u = gente[j], salto = Math.max(0, Math.sin(t * 6 + u.f)) * .12;
         e3.set(u.p.x, u.p.y + salto, u.p.z); mo.compose(e3, q4, vT); imPer.setMatrixAt(j, mo); } imPer.instanceMatrix.needsUpdate = true; }
       banderas.forEach(function (b, j) { b.rotation.y = Math.sin(t * 2 + j) * .35; });
