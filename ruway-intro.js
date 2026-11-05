@@ -1130,7 +1130,8 @@ I.createTrujilloPlaza = function (escena, op) {
   [[0, 56.25, 0], [0, -56.25, 0], [56.25, 0, 1], [-56.25, 0, 1]].forEach(function (c) {
     for (var i = -4; i <= 4; i++) { var g = new THREE.BoxGeometry(c[2] ? 11 : .55, .02, c[2] ? .55 : 11); g.translate(c[0] + (c[2] ? 0 : i * 1.1), .005, c[1] + (c[2] ? i * 1.1 : 0)); obra.pieza('piedra', g, C('#e6e3dc')); }
   });
-  var J = jardines(obra);
+  /* op.sinJardines: el laberinto de Trujillo pone sus setos en la plaza; los jardines y arbustos de la intro estorbarían */
+  var J = op.sinJardines ? [] : jardines(obra);
   /* el monumento */
   var MO = I.createPlazaMonument(obra);
   /* palmeras reales, árboles de copa ancha y arbustos recortados */

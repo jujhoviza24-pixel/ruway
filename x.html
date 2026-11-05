@@ -6,7 +6,7 @@
      dedicatoria, canción y nota de voz. -->
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v45">
+<meta name="ruway-version" content="v46">
 <!-- GENERADO POR construir.js desde Experiencias.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -92,6 +92,16 @@ button:focus-visible{outline:3px solid var(--oro);outline-offset:2px}
 .pj-creditos summary{cursor:pointer;font-weight:700}
 .pj-creditos p{margin:6px 0 0;line-height:1.4}
 .pj.on{border-color:var(--rosa);box-shadow:0 0 0 3px rgba(255,122,168,.25)}
+/* los que todavía duermen: su silueta, un candado y, al tocarlos, cómo despertarlos */
+.pj{position:relative}
+.pjs.de3 .pj{grid-column:span 4}   /* 9 o 6 personajes: de a tres por fila, sin una casilla sola abajo */
+.pj.bloq{border-style:dashed;color:var(--tenue)}
+.pj.bloq canvas{filter:brightness(0) invert(1) opacity(.26)}
+.pj.bloq::after{content:'🔒';position:absolute;top:4px;right:6px;font-size:13px}
+.pj.nuevo{border-color:#FFC94A;box-shadow:0 0 0 3px rgba(255,201,74,.22)}
+.pj.nuevo::after{content:'✨';position:absolute;top:3px;right:6px;font-size:14px}
+.pj-nuevo{margin:2px 0 4px;padding:7px 12px;border-radius:12px;background:rgba(255,201,74,.16);color:var(--crema);font:800 13px Nunito,sans-serif}
+.pj-pista{min-height:34px;margin:-6px 0 12px;font:600 12.5px/1.35 Nunito,sans-serif;color:var(--tenue)}
 .avopc{text-align:left;margin:-2px 0 16px;display:flex;flex-direction:column;gap:9px}
 .avopc .fila{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .rw-vista{display:flex;flex-direction:column;align-items:center;margin:-4px 0 2px;background:radial-gradient(circle at 50% 40%,rgba(255,255,255,.14),rgba(255,255,255,0) 70%);border-radius:18px}
@@ -118,6 +128,16 @@ a.suave{cursor:pointer}
 .cruz{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,50px);gap:6px;justify-content:center}
 .cruz button{max-width:none;height:auto}
 /* isla de bloques y carrera */
+/* el laberinto de los mundos: el cartel del mundo y el botón de la pista */
+.mundo-cartel{position:fixed;left:50%;top:34%;transform:translate(-50%,-50%) scale(.96);z-index:6;text-align:center;pointer-events:none;opacity:0;transition:opacity .6s,transform .8s;
+  padding:16px 26px 14px;border-radius:22px;background:linear-gradient(180deg,rgba(20,11,38,.55),rgba(20,11,38,.25));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);color:#FFF1DA;text-shadow:0 2px 12px rgba(0,0,0,.45)}
+.mundo-cartel.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.mundo-cartel small{display:block;font:800 12px Nunito,sans-serif;letter-spacing:.14em;text-transform:uppercase;opacity:.85}
+.mundo-cartel h2{margin:4px 0 2px;font:700 34px Fredoka,sans-serif;line-height:1.05}
+.mundo-cartel p{margin:0;font:600 14px Nunito,sans-serif;opacity:.9}
+.pad .lab-pista{flex:0 0 74px;height:74px;border-radius:50%;align-self:center;font-size:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+.pad .lab-pista small{font:800 11px Nunito,sans-serif;margin-top:2px;color:#FFF1DA}
+.pad .lab-pista:disabled{opacity:.45}
 .pad .joy{position:relative;width:124px;height:124px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.2),rgba(20,11,38,.4));border:2px solid rgba(255,255,255,.35);touch-action:none;flex:none}
 .pad .joy i{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:rgba(255,241,218,.9);box-shadow:0 4px 12px rgba(0,0,0,.35)}
 .isla-ui #joy{position:fixed;left:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;z-index:6;
@@ -373,7 +393,56 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
      palabras. Esos tres solo hacen latir la mochila; los demás avisan si no hay nada abierto. */
   var CALLADOS={primero:1,todos:1,fin:1};
   function logro(id){ if(!P||P.logros[id]) return; var l=LOGROS.filter(function(x){ return x.id===id; })[0]; if(!l) return;
-    P.logros[id]=Date.now(); guardar(); if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',l.txt); }
+    P.logros[id]=Date.now(); guardar(); var amigos=desbloquear(id);
+    if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',amigos?'¡Despiertan '+amigos+'!':l.txt); }
+
+  /* ---- los amigos que despiertan (personajes que se desbloquean) ----
+     Con quién se juega se elige en el teléfono (ruway:pj), no en el regalo; por eso lo que se
+     desbloquea también es del teléfono: una sola llave nueva, ruway:desb = {v:1, l:{logro:fecha},
+     vistos:{logro:1}}. Cada logro despierta a una pareja. Quien despertó a unos con un regalo los
+     tiene en todos los demás. Los desbloqueos salen de los logros que el núcleo YA cuenta, así que no
+     hay un segundo contador que pueda desacordarse. Un regalo de recuerdo (TONO) no suma ni muestra nada.
+     Los logros nunca se quitan: no hay rachas que se rompan. La tabla lleva solo los personajes que
+     existen: un logro sin personajes todavía igual se anota y, cuando lleguen, ya están despiertos. */
+  var DESB_LL='ruway:desb';
+  /* los nombres (nov-2026): cortos, en quechua y fáciles de aprender. Los ids no cambian (oso, conejo…). */
+  var PAREJAS=[
+    {logro:'',ids:['oso','conejo'],nom:'Uku y Puyu'},
+    {logro:'',ids:['panda','qori'],nom:'Nina y Qori'},
+    {logro:'',ids:['mono'],nom:'Kusi'},
+    {logro:'primero',ids:['vaca','shiba'],nom:'Tika y Sami',txt:'Tika y Sami despiertan cuando abras tu primer recuerdo'},
+    {logro:'coleccion',ids:['explorador','nova'],nom:'Rumi y Chaska',txt:'Rumi y Chaska despiertan cuando juntes 20 cosas lindas en tu mochila'},
+    {logro:'fin',ids:['exploradora','paladin'],nom:'Wayra e Inti',txt:'Wayra e Inti despiertan cuando llegues hasta el final'},
+    {logro:'vuelve',ids:['myke','lavender'],nom:'Yaku y Urpi',txt:'Yaku y Urpi despiertan cuando vuelvas a abrir tu regalo otro día'},
+    {logro:'fiel',ids:['tensy','leo'],nom:'Kantu y Ari',txt:'Un secreto despierta con los días',secreto:1},
+    {logro:'todos',ids:['atuq'],nom:'Atuq',txt:'Atuq despierta cuando veas todos tus recuerdos'}];
+  function dLeer(){ var d={v:1,l:{},vistos:{}};
+    try{ var x=JSON.parse(localStorage.getItem(DESB_LL)||'null');
+      if(x&&typeof x==='object') PAREJAS.forEach(function(p){ if(!p.logro) return; var t=x.l&&+x.l[p.logro]; if(t>0) d.l[p.logro]=t; if(x.vistos&&x.vistos[p.logro]) d.vistos[p.logro]=1; }); }catch(e){}
+    return d; }
+  function dGuardar(d){ try{ localStorage.setItem(DESB_LL,JSON.stringify(d)); }catch(e){} }
+  function parejaDeId(id){ for(var i=0;i<PAREJAS.length;i++) if(PAREJAS[i].ids.indexOf(id)>=0) return PAREJAS[i]; return null; }
+  /* anota que un logro despertó a su pareja; devuelve los nombres si es la primera vez y hay a quién nombrar */
+  function desbloquear(id){ if(TONO) return ''; var p=null; PAREJAS.forEach(function(x){ if(x.logro&&x.logro===id) p=x; }); if(!p) return '';
+    var d=dLeer(); if(d.l[id]) return ''; d.l[id]=Date.now(); dGuardar(d); return p.ids.length?p.nom:''; }
+  N.desb={
+    /* ¿se puede elegir? Quien no está en ninguna pareja (Ruway, Killa, "Mi avatar") no se bloquea. */
+    libre:function(id){ if(window.__RUWAY_DESBLOQUEAR_TODO) return true; var p=parejaDeId(id); if(!p||!p.logro) return true; return !!dLeer().l[p.logro]; },
+    /* lo que se le dice a quien toca uno bloqueado (nunca dice qué personaje es el secreto) */
+    pista:function(id){ var p=parejaDeId(id); return p&&p.logro?p.txt:''; },
+    secreto:function(id){ var p=parejaDeId(id); return !!(p&&p.secreto&&!N.desb.libre(id)); },
+    /* las parejas despertadas que todavía no se han mostrado al elegir personaje */
+    nuevos:function(){ var d=dLeer(); return PAREJAS.filter(function(p){ return p.logro&&p.ids.length&&d.l[p.logro]&&!d.vistos[p.logro]; })
+      .map(function(p){ return {nom:p.nom,ids:p.ids.slice()}; }); },
+    mostrados:function(){ var d=dLeer(), c=false; Object.keys(d.l).forEach(function(k){ if(!d.vistos[k]){ d.vistos[k]=1; c=true; } }); if(c) dGuardar(d); },
+    /* despierta a todos (para quien arma o prueba la tienda; no cambia nada del regalo) */
+    todos:function(){ var d=dLeer(); PAREJAS.forEach(function(p){ if(p.logro&&!d.l[p.logro]) d.l[p.logro]=Date.now(); }); dGuardar(d); }
+  };
+  /* la línea de la mochila que dice a quién despierta cada logro (el secreto no se nombra) */
+  function amigosDe(logroId,si){ var p=null; PAREJAS.forEach(function(x){ if(x.logro===logroId) p=x; }); if(!p||!p.ids.length) return '';
+    var t=p.secreto&&!si?'Despierta a alguien secreto':(si?'✨ Despertaron: ':'Despierta a: ')+p.nom; return '<small class="rn-am">'+t+'</small>'; }
+  /* lo que ya se había ganado en este regalo antes de que existieran los desbloqueos también cuenta */
+  function desbAlDia(){ if(P&&!TONO) Object.keys(P.logros).forEach(function(id){ desbloquear(id); }); }
 
   /* ---- lo que llaman las experiencias ---- */
   N.iniciar=function(o){
@@ -384,6 +453,7 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
        lleva nada de juego: ni mochila, ni Pase, ni avisos de logros, ni premio. El progreso se
        sigue guardando igual (mismas llaves), solo que no se muestra. */
     TONO=(o.tono==='memoria'||exp==='vela'||(D.extra&&D.extra.publico==='memoria'))?'memoria':'';
+    desbAlDia();
     TEMP=(D.temporada&&AMB[D.temporada.id])?{id:D.temporada.id,ic:String(D.temporada.ic||'').slice(0,4),nom:String(D.temporada.nom||'').slice(0,30)}:null;
     if(o.ambiente!==false) ambiente(o.ambienteZ);
     var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
@@ -1198,7 +1268,7 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
    +'.rn-it i{font-style:normal;font-size:26px;display:block}.rn-it b{font:800 18px "Baloo 2",sans-serif;display:block}.rn-it small{font-size:10.5px;color:#8A7A66}'
    +'.rn-barra{height:10px;border-radius:9px;background:#EADBC6;overflow:hidden;margin:12px 0 4px}.rn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--rn-sol),var(--rn-rojo))}'
    +'.rn-log{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:#fff;margin-bottom:7px}.rn-log i{font-style:normal;font-size:24px}.rn-log.no{opacity:.45;filter:grayscale(1)}'
-   +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}'
+   +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}.rn-log small.rn-am{display:block;margin-top:3px;font-weight:800;color:#B25C84}'
    +'.rn-cerrar{display:block;width:100%;margin-top:12px;border:none;border-radius:999px;padding:13px;background:var(--rn-verde);color:#fff;font:800 15px "Baloo 2",sans-serif}'
    +'.rn-pie{text-align:center;color:#B3A58F;font-size:11px;margin-top:10px;letter-spacing:.2em}'
    +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
@@ -1365,7 +1435,7 @@ body.bita .pista{bottom:calc(150px + env(safe-area-inset-bottom,0px))}
           +'<div class="rn-barra"><i style="width:'+Math.min(100,tot/20*100)+'%"></i></div><small style="color:#8A7A66">'+(tot>=20?'¡Eres coleccionista! 🧺':'Junta 20 para el logro Coleccionista ('+tot+' de 20)')+'</small>'
           +'<p style="font-size:13px;color:#5E6655">Todo lo que juntas en los juegos se guarda aquí, en todas las experiencias de este regalo.</p>';
         cuerpo.innerHTML=h;
-      } else { h+=LOGROS.map(function(l){ var si=!!P.logros[l.id]; return '<div class="rn-log'+(si?'':' no')+'"><i>'+l.ic+'</i><div><b>'+l.nom+'</b><small>'+(si?l.txt:'🔒 '+l.txt)+'</small></div></div>'; }).join('');
+      } else { h+=LOGROS.map(function(l){ var si=!!P.logros[l.id]; return '<div class="rn-log'+(si?'':' no')+'"><i>'+l.ic+'</i><div><b>'+l.nom+'</b><small>'+(si?l.txt:'🔒 '+l.txt)+'</small>'+amigosDe(l.id,si)+'</div></div>'; }).join('');
         cuerpo.innerHTML=h; } }
     c.querySelectorAll('.rn-tabs button').forEach(function(b){ b.onclick=function(){ ir(b.dataset.p); }; });
     ir(pestana==='pase'&&!PASE.length?'rec':(pestana||'rec')); };
@@ -1485,7 +1555,7 @@ var MAPA = { c:'rcod', cod:'rcod', rcod:'rcod', para:'rpara', rpara:'rpara',
                 tit:'rtit', rtit:'rtit', tem:'rtem', rtem:'rtem',
                 v:'rver', rver:'rver' };
 var ISO = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIIAAAB7CAYAAAC4nlgsAAAxL0lEQVR42u19e3hT15XvOpJlybYsybb8QLKNbWwjwA/8oAkmBEMJzWCmkDQNbXJn0nxTOjd0mkwnzbQzHSjgme9rv95MbjszZG5pb9NOSwtpCE5jQg3l5dhAjG2wMQhbYGM9LEuyLVl+ybJ07h/ysre2z5GO/ACmN/v79CGLo3OOzv7t3/qttddeG+DT9mkDAOZP8UfZ+4xpS3FedVpGP8MA+ylsPm2fMsKjMMp/fPgntlf3fi0FAKCvp12+LKtwBP99WPeF18d7U6dl9AMDwMB/L+ZgHsUOJ//+8eGf2AAAygvzpBUbNyvJhy/4R/onKyO9D1YUfSHS7zTWn3d52eapL9xS+fb7/TOfI3ixJS/LsD5qz1303wm1jfXnXQ9shMwDPAAAEqYs6oM1K6SHRNyP9lEEwSPHCCwLjMNqTOViA/wMWWEhHapUa3MAAFwO871Qn82HIWiwXmvv8tCs8CkjzKMhCCo2blamyaPjFwICpVqb42PZ7fdv1JXfv1FXDgDgY9nt9GcIivkwRMXGzUoSrCSIP9UI89QH5OjKzlBrhegCvg5TqrU5g3aTrvvc4WfxsxiVxphWuqvJ2nJy3bjTkkF+lpicrudih3DM0NfTLgcAWJZVOIL3T7PCp4wgsP348E9s//6f6TYcYUJAwPgnK8ONWmvLyXXk3+NOSwYJAvKzQbtJF+o6fNcj7xOZocLnE5GmbqniHH8SjIAP58eHf2JDOkVTkFOyQRTp6Mf3Lof5no9ltwMAkGwQrmVv2Xti9nwau5gRDZDnjIQpGuvPu7Iz1Frz7z/uaRSL/cgOj1KAKurREYmzIwZNAT3CwglA7PT7N+rko9bOVTjSs7fsPaFUa+xC7ydGpTEq1Rq7y2FJRvDEqDRGqXq5KyGzpBMAdLTpwHviAkTFxs3KxvrzZlirk5QTrPfqXmMqyz4aYIh6NEAQ8BTKC/OkafLoeOvIpHt8aHiYZgIuAPhYdrvbcktubn5/FUnx2HmsKLoN/1brKusc+gvbwt1TXFr+bXwvS8yqZfyTRQAATsPlAqfhcgEAgFWlMcal5d+O16weETPMKQQi45+s5AJDdoZa2210mOnPA7/94WuGh24a+ExCOBA4zR3Pk6MeOx47h2QAl8OSjO/DmYcYlca4ctveU/gd+jxuyy0533VV2jXHw5mLe60NfuvIpBtF5KNiIh4KEFgABlgcDcEgoE0CDQBTa+0zE4M9VbTypztsqLc13+O4P+PG4TEk3fNpAzyOFJdS9XKXV5ExmaJS9yjVWgkAa8FjaFCkle5qEjPMKT5APIpgeDhAYAPX3b9/H4OqOvGJokQAgJgEhQLnEDSZK9Gkgrn5/e+RLl5cWv7t9KKt3XwdjxQfr1k9giPb5bAkhwIDLRCRFdyWW/IRW48XTQQCIyGzpJMPFHyAQPeSNBMkGB7WPAXzMEAQigkAABAAA6ZO37i96zlkAHL0kzRNd7wQYUiDgU9Qkt4CAMCg3aSjrzsLisB99V0/JSXvWVv2zEGaHUhAeNnmKQCATU9+K+lhgeGBAwE1AQZb0EWMSVAoSBCQJoAGAEnZXJ1Pd16wuPQnkWCwtpxcR5qWUN+lvw8AYGo7m02Cgr5PZAhZYlZteknV+yQzjA8NDwMAWEcm3dHX9d5Gsdj/sJjhgQCBxetM6wIyYpgmj45HECzLKhwZ7L25cejOmZ+HAwCtC0KNYiEdutDv0gzFBwi1rrJOpV1znDQTCIjBj9sGSTA8SM3w4IDABjQBHSxCTcD4JytJFlDrKuvSi7Z2kw9SrausC0X9QjoxVKcu9PskSzj0F7aRQMbPaHNh6b1zjQSD0X15aNOT30oCeLAZUcyDAgEXE2DUkI8FelpqN3gc95WsKLpt2drtnsUEAF9HRnouPmYBANCf/Wn6xGBPlSp3/c2s0qoGmh0SVj71cmJmQT0yw4yLa3SYr7V3eQ4dqmaxl5baTCw9EKbFIR8IXMbWwzhSaBZYDBPwIMAgRIeQv4VkB7Wusk6ZUbIXNQOXWwkAsNTMwCw1E6CLyDV/YG5+/0doClC197TUbnAaLhcgKPjOv1QgWKzr0Cbn/o268lFr5yqperkL2QG9FlliVq227JnXSM1gHZl0e9nmqRs3FT5khqUEA7PUIKjw+USTa3USUhNoMleWY1wATQHA7OwgTgP7WH8SdgSfLcfPF8u+LwXo8Dpc7HCn7vD2caclA70K1Ax0nOHQoWp2KU3E0gBhOmD0wbu/lNHmYEXxui0kCDCca205uY4VRbfptn7VtBjqP9Q5hAJgsZiHvp7+7E/TGf9kEYIBtQSKSEvvnWukawkQmLhaSreSWQoQ8JkDVZJy00R/xyEaBN3nDj+r1lXWLS/edm0pRjUXgzxoIIgZ0QB5bdQJaBL5wIBACDITSwAG8WKbhP3+AAiKC4bFYkYjAgCQR4ulJAhkiVm1uqf+utnUdjbb0vTujvmCIHBNNjbcMSKGGY/keL7vhupoFthYrmOx80UMMy5imHEW2FiXw5Kckl1sjknV9XafO/zslM8/mLP+uV5n373+iSFj+fiQuUSzZsuRCY8rXuafgpFJ36Q2PksZo7rr+e2xbezmi5fgwEFgDj6KjMACMPv3zYJAwpRFkcLQ0nTs/AwItn7VRI4InNvnyhV8mKaBjw0iZRX6nLRXgYyYXrS1G5mBFJAkMwRFIJdl9C8WM4gXCwTAAgzaS6IyUguixYxGNMc7GDKWx6g0RmSCxQCBkBHONVKFsAJtTlhgY/HFdbzLYUn2jLnj6JcsNn6MPCY6Vs6KGdEAMoNSrbHHpOp6LU3v7ohJ1fUuL9zc4TTfzpoYMpaPO60rNKs3fTBkNbLJqQnJMv8UuBITpiy2Qd/VpubR85s2MRcvXYKDjwIjkB4CMgHqAtJFJL2D7nOHn50vCEgvYSEjczHYA2c9jVNR8ca+exl8x2UsyzEW5RQ2kzOaGBuhZ0RRM1w//k9/TcYZ7rU2+Enx6GWbpyRMWdS19i7PoepqdqHMsChAcPQFAkZ4czh/4B3o3eQd7PwRxgkQBEspDBcDCEI6v9HYu1rIOe0O20w6e7I6xVO1YedJekocgUEyJT4rjEB6/GwrGWMgXUsAgOrqav9DMw0sAHPge8BMjZdMednmqYz49QnyaLEUAEASI5V6zE01ZLDo/sf/VRkVm/RxXsXzrS6H+Z4sVpEQqXBjgY0VM6IBUnwtns6ZS/0uhyVZFhs/5nJYkk+c+dWLXcY7upZ7XelxsXE+IeeMi43zjY2NRgEAmC19UVduXC4oyS/spkGAAtJl1qeO9Om12sItN2JSdb3O7qZVjG+iTLvqiS63a8AiiZFKUUACAGT12dnEohHRylXb4NKlS/NmBdGCTAIA+P37ZmgK/y+nZIPIP2D4lxlqmw6cAABgnGAhwnCpmYFsOFLfqTmy2+6wSe0OmzRZneJZyDm/88Nvf+kP50+tIUPnCIaV2/aeAgDoaandoFRr7DEqjXHcackwtdY+g1lbOFsLAJD4RFHijZsKX3HBsJhdAMPPmxEOEF5CWopHJGY0Inm0WJpTskHU21xbNTl499UYlcaYU7G7ydR2NnvY1F5avPMf/iOUO0aLMvoVbvSSFL8QtqBZ4My1T1ZNTHggRhZg+bGx0SihjECyQoxMChMTHhgdHWX0hpvZKkWiOz+/8D5eD4WlRKl1Wpvf3xSTquvVFm65Ye04Vz417swHSXxrasbKdLdrwIKsMDLpm7TYBn0ZqQXRv9YV+ObLCvNmhP37AuKwuGBYnBG/PgG9hL6edjnqgrTSXU0uhyWZtHt0xy/2KA8XABIzooFQx5C2+61fvLm702CQhrP9kbbUlBQWAODXJ362ldYK+LdaV1nXfe7wsy6HJRmf3UR/xyE8R0yCQoHPvLhgWEwz9QMBAl5MwpRFSZiyKBQvpEmQJWbVKtUau7Xl5DpcJzBoN+m4Op4PBC6HJZl8LTYoQoHgOz/89pf6bbaghzrkHJ43GJLVKZ5kdYonQaUIAkNtQ80u2hQBAKQXbe2OUWmM1paT60gT4TR3PE+aiDR5dDxplvfv28fs27cv4n6NmhcIWIDi48NiWhsM9t7ciLOJuq1fNfW01G4Yd1oy1j7/z/+H/JGhOt7mdGQ1dTSs5RuBaJ9RfZMdSIZz52MOSBDg5/02G4OdhmDAzgzVMpblGI199zLqGxtlfKyQmpLC1jc2yjLTVq164rHK2+TvQEZFVph+n+HQX9im0q6pBIA5Xld5YZ4UvYgl1wgHpsPIK/qimLS88sSRSd8kxgwGDQ2vT40789W6yjpWLJNYm9/fpNZV1ilSc5w4QrnststhSW662fjktVtXHrPY564LRBAMOYdhYHAw6pZeL2k3tK2x2O8VJ0y6hlKyi82kbQ8V/OHzDLhAgG10dJSRx8XN/I1agdYLGctyjBuLnzyfn6nT5+eVOtrvNOW/+25N9MjICHPXcJ8xm/pmXtb+flFMTAAjqoQYTaFuXQsdgJLFxo9N+fyDQ10NxdrCLTcmPOOyiUFTypjLLtbq1g+7XQOWqQmPRx4tlmI/KBJUPott0Ldp0yYmEr0QFSkboEAcLR5lJkcm3Wineptrq7zTgaP0oq3dPS21G/B9KBPQZWhbx8UAXC1BpYAh5zCkpqSw/TYb02+zyeobG3fomhrYr+zcc4z0zyP1DPhAwNXQRCSoFEGxAQBGAwASl8PsnTm3Kh7k8XHBwHe6weV0w9UrLSKlKh5SU1KkfKYvvWhr9x1r5ypT29nsrNId3dcNlwumWfd9NA90EiyII/cB5qURyAgiaoPxgZ6nAQJZxS6HJdlpuFyAkUS+drTm7T1CQRCq6TsNDOmSRaInUH+89Ys3d0dyzfzcXM9Xdu459sLOV47wAc/usEnl8XGQrtX4aTCQoLh4qUF8pf16Ct+9x6Xl3w4kxbIWta6yDiCw0ovUCuRyAJz1jUQ4RgYENnhqGdlgsPfmxihm8s+QAYZ6W/PJhaT0gwdgNEdr3t6zEOXN1U6e/s2WozVv7xEKhgB7aCW1DTW7aGFIt2kGYvJzcz3ffOl1HgCwltlzm736TgOTrtX4ASAIDEpVPChV8UFgGBi+X8F3bWRVU9vZbFywM2rtXEWuAkNWmFyrk8xHJ0TMCNHX9V7aUxi3dz1HsoHHcV+JbEAvRVOqNfb6T04X8bllfIpb6LH1jY0yoWBQqrUSU9sZKZ+go8Xdd1986cMAALQSvnO7HGYvgmtOh06DgQsQ4Z4HsoJSrZWgBzFg6vThOhDSndyxfo26vDBPun/fPkYoKwgGAiahTq7VSZAR8P/QU0gv2trtttyS0wCgbXFL+5VcIcqbCwy0+zV/MDAal8Ps/emZj6rCXXtjRcXEN196/Rgm1vL9vtnfaPbaHTYp1z0iQ9CmYn3pZ8+HugdkApfD7MVBhgMQILAmBMGAWqHC5xMJBYNIKAgAAkvUvGzzFDnF3NtcW4VxA6Qscll5sEkI+M20P066XEImbxaLGYSYhBef/auzL+zcW4vgCQBg1gSQwMLfiWyQoFJAODDI4+NAqYqHuNhYfziAAQAM9bbmIyvgAMS1ouTxk2t1Ehy0i8IIiCZcnJIRvz6BnP0Sw+Q2AIBla7d7XA5L8rjTkoHo5WKDUBRo7LuXkbEsx1iRkXkLXwgODMhwRehCgYGO3JFsEMokpKaksN9/4we/feKxza4A3fMBAEEQWAiLICAZjA8M6VqNf8Q9Cjpdnj9wndCmLK10VxMu9JWql7tQNDL+yUp6HgLXU76692spQiaoIw4oWQmXkTQLOLGEIpHLT8cRSD6YToNB2m+zMXp9l+g7f7v/7MbPfK4DRxcAQFaQAJtlFezoUPdqMltE3/nht7/0/Td+8FsSAEq1FrhsOGkKAi6hVjILAj4AzN5bqHOiy0t/Lo+Pg40VFRPTIEsO5+Zap81DQmZJp9NwuWDE1uNVadcAyQwB81DmRhYH2MewUB0yz1EkJIqIaemkNohJUCgGe29uBAisTiJFTTh6T1ApQN9pYE5+8JH4gw9Oi/X6LhFpM2f98OARqFRr7Eq1xv7CzleOvLBzb+333/jBbwMPkUdtazV+k9kiqm2o2YWdiufnA9HGioqJF3a+cgSvLyQm0dPyYTYXCITomrKStb4Xdr5yJJL4B4adyYGIHgRdagj7LRwriISAoLwwTzpaPMqQEx7LsgpHRuz3FeTkEilquMwCBoP0nQbm6pUWkcvpDgq46O81beZyxUKp81CAMJktolkTEQABKnr8v7kg2Fsr1PXsafkw+2jN4apQSSrhwPDNl14/FgkIyNgMOQDJllOyYSZVcHKtTlJemCd1WI2poURjSEYgmYDMPKL1AYqYUGIHvYnm1uviq1daRGTUDe2lvtPACH0oaLNpQOCDNpktIhRlen2X6J2aI7uRFbjYAEUhGRXEmAcNgKM1b++pbajZJTRLKZQGQZaLJAqK94E6YcDU6SNZgdQK2Brrz7tCsYI4XCg5tXhlNGkSJDFSKQCAQpFQMWztWiWRxsZoC7fc6G8/WxiXln8b5xXIByeLVahu3O9ac+Xa5aTbt7oYBAEAQLQ0GhSK+JlbNDl61qzKzO+WxSpUAEw8ALhDPZhAbJ6Jxw5cv7aiwwNjuU6XU6zXd4kmJ73gcrrBMTggAvFodpfxjq7XaIxSKOJZk9kiUiji2b/b88aVHE2GxTPm9iNryGIVYlmsQuxymL0Ow9XUD6/84YvnGk5VnL96oWBgcDDK75+KijRLCfMRSouLPX/55y+/F2koHNvA3aY8r3dcnpBZ0unsblolT86MlSlSOgAAGNaXBYy4Z8RpiyYzma61d3nOn+dPdo3iMwnl784tHYsok4qYEgAAeUqWBABu074un0eg13eJSBAgG5CjZMg5DLUNNbvI2cVIW9WGnSerNuyEt37x5u6LlxrEjz1e6idNB77vNBikL+586WpebrHZNb3CrP1up7q3oeYJUsjSXgrSPD0jKjQ0HXBHWTssoHkc95XK0iq7LDGrVqVd836QhA0ww7WYBIUiDYbBOjLpxqWHwMIEl4Fg+NigvDBPSiaj5pRsEPX1tMulIqYkKT0/iEl8LLudrjxCtz+cP7XmHw68sZU2CTRd4kNOVqd4KjIyb2FJmnCqndYPOLKP1hyuIqeFyXgF/i0kskjbdzogJgQMwjyR8A2rtJDV37BWk9Pc8TxdiGPOOkqOrOcoLrsA+yEoDzEmQaEwN7//LxODPVVjADDR3xFUFyhUNBHb44VrbSQTcD1kEgQAAI3G3tVg7F2dsSzHmJa4bCBFpe6hvuYlNQrabLvDJtV3GhgAAF1+LovnQzCQqee/efd3sSPu0Zl7osFJzzcgGITmJcwCYObZaBYCAmTeUWtnUNlAHIzjTkuGQ39hW8LKp15ellVYP+tOEjOT7FwKiAo3u5gmj44PpKXPlrTDZMr0kqr3lWptjtPcIWByR2PX6fL8aB5ok0CDgDYrLe1XcgHgMXIqmPbLaU/AbLSCyWyBL3/xOSA7n4xSpms1M/dEnoMPEHxgoM0EuZaBb2JqMRtd5m/ozpmfJ6XnfxWIBJbyb7yibjz8E9uBA8BAOEaY9hTYybWzrkhvc+2cC08M9lT5WNYDAHq+sDLddj395XP/bn5zK99DDkWvyeoUj91hk2J4mis4Q57XZLaIlKp4SNdq/HR4mgxxb6yomNhYUcEZ8+C6Fq0TyHuu2rDzJJqkpepwMrCE7zETjOvYZVmFI33QrkiDYWisP+8KZDHt8wBUh2aECp9PNFo8ykim2YCOYdMuoVKtSSLrGfJPxFiSP7d5e8fA8P0K0iaTbBCqCZ1rQLexrGStLz8310PO7HGBp7n1eiwCKDUlhcXvbN/0zFUOU8Q5g0n8KVnMUR9q5RU58Oj6kmSj+89fGz8JmQLcx2f+plQMAKCNz1ICAExNeDxZpZ812O+25IkYX14QyU1NRkuUWmdKdrGZTLHic/NcDkvyutIt9cNj/cW9RmNUOJNANlwkMjEROGx0dJQzOFL19OfGn/jMpm5JNBNX39goqztzLvr+faMoJkYGqSkpLH4vNSWFvdPZJQ64wgH3dXR0lOk1GqN6jcaoyy2N6e2GtjWDo/a8iSlvHMOIpZr0vFFZrEKMbmbgdynEFO27hXUzowm4x/ia+z2u1H9Ms1Ok5jjxmdpvn3ucPk6tq6yTKVI64pVqDbkwZjRr3JfVZ2f/9/GjKT98860RXka4cVPho3cdGey9uVG3dc97+rNHIIqZ/DNSKwBAUySU5nJYkqdDuHsiyUkQMlVctWHnydqGml1H3/tVHtp6FIH4/+R3rpReTzl5+jdbQnkHnQaD1O6w5QJAbnJHQ5AnExyBFMIC3F6OUDbg0l0o1IMGHYdLSbbR4lGGrIQ/hxHsfcY038TwFADAyKRvMjk1IVkSI5WmZqxMBwBQ55TdHnPZxX+0ja7Jkga2MYuSxhnpIJJQZijJL+w2D5jyhARmaEaQx8VBaXGx57mnv3Rt52d3ftxlvKP7v8d+vrbXaIzCUa5QxLMWi5VZ//hnfN94+Z8+8Iy5/Rgs8oy5/WvWlE3ueOrZ28Nj1hz8Hu0i0omqd6yWZeYBU54sSirWpOeNLiII3PTID8UIyMB9N05XTE24lSQTJOVVjIsYpmvGy1CqNfIETeeQ1ciOTPomxYxGZLENBi2GCaLX3x17TQIAkBG/PkHqt/0bTmjIErNq5SlZEqw+7jR3PE/WDMRlWvNtkS4snVXkWkn9J6eL/lhfl8tl/5EV/v7Vv7+z8TNPtwX775g/EAhRuxxmL5m3KES3BCeuLhQIc8FEswKd/IsrqC+6JZKnM5LvkfMQdJlgVhTdJkrK/S4ZU9j5/F+OcwLho3/8x6jJtTpJ0vitX5ImgJzkIEve0uVfZilrYapZSIpZl+GGtqmjYS1fMMhktohwrh+nofk6DO/Z5TB736k5sjuSGIFwMEQGBCHlfrAOJVnlFYuTc3kRssSs2vtjqq+EBQKyQrpHPBTqlklAkPafrEscKsq4EHDQLMA3z49T21/+4nNjOJkU+n5mGeKdmiO7hYIAvRlMp19sECAQuCqykUk3oQAQFAeRrU0GCAQMn9v9Iy/n7OP3vhf4+6JbEjLFCaNX0+7jzI/HDS3GnZYMLhGzGAxxtOZw1R/r63K5pnRpEKRrNf6AQBSSVxDoDKVaK9m+6Zmr2NGhXqRL+07Nkd38TDZ/dkQ2wIARbj5GPhu35ZbcabhcEA4EoyMTZ3HDMXI5whwgFK5+TbzpyW8llUV5/joUG6h1lXXZW/aeiNesHjG1nc2emWWb9m1jVBpjqLjCfAIoAIHMpHCeBp3kElljLQCsJS+32Dyfpe+hMpQW2si4Ab1eJL1oa3f2lr0ncM0DX1NlFv3+XmuDH9PYeANKN24qfBLmvAsSSo/BUAvIZLIqz+iwRBqn8MqTNH4sM+9j2e0kFcVrVp/AG4rXrD6xmCYB08tqG2p22R02Ka52ot09THejP5+2/RGvfkJXNJLv2B026XxWWoVzI32sPwmfLTkw3JZbciz+jaY6XrP6BG40MjIwG3KPSco6LUnKvGgyOtwSpiyKBkMQEA4dqmbfO/7alIQpi0op2vbxsqzC09TU5py9lMiFLJEmWQgFAW2zucCAICDZIBAlDJ8LOJ/GFekccg4DbS6D2YZPKwSSX0lzQOoEfJ+YnD5AVnGdnnwyoskYtXYa00p3Nam0a45jHuO0x3ABIHhD1Rs3FT5e04CuI05d3mtt8N9rbfBjbqKptfYZh/7CNtIWkQtZyNoD+H7+BStnmYDrf1HVJ6gU0G+zMS6nO2jOIV2r8Wemrfo4lLcQQeg4bENgXuru2hqJizifYBNpMjFLCbVb97nDzzrNHc/jZwOmTl9fT7scZyHxc3oH++Cd1BhgP7zc4eB0x6hNtZANaDHH5erwgYEfJIymy3BDS6aGc9lsTILV67tEXItNC1fkO5bCXoeaxFqsFq5wCIJ7eh/KoObQX9iGYCBzR7DQN8DcbYnnMEJxQaDuAX4xJkGhGLHfV9AgQAGDYU5SNEbS6VyfuxxmL9fiWBoMQ87hOSYhVD6B8DkAMpNaOAj6bTbmyey8swu9tqDJtbaz2aa2s9lYRGOOhzDtxtMbg9DeAi8Q8GAEw7KswhFc6Uw39AympjyaUMEQskSOEFcxlEgjwYDxAz4QRErvQR08nYwbCQhSU1LY0N5S5PTP6wpSm4txufiY1IogwMa1SFbENemEC11nO1N8lStKhelRUVFSy6i1cxWfWaBfJFiCv8NohCj1ZHWKB9mADwS6/FxWSJSSG4xmLxnuxmpqJADIXAUEZH5uroeok7BgEAgZPC6HJZnLPKBZoKu8o1MgiBFwI2tUmrKUwl+OjkycveiWSC66JRJyxzKhO6pxuUT0/9d/crpI6EMio4lc5gCZIzKhGOgsdFVpAITSA6kpKezs7ObSJaWQ4CbZBwtuYTBQkpj/GtdOtJ/vuOvhSl6dYy8OVVez7x17LSr6ut5LLqJMLtnxra0Dvb+XJy8fJgXIoN2kwxw64WKQ+8eFKmPL1bgSYGmVLsSvJ+caEAR8XgFtCvDvb770+rHpOZYlMwmhGELMMKdyP/v1U2pzx/M+VvIb3CvKOjIZlLh6DQAOCdEIDAB746bCN1o8ykRf13uRVsaHhoenRKrfe/xsK9oeU2vtM6TfPB8aFqILOMUSsYBFiLoWAoJ3ao7s7jQYpEj95IuPlciFKkvJBCQIZpOFtRJry8l1ZDhfpV1zHEEwPjQ8TLqMaBa41kCGXATbKBb7ywnXA086XRe4fGKwp4rxTxphuqIHfzAlNLIjAUFFRuathawwCgZAIAB2tObwHjp9LpQpwja7WHYxg2jhGZUUiuNOSwYrim4jA0goEEldEBD/Ct59oTg1QnV1tR/LuiIrkBcgo1UYXJKql7tGrZ2rIq2a7nJYkiOpfZCQWdLZaTBI5+sm4jK2QLWUs9kH3nz9b+ipbBSAfLUTgqunLCYIZhklnFkV5Txhp11cVhR9gUsXzOz+Ul0d+WroQ9XVnCaCBAMWxyCVazgQLIQNcGFKqOIW9GgmK5qiqXA5zN4f/ezAs//y61/sEFo7CT2RF5/9q7MHXv/XE+lFT3mEmUKh+kCYWcEaFCkqdQ+6uDHJeb/D/8coIl3OH80+33l5TQMDwLLV1bB/3z5fBfhEuEgiqFMhug4AqtyWW/L0oq3d1ukbTUxO1wv5UT0ttRuQDYQsHyvKKWy2OR1ZQgBAdIJ3mgHA5TAnv1NzZDcufhHSMLM52ASwqD/gQZoENL+B+R2txNpyUklHD8mBinUScHVTdYhrhtQIDADLHqqG/fv3+eFyh4NMau3raZcvL3lq9GcnuyVPWztXoU7ou35KmvjU10KyAdrnRmPvajobiN7fgA4Q1TbUrA0HAvJvUggKAQB2fJJieePjhWtts9lWjGY+s5iLyQaoDzCARM75DJg6fYmZBYHQf4JCASMO9+DHbYPXxGK/qFoUdjOw8BVTGIBDbDWLW/ehaBwfGh5ms6IvbJAzH4w7LX+GZWKtLSfX+Vi/iSvCSCr5j69eWNVpMEhDpYSRLDHto0vCsQDXzGRtQ82ukx98JOZzNzdWVExgHuSs+UCTYvZCYPZyHusVhZgF4SDAe0rILOk0tZ2Rk+bZ42dbyR3or7V3ebDw5gE4yIbb7kdYVTUmOCxJmoiYpKzTtMcQynaiWGu+efGzZJQu0okbPhBwRQlf2Lm39uff23cNl7eZzJagV31jo+zoe7/Ke+sXb+6ubajZ9fHVC6siD0YtrJP5dBQZeJutQaGVoOcQk5z3uxnhTkQRkb2FbvMjEoABlgxLkl7EvdYGvzx5+TDt0mAqFV2JHU2Cqe2MlIumuXz3IedwyGprCAASBDQgXA6zN6t0R/ff7Xnjik6X5x9xjwJXVLLfZmPqGxtlvz7xs63f+eG3v3S05u09CIhIK7oGg4F8hQcKn0bARFWXw+wdd1oyptjoj5LS88W4mikmQaEg95aO5C5FAgmBRVbAEjp4wcTMgvopNvqjcaclA80DvufzInDOnlTs/TYbQ3cgggEpm4sNwmUbK9VaCeqEvNxi89s/+NV7m57cIKjARX1jowwBQUYo5xs4mwsM4SDA2V2lWiuZ8Ram2RgbmaoeCRsINw1EVErClEWRrNDX0y7HGyL3FiATLGnTQPrtCIaNFRUTX9m55xj5GZa85ZpFpFmAb/IIHz6ew+Uwew+8/q8nvvzF58aE/m4uQCwMDOG9BXouhlxojGsdl5c8NUpPM3vZ5qmZvaQXmxFoVsBJKQw9Z5ZV1YZiBdIsXGm/nkILtW++9PoxnLDBRagLtbVzg1SBUYhxhBd2vnIkEjAgIN76xZu7sZDnwtmBHwRcbJBetLXb1HZGihupckURZ2aNI9w2OOJazIcOVbOlvaUMKRzDsQL5sMji04ECVljKLtBe2PnKEV1+7sxahSTF8sZwopAr1RwAYDbmEKzeyTWYu57+8rlIfj/qiB/97ODfLFaiargo4qzLyGhQi5E7y2PMAACgpeMvImaDeQEBGICWzBaWvIFwrECOnvrGRtnGioqJQFXT2V1LyAeKJgIgUGkl1O2ECkBZB/uSQk1G4VL92YKcwj2WIecwIDsshBXCLWvraandAACQVbqju6flw2yaDXAwIiP4/fthPpuIiyLEwIwHgaoUb4KLFdS6yjpaK5AsQI8oMhv6uy++9GE4AIQrrBFuWpu8nlAw0ELV7rBJaxtqdi2GieBa24j7XrgcZq/TcLmAZgMy+8jLNk+9uvdrKfPZFVY0D0JggQE4dGj2q1ysYGo7m437DOAehgAAfCxAdg7aQ7Jz8PNwrmSkLRIw8K2ssjts0ndqjiyYHeYwGrExGnoKssSsWnJiiYzp3Lip8KmXZfTP51rz3+5vv38GhXgz91ob/Mm6TcfRrqGJcBouF5BqW6hdnQsW1pKWuExwsktgwYnZG05sCgEDDQK+qmq1DTW76j/5w9NCAcGX04kCEavakmyAcQOSDZCh57tH9Lw2AD0IABcvXYKVx9+fut3xuEjMaEQjk75JebRYqtGVG8ed1hUTQ8Zyz5BZjptSue5ezVGvWNcVrrJKuBbl93nNA6Y8IceOjY1GiaKjZcu1uYZwx2LdBqVaY99Y8nh3u6FtDVmVhdzcCyB4gy/aRA2PDCm7jHd0zuHBFJU01kX/Zq6d5eld5S1N7+7IqPiLPyIzTE24lQkrn3o5VpEkcrsGLKSnEH1d7zWKROyh6mp2vjvHz3sn2IMAcOAAMIZbX4/Gz0YmfZPeQUv08tJtf7Dfbcnze5xlMam63rQVZfqBu015A3eb8tQr1nUtBAiyWIWq/U5TfjgmwMIaU/7JuELdZ6wgoKQNCYaS/MJuk6NnjWNgkAnHBnyFPhAQ7XeulbXfuVaWqdYaPWPuOGQh3P0Vr4uAuP/xf1XK0wuMaSvK9Fb9pZIRy+08WWJWbdrK9XdQG0xNeDxYVdWXphb/z298c2ohO8YvaLd4sjgn7caokpSbhu6c+TnAbGKlteXkOql6uSurtKph/ldlNPWfnC7iE4JcSS6BJeuR1WzAFLajNYer6hsbZXQ1NaGeC7lVIR+Q9J0G5rsvvvRhetHWbtxDG4tp4o7xuZ/9+ldJgUiHkhe6W7xoIV9GBHrZ5ik6eSUxs6Bekpj/Gjn3QOqFhfjWdMgZHzgXCPSdBmY+q5TJwBOW7I0UBHxxCH2nIeily89l04ue8qCriLoAQZCw8qmX6fOkyaPjEQShMo+W3DRgu3jpEvx21TY2tXhltJdtntLGZymtI5Nu76AlGqux+T3OMtQLUz7/oKXp3R0xqbpePr2AIODZ5NuN5sHusEnjYuN8XCnnExOemQ25Y2Ok4sdLK2+7HBZZJBoFjy3UrWspyS/svn6npSBSEISrBqfLz2Vf+6sDJ3paPsx2Gi4X0LpAkpj/WtqqJ8723b/lGB8aHjY53A5yc/BI5hOWFAgoHH+tK/D126SsIkHlI/VC3hNfOI1gmPL5B9OLtnZzgYHcJRaLSIXY8d2dqdYazQOmvHCrjwAAHAODzMaSx9oWEgWUxcaPrcrM7zYPmPKwc+dTBIwEwsaKiok9X37jAwQBaUIxcJRZ8nRb3/1bDloXAAA899xzSbFvvjV6EBbexItwDjgAwGy+eAkKV/061djb40mTR8ejFzFkNbL5FX8+Mdjd9PkxR88KLjDExSmNg3aTLi5OaaQrifGBQRYbP5ap1hpxlCIL0CDA5oGx3ELduhbcNni+YCjUrWtBQCAjCZnvoIGAm4SQIFCqtRKr/lIuikNt2TOvIQjorORr7V2eqs/vGlkMNliwWJwjHllg3jv+WhS5XA43+5CKmBIUj2pdZV1gAmVuMa5Q1Ua52tGat4PqNYZKRp1df7Aoj05jajsjDbUMnksozuY/aiU0Ewz1tuY7DZcLcCUZHT0kBeJimYRFZYQZM3EQYOWqbaBJTZoBgjxaLJXESKUpywsNIIlvnRi4t4uLGaZ8/kFFao4TN/EmmYGPFbBeY5RY6r7X25kTCgQms0UkjRevKNR9xipEK/BtaE6aJ0VqjrNQt64lU601Tkx544ZHhpRcZiEzPcOTlJjo+8s/f/m9/EydHgDg/sf/VeYbc8lQEyAIptjoj3I2fOnEgKnT52PBSgaNLjTr3RbboO/QoWqWObh4IFh0RkBWcFiNqdf+7W0HvVloTskG0WDvzY00M2DFMNq1DDchQ85XuBwWQRnKQliBz2MRuig1XAST9KJITRCj0hi1Zc8cHDB1+jx+tpWTCQ5Vs3yLVB4ZRgAAOHAQmNj/9dboLy9WzjCDPFocoEirkWVk0iF58oqryAwTnnFZ2ooyvUSpdbruXs0ZuNuUJ1FqnbLY+DGaHfi0AoLh8dLNpuExa47H4xGTogy37DGZLaL7/d2rKys+90korRCu6mk4HUG+yACSqe1stqXp3R0SWfzwym1fv+4Zc/tJYZhe+vn/BABwOh0tqAlGJn2TXrZ5qvXmqHepQLAkjICBJmAB4ADLfPLYMTW5XA71QlJ6vlh/9sgXcHNxrB3Y01K7wWm4XIBsEandxoWvbsst+aXurq1kNhQW4fzO3+4/+7nN2zsWEssQyg4kC4w7LRk0C86AoKTqfWQCrqDRq3u/lkJXOXnkgUCCAXeKo82EKkm5KSk9X4wleUgwcBWXjCQiiCMQwYEpa5gdFVivwH9OLpM0X3OBwJ79fbMiESAwm0iCgARAdoZa29n7h/tfeP5HUwAAS8UGSwoEEgynv/uPYnKJPbltoCZzZTlZn0mVu/4m6gQsMTsfQND2OpLvRloAjE+74IhHr4j8DEPvYoY5xaUJvGzzlPhUpf+J75cnq9My+pcSBEsOBHo+glyHl52h1uIxmsyV5QAAhj/+x08BAkW6cPS4HGYvmdwy39K+tIibr2AUCgCAwMLgAKgZDRcLzDwjUfSFe60NflIYAgBUbNysfBAgeCBAQE8CYHZXWT5mAAiu3qbKXX8zsDfCYgGCXnkUupBGJDENsg61VL3cRe7pQLKAWldZh1XuMcEEVyjRmkCdltE/n7SzRxYIyAwH2O8x/v1+QM1A7yyLYAgHCKz6Sj90IUDoafkwm/xuVumO7khBhkv/yWLYAIEqc4HK9bPARQDQLIBAIJepIRCQCR4UCB4oEMgYw48P/8SGzECCYVlW4Qi5rS25LwQNiAANB3egVL3cFRUlteA2AjQTdBluaEdbjpeS96TKXX8TKRsb3x4U6I3QFc1IINIMIEvMql22drsHC4/RTAAQWJgSfV3vLf/GK2oAgAdlDh4aEGgw0NsK4ubjJBi4AEFqCAQEBmbo6812VLBaD9fIsC+9eRZX59Nl8rkAQIIAIJDah8Lwxk2F70Gbg4cLhGlPwmE1pgIAIDuQQJi5OQoQ5CaXJChEOU/Y83KLzbMjNwAMrC2EdH2n7j/WhitlzwUEZBlSZJLsQJ4TAZCYnK53Ocz3QoGANgcAAOplGf0PGgQPBQihwIDeRCgwICC4OiFGpTGSDECCIlAq54yUZBa+howz62HMnotrgwyyOjoXAGgQ9PW0y+ltepENHrRJwBb1MC7KALAsAwz0BX+eJo+ODzyg9hkw4AMkASFmmFPLi7flQPG2a4N2k44EBXaQUq1pIIM5ULqrKb1oqwWrmfPd20W3RPKVLcGBn4Bm+Pp1AAA0Ldj5Ku2a40q1NmcaKPdcwetQgaumEYIAYwWvfn/WJDys9hAvHWAGR99cVkBQ5JRsCC4azsEOAADypGXruCKLd+oObyeDN+jOYQoYFwh2lpS3YkCL/j4ZgxAzogGukR8KBFxMADBdcuAh6IJHBgjY7H3GNC4w0GZCCCi4NEVcWv5tjO/PjEoKDBfdEskX1m2oxePIGEBcWv7t5cXbroXreD4GCBUreFhewiMNBFo85pRsEN1rbfDTzBAJIJRqbY6P9SeNDPQ1kQAhwUCDAJU+Uj7S/kIAgMKw5Yt/4fHv3w8kCB42GzwyQOBiBn1hIfM/YCIa1bSgHyMAFGSn+lh2e/e5w8/ijCCChT5uPgBAzyCnZIMId04hq5g8SmzwyAIBwQAAgKYiEkAINR2oL4TYeyEdz9VCgeBhuot0Ez1KQCDn2/FhXWvv8ny+466nsf68i9yTSEiH8VUiJdvIQF9TKBCQ3xcCAnp39lBNnTa/Bat/8ozAxw7q//ypDQ4AfPDuCikW/oyUISJlivmM/r6edjktbknwIis8avrgkQZCqAAU2W6mGRwF1lz1o3Kv9C7sZMcvZYbRp+3T9v8PIyzErCy1lvm0fdr+pNr/A7PZ1LPRy+imAAAAAElFTkSuQmCC";
-var WEB = {"v":"v45","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-muki.glb":558504,"auto-planeta.glb":360400,"trineo-plaza.glb":120892,"ruway-movs.json":466490,"via-lactea.jpg":502377,"ruway-logo.png":23968,"prev-arbol.webp":111906,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":83710,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892,"av-explorador.glb":787924,"av-mono.glb":462608,"av-nina.glb":2266584,"av-nino.glb":981016,"av-oso.glb":587472,"av-pinguino.glb":689636,"av-pollito.glb":1192476,"av-retratos.webp":49970,"av-zorro.glb":997756,"ruway-chasqui.js":285498,"ruway-arbol.js":366253,"ruway-intro.js":158155}};
+var WEB = {"v":"v46","f":{"lame.min.js":156245,"mp4-muxer.min.js":33091,"GLTFLoader.js":96550,"ruway-avatar.glb":1470308,"killa-avatar.glb":1242764,"ruway-muki.glb":558504,"auto-planeta.glb":360400,"trineo-plaza.glb":120892,"ruway-movs.json":466490,"via-lactea.jpg":502377,"ruway-logo.png":23968,"prev-arbol.webp":111906,"prev-bitacora.webp":94998,"prev-carrito.webp":84104,"prev-cartas.webp":83710,"prev-constelaciones.webp":20018,"prev-corre.webp":81704,"prev-isla.webp":189462,"prev-laberinto.webp":52286,"prev-match.webp":75256,"prev-planeta.webp":24846,"prev-universo.webp":86406,"prev-vela.webp":18892,"av-oso.glb":814620,"av-panda.glb":1584140,"av-conejo.glb":849204,"av-shiba.glb":1379948,"av-mono.glb":640012,"av-explorador.glb":850356,"av-exploradora.glb":1510916,"av-myke.glb":1326380,"av-lavender.glb":1868052,"av-tensy.glb":1696776,"av-nova.glb":851556,"av-paladin.glb":1725320,"av-vaca.glb":1080268,"av-leo.glb":1811308,"av-atuq.glb":476048,"av-qori.glb":823984,"av-escolar.glb":2035240,"av-rulitos.glb":1950696,"av-fuego.glb":2255772,"av-tom.glb":1616264,"av-zorro.glb":1054092,"av-pinguino.glb":689636,"av-pollito.glb":1192476,"av-retratos.webp":108910,"ruway-chasqui.js":285498,"ruway-arbol.js":366253,"ruway-intro.js":158303,"ruway-mundos.js":147635}};
 var DATOS=null, FOTOS=[], TIPO='', HOY=Date.now();
 /* El núcleo común (ruway-nucleo.js): progreso, colección, logros, mochila, audio guardado y
    fluidez, iguales en todas las experiencias. Baja aparte y en paralelo: lo que se le pide
@@ -1748,6 +1818,41 @@ var ac=null;
 function nota(f,d,tipo,vol){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)();
   var o=ac.createOscillator(), v=ac.createGain(); o.type=tipo||'sine'; o.frequency.value=f; v.gain.setValueAtTime(vol||.07,ac.currentTime);
   v.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d); o.connect(v); v.connect(ac.destination); o.start(); o.stop(ac.currentTime+d); }catch(e){} }
+/* Los sonidos del lugar (Mundos.ambiente, lib/mundos/sonido.js): viento, mar, grillos, aves... hechos en el
+   teléfono. Suenan bajito debajo de la canción (a la mitad si la canción suena, y más bajo si hay una carta
+   abierta). El botón 🔊 de arriba los apaga sin tocar la canción. El iPhone los despierta en el primer toque. */
+var AMB=null, ambQuiere=true, ambListo=false;
+function audioCtx(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} return ac; }
+function despertarAudio(){ if(ac && ac.state==='suspended' && !document.hidden && ac.resume){ var p=ac.resume(); if(p&&p.catch) p.catch(function(){}); } }
+function pintarAmb(){ var b=document.getElementById('b-amb'); if(!b) return; b.textContent=ambQuiere?'🔊':'🔇';
+  b.setAttribute('aria-label',ambQuiere?'Apagar los sonidos del lugar':'Prender los sonidos del lugar'); b.setAttribute('aria-pressed',ambQuiere?'true':'false'); }
+function ajustarAmb(){ if(!AMB) return; var m=Sonido.musica(), canta=!!(m && !m.paused && m.src && m.src!==Nucleo.audio.silencio);
+  var tapa=!!document.querySelector('#recuerdo:not([hidden]),.capa:not([hidden]),.rn-capa');
+  var v=!ambQuiere?0:(canta?.5:1)*(tapa?.45:1); if(AMB._v==null || Math.abs(v-AMB._v)>.01){ AMB._v=v; AMB.volumen(v,.8); } }
+function ambiente(id){ var c=audioCtx(); if(!c || !window.Mundos || !Mundos.ambiente) return null;
+  try{ AMB=Mundos.ambiente(id,c).iniciar(0); }catch(e){ AMB=null; return null; }
+  var caja=document.getElementById('sonidos'), b=document.getElementById('b-amb');
+  if(!b){ b=document.createElement('button'); b.id='b-amb'; b.type='button'; caja.appendChild(b);
+    b.onclick=function(){ ambQuiere=!ambQuiere; despertarAudio(); pintarAmb(); ajustarAmb(); }; }
+  caja.hidden=false; pintarAmb();
+  if(!ambListo){ ambListo=true;
+    document.addEventListener('pointerdown',despertarAudio,true); document.addEventListener('keydown',despertarAudio,true);
+    document.addEventListener('visibilitychange',function(){ if(!ac) return; if(document.hidden){ if(ac.suspend) ac.suspend(); } else despertarAudio(); });
+    setInterval(ajustarAmb,700); }
+  ajustarAmb(); return AMB; }
+function apagarAmbiente(seg){ if(AMB){ AMB.parar(seg); AMB=null; } var b=document.getElementById('b-amb'); if(b) b.parentNode.removeChild(b); }
+/* un paso de peluche: un golpecito blando (ruido grave que se apaga rápido) con un "boing" chiquito que baja. Suena con los sonidos
+   del lugar (el botón 🔊 lo apaga) y solo si el teléfono ya despertó el sonido con un toque. */
+var _ultPaso=0; window.__pasos=0;
+function pasoEsponja(corre){ if(!ambQuiere) return; var c=audioCtx(); if(!c||c.state!=='running') return;
+  var ahora=c.currentTime; if(ahora-_ultPaso<.12) return; _ultPaso=ahora; window.__pasos++;
+  try{ var t=ahora+.005, v=(corre?.05:.038)*(.85+Math.random()*.3), tono=1+(Math.random()-.5)*.25;
+    var n=Math.floor(c.sampleRate*.12), b=c.createBuffer(1,n,c.sampleRate), d=b.getChannelData(0); for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,3);
+    var r=c.createBufferSource(); r.buffer=b; var lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.setValueAtTime(900*tono,t); lp.frequency.exponentialRampToValueAtTime(220,t+.1); lp.Q.value=4;
+    var g=c.createGain(); g.gain.setValueAtTime(v,t); g.gain.exponentialRampToValueAtTime(.0005,t+.12); r.connect(lp); lp.connect(g); g.connect(c.destination); r.start(t); r.stop(t+.13);
+    var o=c.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(330*tono,t); o.frequency.exponentialRampToValueAtTime(150*tono,t+.09);
+    var g2=c.createGain(); g2.gain.setValueAtTime(0,t); g2.gain.linearRampToValueAtTime(v*.7,t+.008); g2.gain.exponentialRampToValueAtTime(.0005,t+.1); o.connect(g2); g2.connect(c.destination); o.start(t); o.stop(t+.11);
+  }catch(e){} }
 function campanita(l){ l.forEach(function(f,i){ setTimeout(function(){ nota(f,.35,'sine',.07); },i*90); }); }
 var QUIETO=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function hud(titulo,sub,n){
@@ -1791,27 +1896,36 @@ function lienzo2d(){
 function titulo2(){ var a=nombrePara(), b=nombreDe(); return a&&b?a+' y '+b:(a||'Para ti'); }
 
 /* ============ los personajes de los juegos ============
-   Quien abre el regalo elige con quién jugar: uno de los ocho personajes 3D (osito, zorrito,
-   pingüino, pollito, mono, niña, niño y explorador), un avatar propio (piel, cabello, peinado y
-   polo) o Ruway y Killa. La elección se guarda en el teléfono.
+   Quien abre el regalo elige con quién jugar: uno de los personajes 3D (osito, pandita, conejito, shiba,
+   mono, Nova, Rulitos, explorador…). El Zorrito, el Pingüino y el Pollito salieron en la v45 (los reemplazan Pandita, Conejito y Shiba); después llegó la Vaquita, que va con Shiba. Tom salió en la v45 (se veía mal) y lo reemplaza Rulitos; la Escolar queda oculta y la reemplaza Nova. «Mi avatar» (el muñeco armado con código: piel, cabello,
+   peinado y polo), Ruway y Killa ya no salen en la elección (oculto:1), pero siguen siendo los personajes fijos
+   del Chasqui del Mar y del árbol, y sus archivos son la referencia de huesos de todos los demás. «Mi avatar»
+   sigue en el código como el muñeco de reserva: es el que se usa si un personaje no baja.
+   La elección se guarda en el teléfono.
    Los ocho personajes vienen de Sketchfab con licencia CC BY 4.0 (crédito en la elección y en
    docs/CREDITOS.md): se aligeraron y se les pusieron huesos con los MISMOS nombres y la misma pose
    de descanso que Ruway, así que caminan, corren, bailan y saludan con sus mismos movimientos
-   (armarRuway). El zorrito, el pingüino y el pollito llevan algo en las manos (bolsa, libro,
+   (armarRuway). Antes el pingüino y el pollito llevaban algo en las manos (libro,
    tableta): sus brazos van pegados al cuerpo (manos:false). En 2D (tarjetas y laberinto sin 3D)
    se dibuja su retrato (av-retratos.webp). */
-var PJS=[{id:'oso',nom:'Osito',al:'al osito'},{id:'zorro',nom:'Zorrito',al:'al zorrito'},{id:'pinguino',nom:'Pingüino',al:'al pingüino'},
-         {id:'pollito',nom:'Pollito',al:'al pollito'},{id:'mono',nom:'Mono',al:'al mono'},{id:'nina',nom:'Niña',al:'a la niña'},
-         {id:'nino',nom:'Niño',al:'al niño'},{id:'explorador',nom:'Explorador',al:'al explorador'},
-         {id:'avatar',nom:'Mi avatar',al:'a tu avatar',marca:1},
+/* en el orden de las parejas: cada uno sale al lado de quien lo espera */
+/* f:1 = es ella (para elegirle compañera a Kusi y para no poner un nombre de hombre sobre una chica) */
+var PJS=[{id:'oso',nom:'Uku',al:'a Uku'},{id:'conejo',nom:'Puyu',al:'a Puyu'},{id:'panda',nom:'Nina',al:'a Nina',f:1},{id:'qori',nom:'Qori',al:'a Qori'},
+         {id:'shiba',nom:'Sami',al:'a Sami'},{id:'vaca',nom:'Tika',al:'a Tika',f:1},{id:'escolar',nom:'Escolar',al:'a la escolar',oculto:1,f:1},{id:'rulitos',nom:'Rulitos',al:'a Rulitos',oculto:1},
+         {id:'explorador',nom:'Rumi',al:'a Rumi'},{id:'nova',nom:'Chaska',al:'a Chaska',f:1},{id:'exploradora',nom:'Wayra',al:'a Wayra',f:1},{id:'paladin',nom:'Inti',al:'a Inti'},
+         {id:'myke',nom:'Yaku',al:'a Yaku'},{id:'lavender',nom:'Urpi',al:'a Urpi',f:1},{id:'tensy',nom:'Kantu',al:'a Kantu',f:1},{id:'leo',nom:'Ari',al:'a Ari'},
+         {id:'mono',nom:'Kusi',al:'a Kusi'},{id:'atuq',nom:'Atuq',al:'a Atuq'},
+         /* ya no se eligen, pero corren en La gran carrera */
+         {id:'tom',nom:'Tom',al:'a Tom',oculto:1},{id:'zorro',nom:'Zorrito',al:'al zorrito',oculto:1},{id:'pinguino',nom:'Pingüino',al:'al pingüino',oculto:1},{id:'pollito',nom:'Pollito',al:'al pollito',oculto:1},{id:'fuego',nom:'Fuego',al:'a Fuego',oculto:1},
+         {id:'avatar',nom:'Mi avatar',al:'a tu avatar',marca:1,oculto:1},
          /* Ruway, el avatar de la marca (VRoid): solo en los juegos que lo cargan (isla y carrera) */
-         {id:'ruway',nom:'Ruway',al:'a Ruway',marca:1},
+         {id:'ruway',nom:'Ruway',al:'a Ruway',marca:1,oculto:1},
          /* Killa, la avatar de la marca (VRoid). Cuando juega Ruway, ella es quien espera; y al revés. */
-         {id:'killa',nom:'Killa',al:'a Killa',marca:1}];
-/* los retratos de los ocho personajes, en una tira de 160 px cada uno (en el orden de AV_RETRATO) */
-var AV_RETRATO=['oso','zorro','pinguino','pollito','mono','nina','nino','explorador'], AV_IMG=null;
+         {id:'killa',nom:'Killa',al:'a Killa',marca:1,oculto:1}];
+/* los retratos de los personajes, en una tira de 160 px cada uno (en el orden de AV_RETRATO; los nuevos van al final) */
+var AV_RETRATO=['oso','panda','conejo','shiba','mono','escolar','rulitos','explorador','exploradora','myke','lavender','tensy','nova','paladin','fuego','vaca','leo','atuq','qori'], AV_IMG=null;
 function avImg(){ if(!AV_IMG){ AV_IMG=new Image(); AV_IMG.src=window.__AV_RETRATOS||'av-retratos.webp'; } return AV_IMG; }
-var AV_CREDITOS='Personajes 3D de Sketchfab con licencia CC BY 4.0, aligerados y con huesos puestos por Ruway: Osito («Cartoon bear», CGulia) · Zorrito («Cute Fox», Sana Sokolov) · Pingüino («Reading Penguin», Anders Weber) · Pollito («Nerdy Chick Artist», Mila Haddad) · Mono («Mr Mono», BRUNO 365) · Niña (modelo de jsyal80) · Niño (modelo de Vaibhav.Pavaskar) · Explorador («Cartoon Adventurer Boy», Ilse Mishra). El carrito del planeta: «Pony Cartoon», Slava Z. (CC BY 4.0, sin sus letreros).';
+var AV_CREDITOS='Personajes 3D de Sketchfab con licencia CC BY 4.0, aligerados y con huesos puestos por Ruway: Uku («Cute Bear», Hafiene) · Nina («Cute 3D Red Panda Cartoon Character», sanjaysinghfazilka) · Puyu («Cute Rabbit», Hafiene) · Sami («Shiba Dog», Hafiene) · Tika («Cow», Weiting Ke) · Kusi («Mr Mono», BRUNO 365) · Chaska («Sci-Fi Girl Character», RapidAssets) · Inti («Fantasy White Paladin Handpainted», UFRE Studio) · Rumi («Cartoon Adventurer Boy», Ilse Mishra) · Wayra («Explorer Woman In Green», UFRE Studio) · Yaku («Myke color 3», WOLF) · Urpi («Lavender Starlet», yeziagree) · Kantu («Tensy», sahardian0107) · Atuq («cute monster», yamada_gangle) · Qori («A Jolly Wangcore little dinosaur avatar», KhoaMinh). En La gran carrera corren también: Escolar («Arms Out in Uniform», sahardian0107) · Rulitos («T-Pose Kid», thefox.dsign) · Fuego («Fire Boy - Model Low Poly», Alex Nguyễn; textura hecha con IA) · Zorrito («Cartoon Character», MartinDL) · Pingüino («Reading Penguin», Anders Weber) · Pollito («Nerdy Chick Artist», Mila Haddad) · Tom (de «Wandering Note Fantasy», Sam Naot / Wandering Note Project). Ari: «Teenager» de Grab3D (CC0, de uso libre), con ropa urbana puesta por Ruway. Yaku, Urpi, Kantu, la Escolar y Tom se crearon con Meshy (IA), Chaska con Tripo (IA) y Wayra también con IA. El carrito del planeta: «Pony Cartoon», Slava Z. (CC BY 4.0, sin sus letreros).';
 var RUWAY_CARA='data:image/png;base64,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';
 var MASCOTA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKsAAAEsCAMAAACL9LP/AAADAFBMVEX////6///+//L98+v/59v+5Nn85Nn849n849j749j/6rj84dX939H83M771dL52Mn51Mb23tH21cn21cf11cf21cb10sTy9fbz1cnzzsDyzL/p7O7i1tCu5LF05aHzysDxyLv1yLrwyLrwx7r+v9DyxLXtw7bquqzRwbv5rrjtoL/PqKmsqKXflbfQkqzsg5HNa22Ro5uDgIFpkI9se4lyc3tnc35bcohba35pY2lZZHNWZnlVYG5SX3FPWmlMWGhFW2fuTEzjSEjhSEjhR0fgSEjgR0ffR0e8T1JMVWdQUllIUmFGT15FTFxES1lDTFtDSlpDSllCSllCSlhCSVhBSVlASFhAR1c+SFfhRkbeRkbdRkbcRkbbRkbbRUXaRUXjQUHZRUXZRETYRETYQ0PXRUXXRETXREPXQ0PWRUXWRETWQ0PTRETHQEC4Jy1YPkY9RVQ4PEVXIyctKysrKisrKSkqKSoqKSkqKSgnKionKCgXGhvRAAgAAL4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaOHn2AAAAgHRSTlP/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////ADgFS2cAACW4SURBVHja7Z2LV9ro2vbrK3TshkysVCxIp7S2wjtQlQjImWWaghBAaTkoIAzE8rkBFcRuHZ01/OvffYeDAWIF5DDvWvuZjgeI5pcr1314ngR81vi/M579l/W/rNPaUaJ6GPv6NXqwj99E/kmskfD+4WGjUT2swsAPiVB4P4SDDcMIsew/hjUc4ZU7PEwkDuED/B+PwgiFIrFYLIIfPd5/BivLhhu8pgBZbY7DWDQaiwS83kAoFPCyoQjr8fwDWL2oGJzmeLxjgGoinkwmYqw34HHa3G63x+N2BzwOx6xZnbwHwt+qghHH0x9OhFmvy7azs2Ozma1Op8O1Y50t6w6y7ofBpMk2aTJxGAl6+dMfQtZt0862cXtnx+yEb2bIyu88zCYOYwk4+RBV8UQiCvHEej1Op9vDhpw722/eAKxpG+TdQZVnxdrcNYsn/DB5eBiLRyPVWJiNJPdZJ4I5walmkwlBd8w7zm0zPjYbVuP2NgZXgD3YT8S/RhPh+LdoMhHyekPfvnl3dtgdpLWZt7fN8AV+47SBuA73TFhNpkbD5nSz7P7XWCy67w3FogcHEFFusGpge5vFc46QOBxOiC83wOLHqbOajCa0gQ3RwiwbC3nZWPQrpFLbjjPgDXtM5gA863TyqWDH6YLhcdhsDqfH7fBMmdVoMjfAijs7XjYACT8acARikTDr4U93APIAPul0gKCgJSRazA0eq8Ph8LABt3eqrEDSeKPZ3gYuj9fjYVn3jjsSCLid7p0d044XYN3bTrfD5YJzDx8dLg+LsBYelp0q6w5Amt6YjG/MASefoPDUhwBxxwr51OhEFd1OpwcKrdsND8Ngw1427rK7PPBlaJqskJQakDZNJpsbkzycZbAl63F58cHtN9ueANRYOAZg9CA4oAegi4nsexA8EJ0qqwPO9Y5528zXph3w5LbJCbFjBVeYtrdNNnY/4PXYnCwMjyfQhIXMBnWCl/jr9Fi9bq/bhlHkALI3b7ad4AiT0+vY2XbjEeyYbYFYyAMuCFSjkZDLFQiH9iMsWz2IHgCzN/R1PzE9Vo/H5XKDpB4TDmB1m0xurwNMu4PHYHN49w9BQo8rEv0GeSwMlTd68C0Zj0CxCLCQiffj02IN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';
 var RUWAY_IMG=new Image(); RUWAY_IMG.src=RUWAY_CARA;
@@ -1821,11 +1935,14 @@ var AV_OPC={piel:['#F6D3B3','#E4AE86','#B97A52','#7A4A2E'],pelo:['#2A1A12','#6B3
 var AV_TXT={corto:'Corto',largo:'Largo',coletas:'Coletas',rulos:'Rulos'};
 var PJ=pjGuardado();
 function pjAl(){ return pjAlDe(PJ.id); }
-function pjAlDe(id){ for(var i=0;i<PJS.length;i++) if(PJS[i].id===id) return PJS[i].al; return 'al osito'; }
+function pjAlDe(id){ for(var i=0;i<PJS.length;i++) if(PJS[i].id===id) return PJS[i].al; return 'a Uku'; }
+/* ¿ya despertó? Lo decide el núcleo (Nucleo.desb): cada logro despierta a una pareja. Sin núcleo, todos
+   están despiertos: un adorno no puede dejar a nadie sin jugar. */
+function pjLibre(id){ return window.Nucleo&&Nucleo.desb?Nucleo.desb.libre(id):true; }
 /* Lo guardado se valida contra las listas: un valor raro vuelve al de siempre. */
 function pjGuardado(){ var d={id:'oso',av:{piel:0,pelo:0,peinado:'corto',ropa:0}};
   try{ var v=JSON.parse(localStorage.getItem('ruway:pj')||'null');
-    if(v && PJS.some(function(p){ return p.id===v.id; })) d.id=v.id;
+    if(v && PJS.some(function(p){ return p.id===v.id && !p.oculto && pjLibre(p.id); })) d.id=v.id;   /* Ruway y Killa ya no se eligen, y los que aún duermen tampoco: quien los tenía guardados vuelve al osito */
     if(v && v.av){ ['piel','pelo','ropa'].forEach(function(k){ var n=v.av[k]; if(n===(n|0) && n>=0 && n<AV_OPC[k].length) d.av[k]=n; });
       if(AV_OPC.peinado.indexOf(v.av.peinado)>=0) d.av.peinado=v.av.peinado; }
     d.rw=rwNorm(v&&v.rw); d.kl=klNorm(v&&v.kl); }catch(e){ d.rw=rwNorm(null); d.kl=klNorm(null); }
@@ -1833,17 +1950,28 @@ function pjGuardado(){ var d={id:'oso',av:{piel:0,pelo:0,peinado:'corto',ropa:0}
 function pjGuardar(d){ try{ localStorage.setItem('ruway:pj',JSON.stringify(d)); }catch(e){} }
 function elegirPersonaje(listo){
   var pj=JSON.parse(JSON.stringify(PJ)), c=document.createElement('div'); c.className='capa'; c.id='elige';
-  var puede=function(p){ return !p.solo || p.solo.split(' ').indexOf(TIPO)>=0; };
-  if(!PJS.some(function(p){ return p.id===pj.id && puede(p); })) pj.id='oso';
-  c.innerHTML='<div class="carta"><h2>¿Con quién quieres jugar?</h2><div class="pjs" id="pjs"></div><div class="avopc" id="avopc" hidden></div>'
+  var puede=function(p){ return (!p.oculto || window.__RUWAY_VER_OCULTOS) && (!p.solo || p.solo.split(' ').indexOf(TIPO)>=0); };   /* __RUWAY_VER_OCULTOS: solo pruebas (Ruway y Killa) */
+  if(!PJS.some(function(p){ return p.id===pj.id && puede(p) && pjLibre(p.id); })) pj.id='oso';
+  c.innerHTML='<div class="carta"><h2>¿Con quién quieres jugar?</h2><p class="pj-nuevo" id="pj-nuevo" hidden></p><div class="pjs" id="pjs"></div><p class="pj-pista" id="pj-pista"></p><div class="avopc" id="avopc" hidden></div>'
     +'<details class="pj-creditos"><summary>Créditos de los personajes</summary><p></p></details>'
     +'<button class="primario" id="el-ok">Jugar</button></div>';
   c.querySelector('.pj-creditos p').textContent=AV_CREDITOS;
   document.body.appendChild(c);
   var cont=c.querySelector('#pjs'), ao=c.querySelector('#avopc');
-  PJS.filter(puede).forEach(function(p){ var b=document.createElement('button'); b.type='button'; b.className='pj'+(p.marca?' marca':''); b.dataset.id=p.id;
-    b.innerHTML='<canvas width="144" height="144"></canvas><span></span>'; b.querySelector('span').textContent=p.nom;
-    b.onclick=function(){ pj.id=p.id; pintar(); nota(620,.08,'triangle',.04); }; cont.appendChild(b); });
+  /* los que despertaron hace poco se marcan con ✨ y se avisa una sola vez; los que duermen salen en silueta */
+  var DN=window.Nucleo&&Nucleo.desb, nuevosIds=[], pistaEl=c.querySelector('#pj-pista'), nuevoEl=c.querySelector('#pj-nuevo'), visibles=PJS.filter(puede);
+  if(DN&&!window.__RUWAY_DESBLOQUEAR_TODO){ var nv=DN.nuevos(); if(nv.length){ nuevoEl.textContent='✨ ¡Despertaron '+nv.map(function(x){ return x.nom; }).join(' · ')+'!'; nuevoEl.hidden=false;
+      nv.forEach(function(x){ nuevosIds=nuevosIds.concat(x.ids); }); DN.mostrados(); } }
+  var despiertos=visibles.filter(function(p){ return pjLibre(p.id); }).length;
+  function pistaBase(){ pistaEl.textContent=despiertos<visibles.length?'Despiertos: '+despiertos+' de '+visibles.length+'. Toca uno con 🔒 para saber cómo despertarlo.':'¡Todos despiertos!'; }
+  pistaBase();
+  if(visibles.length%4 && visibles.length%3===0) cont.classList.add('de3');
+  visibles.forEach(function(p){ var b=document.createElement('button'); b.type='button'; var dormido=!pjLibre(p.id), secreto=dormido&&DN&&DN.secreto(p.id);
+    b.className='pj'+(p.marca?' marca':'')+(dormido?' bloq':'')+(!dormido&&nuevosIds.indexOf(p.id)>=0?' nuevo':''); b.dataset.id=p.id;
+    b.innerHTML='<canvas width="144" height="144"></canvas><span></span>'; b.querySelector('span').textContent=secreto?'???':p.nom;
+    if(dormido){ b.setAttribute('aria-disabled','true'); b.setAttribute('aria-label',(secreto?'Personaje secreto':p.nom)+', todavía dormido'); }
+    b.onclick=function(){ if(dormido){ pistaEl.textContent='🔒 '+(DN?DN.pista(p.id):''); nota(260,.1,'sine',.04); return; }
+      pj.id=p.id; pistaBase(); pintar(); nota(620,.08,'triangle',.04); }; cont.appendChild(b); });
   function pintar(){
     cont.querySelectorAll('.pj').forEach(function(b){ b.classList.toggle('on',b.dataset.id===pj.id); b.setAttribute('aria-pressed',b.dataset.id===pj.id);
       var cv=b.querySelector('canvas'), g=cv.getContext('2d'); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,144,144);
@@ -2668,30 +2796,42 @@ function match(){
   setTimeout(function(){ pista(''); },5000);
 }
 
-/* ================= LABERINTO 3D =================
-   Un laberinto de paredes de limpiapipas (tubitos rosados, peluditos) sobre
-   un piso de jardín. La cámara va detrás y arriba del personaje elegido.
-   Cada regalito guarda una foto; con todos, se abre el corazón del final. */
+/* ================= LABERINTO 3D: EL LABERINTO DE LOS MUNDOS =================
+   El laberinto pasa en el mundo del personaje elegido (ruway-mundos.js, lib/mundos/): los Andes con
+   muros incas, Huanchaco con totora, Chan Chan con frisos de barro, Trujillo con casonas, la noche
+   andina bajo el Mayu o la Amazonía. Las paredes son más altas que el personaje y la cámara va baja:
+   hay que orientarse de verdad. Lo que lo hace jugable para todos:
+     · cada recuerdo encontrado hunde una pared cercana: se abre un ATAJO hacia la meta;
+     · el botón 🌸 (y, si pasa un rato sin encontrar nada, solo) dibuja un camino de pétalos;
+     · en la meta espera la persona que regala, en un estrado con flores de limpiapipas;
+     · con todos los recuerdos, el corazón se enciende, bailan los dos y llega el final. */
+var MUNDOS_JS='ruway-mundos.js';
+function conMundos(listo,mal){
+  /* Trujillo usa la Plaza de Armas de la intro (ruway-intro.js): casi siempre ya llegó con la película del comienzo */
+  function conPlaza(){ if(Mundos.de(PJ.id).plaza && !window.__RI) cargarJS('ruway-intro.js',listo,listo); else listo(); }
+  cargarThree(function(){ if(window.Mundos&&Mundos.laberinto){ conPlaza(); return; } cargarJS(MUNDOS_JS,function(){ if(window.Mundos) conPlaza(); else if(mal) mal(); },mal||function(){}); },mal); }
+/* el cartel del mundo al empezar: dónde estamos y con quién */
+function cartelMundo(mundo,conQuien){ var c=document.createElement('div'); c.className='mundo-cartel'; c.innerHTML='<small></small><h2></h2><p></p>';
+  c.querySelector('small').textContent=conQuien; c.querySelector('h2').textContent=mundo.nombre; c.querySelector('p').textContent=mundo.sub; window.__cartelMundo=mundo.nombre;
+  document.body.appendChild(c); requestAnimationFrame(function(){ c.classList.add('on'); }); setTimeout(function(){ c.classList.remove('on'); setTimeout(function(){ c.remove(); },700); },3200); }
 function laberinto(){
   document.body.classList.add('juego');
   var nR=Math.min(8,FOTOS.length), H0=hud('El laberinto de '+(nombrePara()||'los dos'),nR?'Encuentra nuestros recuerdos':'Llega al corazón',nR);
   var box=document.createElement('div'); box.className='pad';
-  box.innerHTML='<div class="joy" aria-label="Mover"><i></i></div>';
+  box.innerHTML='<div class="joy" aria-label="Mover"><i></i></div><button type="button" class="lab-pista" aria-label="Mostrar el camino con pétalos">🌸<small>Pista</small></button>';
   document.body.appendChild(box);
   var esc=document.createElement('div'); esc.className='escena'; var cv=document.createElement('canvas'); esc.appendChild(cv); document.getElementById('app').appendChild(esc);
-  var COLS=7, FILAS=9, celdas=[], meta=null, regalos=[], jugando=false, abiertos=0, quiere=-1;
-  var yo={c:0,f:FILAS-1,de:null,a:null,t:0};   /* se empieza abajo: el laberinto queda por delante de la cámara */
+  var COLS=7, FILAS=9, celdas=[], meta=null, regalos=[], jugando=false, abiertos=0;
   function cel(c,f){ return (c<0||f<0||c>=COLS||f>=FILAS)?null:celdas[f*COLS+c]; }
+  var DIRS=[[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]];
   function crear(){
     celdas=[]; for(var f=0;f<FILAS;f++) for(var c=0;c<COLS;c++) celdas.push({c:c,f:f,p:[1,1,1,1],v:0});
     var pila=[cel(0,FILAS-1)]; pila[0].v=1;
     while(pila.length){ var a=pila[pila.length-1], ops=[];
-      [[0,-1,0,2],[1,0,1,3],[0,1,2,0],[-1,0,3,1]].forEach(function(d){ var b=cel(a.c+d[0],a.f+d[1]); if(b&&!b.v) ops.push([b,d[2],d[3]]); });
+      DIRS.forEach(function(d){ var b=cel(a.c+d[0],a.f+d[1]); if(b&&!b.v) ops.push([b,d[2],d[3]]); });
       if(!ops.length){ pila.pop(); continue; } var e=ops[(Math.random()*ops.length)|0]; a.p[e[1]]=0; e[0].p[e[2]]=0; e[0].v=1; pila.push(e[0]); }
-    var dist={}, cola=[cel(0,FILAS-1)]; dist['0,'+(FILAS-1)]=0;
-    while(cola.length){ var x=cola.shift(); [[0,-1],[1,0],[0,1],[-1,0]].forEach(function(d,i){ if(x.p[i]) return; var y=cel(x.c+d[0],x.f+d[1]), k=y.c+','+y.f;
-      if(dist[k]==null){ dist[k]=dist[x.c+','+x.f]+1; cola.push(y); } }); }
-    celdas.forEach(function(x){ x.d=dist[x.c+','+x.f]; });
+    var d0=distDesde(cel(0,FILAS-1));
+    celdas.forEach(function(x){ x.d=d0[x.f*COLS+x.c]; });
     meta=celdas.slice().sort(function(a,b){ return b.d-a.d; })[0];
     var sin=celdas.filter(function(x){ return x!==meta && x.d>2 && x.p[0]+x.p[1]+x.p[2]+x.p[3]===3; }).sort(function(a,b){ return a.d-b.d; });
     if(sin.length<nR) sin=celdas.filter(function(x){ return x!==meta && x.d>1; }).sort(function(a,b){ return a.d-b.d; });
@@ -2699,117 +2839,142 @@ function laberinto(){
     for(var i=0;i<nR;i++){ var q=sin[Math.min(sin.length-1,Math.round((i+.5)*sin.length/nR))], k2=0;
       while(usados[q.c+','+q.f] && k2<sin.length){ q=sin[(k2++ *7+i)%sin.length]; } usados[q.c+','+q.f]=1; regalos.push({cel:q,n:i,abierto:false}); }
   }
+  /* distancias por los pasillos (y de dónde se llega, para dibujar el camino) */
+  function distDesde(k0){ var d=new Array(COLS*FILAS).fill(-1), de=new Array(COLS*FILAS).fill(-1), cola=[k0]; d[k0.f*COLS+k0.c]=0;
+    while(cola.length){ var x=cola.shift(); DIRS.forEach(function(dd,i){ if(x.p[i]) return; var y=cel(x.c+dd[0],x.f+dd[1]); if(!y) return; var k=y.f*COLS+y.c; if(d[k]<0){ d[k]=d[x.f*COLS+x.c]+1; de[k]=x.f*COLS+x.c; cola.push(y); } }); }
+    d.de=de; return d; }
   crear();
-  cargarThree(function(){
+  conMundos(function(){
     var R=fluido(new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true})); R.setPixelRatio(Math.min(devicePixelRatio||1,2));
-    R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
-    var E=new THREE.Scene(), C=new THREE.PerspectiveCamera(55,1,.1,200), K=Kit3D();
-    var cielo=K.lienzo(8,256,function(x,w,h){ var gr=x.createLinearGradient(0,0,0,h); gr.addColorStop(0,'#2B1B5A'); gr.addColorStop(.6,'#7A3E8E'); gr.addColorStop(1,'#E0679A'); x.fillStyle=gr; x.fillRect(0,0,w,h); });
-    E.background=cielo; E.fog=new THREE.Fog('#5A2E7A',14,34);
-    E.add(new THREE.HemisphereLight('#FFE9F2','#4A3A6A',.8));
-    var sol=new THREE.DirectionalLight('#FFF1DA',.9); sol.position.set(4,12,6); sol.castShadow=true; sol.shadow.mapSize.set(1024,1024);
-    var sc=sol.shadow.camera; sc.left=-10; sc.right=10; sc.top=10; sc.bottom=-10; E.add(sol); E.add(sol.target);
-    /* el piso: césped con caminitos */
-    var pasto=K.lienzo(256,256,function(x,w,h){ K.ruido(x,w,h,'#5DAA48',['#4F9A3C','#6FBE55','#58A344'],6000,function(x,a,b){ x.fillRect(a,b,1.2,3); }); });
-    pasto.wrapS=pasto.wrapT=THREE.RepeatWrapping; pasto.repeat.set(COLS,FILAS);
-    var piso=new THREE.Mesh(new THREE.PlaneGeometry(COLS+2,FILAS+2),new THREE.MeshStandardMaterial({map:pasto,roughness:1}));
-    piso.rotation.x=-Math.PI/2; piso.position.set(COLS/2,0,FILAS/2); piso.receiveShadow=true; E.add(piso);
-    /* las paredes: tres limpiapipas apilados por cada tramo de pared, peluditos */
-    var fibra=K.lienzo(64,256,function(x,w,h){ K.ruido(x,w,h,'#F06C9B',['#FF8DB6','#E8578C','#FFB0CC'],2600,function(x,a,b){ x.save(); x.translate(a,b); x.rotate(Math.random()*6); x.fillRect(0,0,1,6); x.restore(); }); });
-    fibra.wrapS=fibra.wrapT=THREE.RepeatWrapping; fibra.repeat.set(1,6);
-    var mPared=new THREE.MeshStandardMaterial({map:fibra,bumpMap:fibra,bumpScale:.03,roughness:1});
-    var tramos=[];
-    celdas.forEach(function(k){ if(k.p[0]) tramos.push([k.c,k.f,k.c+1,k.f]); if(k.p[3]) tramos.push([k.c,k.f,k.c,k.f+1]);
-      if(k.c===COLS-1&&k.p[1]) tramos.push([k.c+1,k.f,k.c+1,k.f+1]); if(k.f===FILAS-1&&k.p[2]) tramos.push([k.c,k.f+1,k.c+1,k.f+1]); });
-    var tubo=new THREE.CylinderGeometry(.07,.07,1.08,10), inst=new THREE.InstancedMesh(tubo,mPared,tramos.length*3), m4=new THREE.Object3D();
-    tramos.forEach(function(t,i){ for(var j=0;j<3;j++){ m4.position.set((t[0]+t[2])/2,.1+j*.15,(t[1]+t[3])/2);
-      m4.rotation.set(0,0,0); if(t[1]===t[3]) m4.rotation.z=Math.PI/2; else m4.rotation.x=Math.PI/2; m4.updateMatrix(); inst.setMatrixAt(i*3+j,m4.matrix); } });
-    inst.castShadow=true; inst.receiveShadow=true; E.add(inst);
-    /* esquinas: una bolita en cada cruce */
-    var bola=new THREE.SphereGeometry(.09,12,10), mBola=new THREE.MeshStandardMaterial({color:'#FFC94A',roughness:.6});
-    for(var f=0;f<=FILAS;f++) for(var c=0;c<=COLS;c++){ var bb=new THREE.Mesh(bola,mBola); bb.position.set(c,.42,f); E.add(bb); }
-    /* los regalitos */
-    var cols=['#FF7AA8','#FFC94A','#B79CFF','#7FE0C4','#FF9A5C','#58D2FF','#FFD84D','#F48FB1'];
-    regalos.forEach(function(r,i){ var gg=new THREE.Group(), caja=new THREE.Mesh(new THREE.BoxGeometry(.34,.3,.34),new THREE.MeshStandardMaterial({color:cols[i%8],roughness:.45}));
-      caja.position.y=.2; gg.add(caja); var cinta=new THREE.MeshStandardMaterial({color:'#FFF1DA'});
-      var c1=new THREE.Mesh(new THREE.BoxGeometry(.36,.31,.06),cinta); c1.position.y=.2; gg.add(c1); var c2=new THREE.Mesh(new THREE.BoxGeometry(.06,.31,.36),cinta); c2.position.y=.2; gg.add(c2);
-      var lazo=new THREE.Mesh(new THREE.TorusGeometry(.07,.025,8,16),cinta); lazo.position.y=.4; gg.add(lazo);
-      gg.children.forEach(function(x){ x.castShadow=true; });
-      var luz=new THREE.PointLight(cols[i%8],.6,1.6); luz.position.y=.5; gg.add(luz);
-      gg.position.set(r.cel.c+.5,0,r.cel.f+.5); E.add(gg); r.obj=gg; });
-    /* el corazón del final, con candado hasta tener todos */
-    var cor=new THREE.Shape(); cor.moveTo(0,-.3); cor.bezierCurveTo(-.45,0,-.25,.32,0,.14); cor.bezierCurveTo(.25,.32,.45,0,0,-.3);
-    var mCor=new THREE.MeshStandardMaterial({color:'#5A3C7E',roughness:.4,emissive:'#000000'});
-    var corazon=new THREE.Mesh(new THREE.ExtrudeGeometry(cor,{depth:.12,bevelEnabled:true,bevelSize:.03,bevelThickness:.03,bevelSegments:3}),mCor);
-    corazon.position.set(meta.c+.5,.55,meta.f+.5); corazon.castShadow=true; E.add(corazon);
+    var mundo=Mundos.de(PJ.id); Mundos.preparar(R,mundo); ambiente(mundo.id);   /* los sonidos del lugar */
+    var E=new THREE.Scene(), C=new THREE.PerspectiveCamera(50,1,.05,220), K=Kit3D();
+    var L=Mundos.laberinto(E,{mundo:mundo,COLS:COLS,FILAS:FILAS,celdas:celdas,sem:(Math.random()*1e6)|0});
+    nucleo(function(N){ if(!N.tono()) cartelMundo(mundo,'Con '+pjAl().replace(/^(al|a la|a) /,'')); });
+    /* los recuerdos, envueltos con los colores del mundo */
+    regalos.forEach(function(r,i){ r.obj=L.regalo(i); r.obj.position.set(r.cel.c+.5,0,r.cel.f+.5); });
+    /* la meta: quien regala espera en el estrado */
+    var ME=L.meta(meta.c+.5,meta.f+.5), OTRO=pareja3D(K); OTRO.g.scale.setScalar(.62); ME.lugar.add(OTRO.g);
+    var deQuien=nomPJ(OTRO.id)||String(DATOS.de||'').trim(); if(deQuien){ var cart=cartel3D('💗 '+deQuien.slice(0,24)); cart.scale.set(1.1,.28,1); cart.position.y=.85; ME.g.add(cart); }   /* el nombre del personaje que espera */
+    var somOtro=Mundos.sombrita(.2); ME.lugar.add(somOtro);
     /* el personaje elegido */
-    var pj=new THREE.Group(), MU=null; pj.scale.setScalar(.45); pj.position.set(.5,0,FILAS-.5); E.add(pj);
-    muneco3D(K,PJ,function(M){ MU=M; M.g.scale.setScalar(1.25/M.alto); pj.add(M.g); });
-    /* chispitas al caminar */
-    var chispas=[], chT=K.lienzo(32,32,function(x){ var gr=x.createRadialGradient(16,16,0,16,16,16); gr.addColorStop(0,'rgba(255,241,218,1)'); gr.addColorStop(1,'rgba(255,241,218,0)'); x.fillStyle=gr; x.fillRect(0,0,32,32); });
-    function chispa(x,z){ var s=new THREE.Sprite(new THREE.SpriteMaterial({map:chT,color:Math.random()<.5?'#FFC94A':'#FF9CC2',transparent:true,depthWrite:false}));
-      s.position.set(x+(Math.random()-.5)*.2,.1+Math.random()*.2,z+(Math.random()-.5)*.2); s.scale.setScalar(.12); s.userData.v=1; E.add(s); chispas.push(s); }
-    function medir(){ var w=innerWidth, h=innerHeight; R.setSize(w,h,false); C.aspect=w/h; C.updateProjectionMatrix(); }
+    var pj=new THREE.Group(), MU=null; pj.scale.setScalar(.5); E.add(pj);
+    muneco3D(K,PJ,function(Mu){ MU=Mu; Mu.g.scale.setScalar(1.25/Mu.alto); Mu.g.traverse(function(o){ if(o.isMesh) o.castShadow=true; }); pj.add(Mu.g); });
+    var som=Mundos.sombrita(.21); E.add(som);
+    /* una marca sobre el personaje que se ve aunque esté detrás de una pared */
+    var marca=new THREE.Sprite(new THREE.SpriteMaterial({map:K.lienzo(64,64,function(x){ x.fillStyle='#FFF1DA'; x.strokeStyle='rgba(20,11,38,.7)'; x.lineWidth=5; x.beginPath(); x.moveTo(32,56); x.lineTo(12,22); x.quadraticCurveTo(32,4,52,22); x.closePath(); x.stroke(); x.fill(); x.fillStyle='#FF7AA8'; x.beginPath(); x.arc(32,24,8,0,6.283); x.fill(); }),depthTest:false,depthWrite:false,transparent:true}));
+    marca.scale.setScalar(.2); marca.renderOrder=20; E.add(marca);
+    function hayPared(x,z){ /* ¿el punto (x,z) está sobre una pared o un pilar? */
+      var rx=Math.round(x), rz=Math.round(z), fx=Math.floor(x), fz=Math.floor(z), T2=.2;
+      if(Math.abs(x-rx)<T2 && Math.abs(z-rz)<T2) return true;   /* pilar */
+      if(Math.abs(x-rx)<T2){ var a=cel(rx,fz), b=cel(rx-1,fz); if((a&&a.p[3])||(b&&b.p[1])) return true; }
+      if(Math.abs(z-rz)<T2){ var c=cel(fx,rz), d=cel(fx,rz-1); if((c&&c.p[0])||(d&&d.p[2])) return true; }
+      return false; }
+    function paredEntre(x,z,yaw,pit,dist){ var hd=Math.cos(pit)*dist, cx=x+Math.sin(yaw)*hd, cyy=.3+Math.sin(pit)*dist, cz=z+Math.cos(yaw)*hd;
+      for(var k=1;k<=14;k++){ var u=k/14, px=x+(cx-x)*u, py=.32+(cyy-.32)*u, pz=z+(cz-z)*u; if(py>ALTO_M+.06) return false; if(hayPared(px,pz)) return true; } return false; }
+    function medir(){ var w=innerWidth, h=innerHeight; R.setSize(w,h,false); C.aspect=w/h; C.fov=w/h<.62?56:48; C.updateProjectionMatrix(); }
     addEventListener('resize',medir); medir();
-    /* ---- moverse libre y suave (como en el planeta y la isla): con inercia, sin saltos de casilla en casilla ---- */
-    var yx=.5, yz=FILAS-.5, vx=0, vz=0, mira=Math.PI, reloj=new THREE.Clock(), camPos=new THREE.Vector3(.5,5.5,FILAS+3), camMira=new THREE.Vector3(.5,0,FILAS-2.5);
-    var jx=0, jy=0, teclas={}, RAD=.2, VEL=1.9;
+    /* ---- moverse libre y suave, con inercia ---- */
+    var yx=.5, yz=FILAS-.5, vx=0, vz=0, mira=Math.PI, reloj=new THREE.Clock(), camPos=new THREE.Vector3(.7,3.35,FILAS+1.0), camMira=new THREE.Vector3(.6,.05,FILAS-1.45);
+    /* la cámara gira alrededor del personaje (arrastrar la pantalla), se acerca o se aleja (pellizcar o la rueda)
+       y, si una pared lo tapa, sube sola hasta verlo: el personaje nunca se pierde */
+    var camYaw=0, camPitch=.95, camDist=2.6, extraPitch=0, ALTO_M=L.alto;
+    var jx=0, jy=0, teclas={}, RAD=.19, VEL=1.75, quieto=0, fin=false, intro=window.__LAB_SIN_ENTRADA?0:3.8, INTRO=3.8;
+    /* la entrada: la cámara empieza abierta (el cielo, los cerros, el mar o la catedral) y baja hasta el personaje */
+    var introDe=new THREE.Vector3(COLS/2-1.2,2.3,FILAS+5.2), introMira=new THREE.Vector3(COLS/2,1.5,FILAS/2-6);
+    function saltarEntrada(){ if(intro>0) intro=Math.min(intro,.6); }
     function celDe(x,z){ return cel(Math.floor(x),Math.floor(z)); }
-    function limitar(){ /* no atravesar paredes: dentro de su casilla, lejos de las paredes que tiene */
-      var k=celDe(yx,yz); if(!k) return; var cx=k.c, cz=k.f;
+    function limitar(){ var k=celDe(yx,yz); if(!k) return; var cx=k.c, cz=k.f;
       if(k.p[1] && yx>cx+1-RAD){ yx=cx+1-RAD; vx=Math.min(vx,0); } if(k.p[3] && yx<cx+RAD){ yx=cx+RAD; vx=Math.max(vx,0); }
       if(k.p[2] && yz>cz+1-RAD){ yz=cz+1-RAD; vz=Math.min(vz,0); } if(k.p[0] && yz<cz+RAD){ yz=cz+RAD; vz=Math.max(vz,0); }
-      /* esquinas: los postes de los cruces también empujan */
       [[cx,cz],[cx+1,cz],[cx,cz+1],[cx+1,cz+1]].forEach(function(q){ var dx=yx-q[0], dz=yz-q[1], d=Math.hypot(dx,dz); if(d<RAD && d>1e-4){ yx=q[0]+dx/d*RAD; yz=q[1]+dz/d*RAD; } });
       yx=Math.max(RAD,Math.min(COLS-RAD,yx)); yz=Math.max(RAD,Math.min(FILAS-RAD,yz)); }
+    /* ---- el camino de pétalos: hacia el recuerdo más cercano (o a la meta si ya están todos) ---- */
+    var botonP=box.querySelector('.lab-pista'), esperaP=0, petT=0;
+    function caminoA(){ var k0=celDe(yx,yz); if(!k0) return null; var d=distDesde(k0), obj=null, mejor=1e9;
+      if(abiertos>=nR) obj=meta; else regalos.forEach(function(r){ if(r.abierto) return; var dd=d[r.cel.f*COLS+r.cel.c]; if(dd>=0 && dd<mejor){ mejor=dd; obj=r.cel; } });
+      if(!obj) return null; var k=obj.f*COLS+obj.c, pts=[];
+      while(k>=0){ pts.unshift([k%COLS+.5,Math.floor(k/COLS)+.5]); k=d.de[k]; }
+      pts[0]=[yx,yz]; return pts; }
+    function mostrarCamino(auto){ if(esperaP>0 && !auto) return; var pts=caminoA(); if(!pts) return; L.petalos.mostrar(pts); petT=7; nota(988,.12,'sine',.035); setTimeout(function(){ nota(1318,.14,'sine',.03); },110);
+      if(!auto){ esperaP=12; botonP.disabled=true; } quieto=0; }
+    botonP.onclick=function(){ mostrarCamino(false); };
+    /* ---- un atajo: la pared que más acorta el camino a la meta, cerca de quien juega ---- */
+    function abrirAtajo(){
+      var k0=celDe(yx,yz); if(!k0) return; var dYo=distDesde(k0), dMeta=distDesde(meta), ahora=dYo[meta.f*COLS+meta.c], mejor=null, gana=1;
+      L.tramos.forEach(function(t,i){ if(!t.a||!t.b||t.abierto||t.bajando) return;
+        var ka=t.a.f*COLS+t.a.c, kb=t.b.f*COLS+t.b.c, cerca=Math.min(dYo[ka],dYo[kb]); if(cerca>3) return;
+        var nuevo=Math.min(dYo[ka]+1+dMeta[kb],dYo[kb]+1+dMeta[ka]), g=ahora-nuevo;
+        if(g>gana || (g===gana && mejor && cerca<mejor.cerca)){ gana=g; mejor={i:i,t:t,cerca:cerca}; } });
+      if(!mejor) return;
+      var t=mejor.t; if(t.h){ t.a.p[2]=0; t.b.p[0]=0; } else { t.a.p[1]=0; t.b.p[3]=0; }
+      L.bajar(mejor.i); nota(110,.5,'sawtooth',.018); nota(82,.7,'triangle',.03);
+      pista('¡Se abrió un atajo hacia '+(deQuien||'el corazón')+'!'); setTimeout(function(){ pista(''); },2600);
+    }
     var ultimaCel='';
     function llegar(){
-      regalos.forEach(function(r){ if(!r.abierto && Math.hypot(r.cel.c+.5-yx,r.cel.f+.5-yz)<.38){ r.abierto=true; abiertos++; H0.puntos(abiertos);
-        H0.sub(abiertos>=nR?'¡Ve al corazón!':'Recuerdos: '+abiertos+' de '+nR); jugando=false; vx=vz=0; r.obj.visible=false; if(MU&&MU.accion) MU.accion('recoger',{vel:1.3}); nucleo(function(N){ N.gano('regalo'); });
-        for(var i=0;i<24;i++) chispa(r.cel.c+.5,r.cel.f+.5);
-        setTimeout(function(){ recuerdo(r.n,'Recuerdo '+abiertos+' de '+nR,abiertos>=nR?'Ir al corazón':'Seguir buscando',function(){ jugando=true; }); },350); } });
-      if(abiertos>=nR){ mCor.color.set('#FF5C8F'); mCor.emissive.set('#FF3D7F'); mCor.emissiveIntensity=.5; }
+      regalos.forEach(function(r){ if(!r.abierto && Math.hypot(r.cel.c+.5-yx,r.cel.f+.5-yz)<.36){ r.abierto=true; abiertos++; H0.puntos(abiertos);
+        H0.sub(abiertos>=nR?'¡Ve al corazón!':'Recuerdos: '+abiertos+' de '+nR); jugando=false; vx=vz=0; quieto=0; L.petalos.ocultar(); petT=0;
+        r.abre=0; if(MU&&MU.accion) MU.accion('recoger',{vel:1.3}); nucleo(function(N){ N.gano('regalo'); });
+        L.estallido(r.cel.c+.5,r.cel.f+.5); [660,880,1175,1568].forEach(function(f,i){ setTimeout(function(){ nota(f,.16,'triangle',.04); },i*80); });
+        setTimeout(function(){ recuerdo(r.n,'Recuerdo '+abiertos+' de '+nR,abiertos>=nR?'Ir al corazón':'Seguir buscando',function(){ jugando=true;
+          if(abiertos>=nR){ ME.encender(); L.estallido(meta.c+.5,meta.f+.5,22,1); mostrarCamino(true); } else abrirAtajo(); }); },650); } });
       var k=celDe(yx,yz), cc=k?k.c+','+k.f:'';
       if(k && k===meta && cc!==ultimaCel){
-        if(abiertos>=nR){ jugando=false; vx=vz=0; for(var i=0;i<60;i++) chispa(meta.c+.5,meta.f+.5);
-          var festeja=MU&&MU.accion&&MU.accion('hiphop'); if(festeja) mira=0;       /* baila de frente a la cámara antes del final */
-          setTimeout(function(){ final('Lo encontraste todo','Jugar otro laberinto',function(){ location.reload(); }); },festeja?3200:900); }
-        else pista('Te faltan '+(nR-abiertos)+(nR-abiertos===1?' recuerdo':' recuerdos')+' para abrir el corazón');
+        if(abiertos>=nR){ jugando=false; fin=true; vx=vz=0; L.petalos.ocultar();
+          mira=Math.atan2(meta.c+.5-yx,meta.f+.5-yz); L.estallido(meta.c+.5,meta.f+.5,60,.8);
+          var festeja=MU&&MU.accion&&MU.accion('hiphop'); if(OTRO.M&&OTRO.M.accion) OTRO.M.accion('rumba');
+          [523,659,784,1047].forEach(function(f,i){ setTimeout(function(){ nota(f,.25,'triangle',.05); },i*120); });
+          setTimeout(function(){ apagarAmbiente(2.5); final('Lo encontraste todo','Jugar otro laberinto',function(){ location.reload(); }); },festeja?3400:1100); }
+        else pista('Te faltan '+(nR-abiertos)+(nR-abiertos===1?' recuerdo':' recuerdos')+' para encender el corazón');
       }
       ultimaCel=cc;
     }
-    /* ---- el fondo vivo: luciérnagas, pétalos que caen y corazones que flotan a lo lejos ---- */
-    var luT=K.lienzo(32,32,function(x){ var g=x.createRadialGradient(16,16,0,16,16,16); g.addColorStop(0,'rgba(255,250,220,1)'); g.addColorStop(.35,'rgba(255,220,140,.6)'); g.addColorStop(1,'rgba(255,200,120,0)'); x.fillStyle=g; x.fillRect(0,0,32,32); });
-    var luces=[]; for(var li=0;li<70;li++){ var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:luT,color:li%3?'#FFE9A8':'#FFB3D6',transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
-      sp.userData={x:Math.random()*(COLS+4)-2,z:Math.random()*(FILAS+4)-2,y:.3+Math.random()*1.8,f:Math.random()*6}; sp.scale.setScalar(.14+Math.random()*.12); E.add(sp); luces.push(sp); }
-    var corL=[], corTx=texBeso(); for(li=0;li<16;li++){ var cs=new THREE.Sprite(new THREE.SpriteMaterial({map:corTx,transparent:true,opacity:.5,depthWrite:false,fog:false}));
-      cs.position.set(-8+Math.random()*(COLS+16),2+Math.random()*7,-6-Math.random()*10); cs.scale.setScalar(.6+Math.random()*1.2); cs.userData.v=Math.random()*6; E.add(cs); corL.push(cs); }
-    var NPt=160, ptg=new THREE.BufferGeometry(), ppa=new Float32Array(NPt*3); for(li=0;li<NPt;li++){ ppa[li*3]=Math.random()*(COLS+6)-3; ppa[li*3+1]=Math.random()*6; ppa[li*3+2]=Math.random()*(FILAS+6)-3; }
-    ptg.setAttribute('position',new THREE.BufferAttribute(ppa,3)); E.add(new THREE.Points(ptg,new THREE.PointsMaterial({color:'#FFB3D0',size:.09,transparent:true,opacity:.85})));
-    jugando=true;
-    (function cuadro(){ requestAnimationFrame(cuadro); var dt=Math.min(.05,reloj.getDelta()), t=reloj.elapsedTime;
+    /* ¿hay una tarjeta encima? entonces el 3D descansa (casi no dibuja) */
+    function tapado(){ return !!document.querySelector('#recuerdo:not([hidden]),.capa:not([hidden]),.rn-capa'); }
+    var perdido=false; cv.addEventListener('webglcontextlost',function(e){ e.preventDefault(); perdido=true; pista('Tu teléfono pausó el 3D: toca para seguir'); },false);
+    cv.addEventListener('webglcontextrestored',function(){ location.reload(); },false);
+    jugando=true; var nCuadro=0, tmpV=new THREE.Vector3(), tmpM=new THREE.Vector3();
+    if(intro>0){ camPos.copy(introDe); camMira.copy(introMira); }
+    (function cuadro(){ requestAnimationFrame(cuadro); if(perdido) return; nCuadro++;
+      var dtR=reloj.getDelta(), dt=Math.min(.05,dtR), t=reloj.elapsedTime;
+      if(tapado() && nCuadro%6) return;
+      if(intro>0) intro-=Math.min(.25,dtR)-dt;   /* la entrada va con el reloj de verdad, aunque el teléfono dibuje lento */
       var ix=jx+((teclas.ArrowRight||teclas.d)?1:0)-((teclas.ArrowLeft||teclas.a)?1:0), iz=-jy+((teclas.ArrowDown||teclas.s)?1:0)-((teclas.ArrowUp||teclas.w)?1:0);
-      var l=Math.hypot(ix,iz); if(l>1){ ix/=l; iz/=l; l=1; } if(!jugando){ ix=iz=0; l=0; }
+      var l=Math.hypot(ix,iz); if(l>1){ ix/=l; iz/=l; l=1; } if(!jugando||intro>0){ ix=iz=0; l=0; }
+      if(l>0){ var cy=Math.cos(camYaw), sy=Math.sin(camYaw), mx=ix*cy+iz*sy, mz=-ix*sy+iz*cy; ix=mx; iz=mz; }   /* la palanca empuja según hacia dónde mira la cámara */
+      if(intro>0){ intro-=dt; if(l>0) saltarEntrada(); }
       var ka=Math.min(1,dt*(l>.05?7:10)); vx+=(ix*VEL-vx)*ka; vz+=(iz*VEL-vz)*ka;
       yx+=vx*dt; limitar(); yz+=vz*dt; limitar();
       var sp2=Math.hypot(vx,vz), anda=sp2>.12;
       if(l>.05){ var quiere=Math.atan2(ix,iz), dif=quiere-mira; while(dif>Math.PI) dif-=6.283; while(dif<-Math.PI) dif+=6.283; mira+=dif*Math.min(1,dt*9); }
-      if(anda && Math.random()<.15) chispa(yx,yz);
-      if(jugando) llegar();
-      pj.position.set(yx,0,yz); pj.rotation.y=mira;
+      if(jugando && intro<=0) llegar();
+      /* si pasa un rato sin encontrar nada, los pétalos aparecen solos (una vez por rato) */
+      if(jugando && !fin && intro<=0){ quieto+=dt; if(quieto>35){ mostrarCamino(true); } }
+      if(esperaP>0){ esperaP-=dt; if(esperaP<=0){ esperaP=0; botonP.disabled=false; } }
+      if(petT>0){ petT-=dt; if(petT<=0) L.petalos.ocultar(); }
+      pj.position.set(yx,0,yz); pj.rotation.y=mira; som.position.set(yx,.012,yz); marca.position.set(yx,.95+Math.sin(t*3)*.03,yz); marca.material.opacity=intro>0||fin?0:.95;
       if(MU) MU.pose(dt,anda?'anda':'quieto',.55+sp2/VEL*.5);
-      /* cámara detrás y arriba, suave */
-      camPos.lerp(new THREE.Vector3(yx*.6+COLS*.2,5.2,yz+3.4),Math.min(1,dt*3)); camMira.lerp(new THREE.Vector3(yx*.6+COLS*.2,0,yz-2.2),Math.min(1,dt*4));
-      C.position.copy(camPos); C.lookAt(camMira); sol.position.set(yx+4,12,yz+6); sol.target.position.set(yx,0,yz);
-      regalos.forEach(function(r,i){ if(r.obj.visible){ r.obj.rotation.y=t*.8+i; r.obj.position.y=Math.sin(t*2.4+i)*.04; } });
-      corazon.rotation.y=t*1.2; corazon.position.y=.55+Math.sin(t*2)*.05;
-      luces.forEach(function(s2){ var u=s2.userData; u.f+=dt; s2.position.set(u.x+Math.sin(u.f*.7)*.4,u.y+Math.sin(u.f*1.3)*.25,u.z+Math.cos(u.f*.5)*.4); s2.material.opacity=.45+.55*Math.max(0,Math.sin(u.f*2.2)); });
-      corL.forEach(function(s3){ s3.userData.v+=dt; s3.position.y+=Math.sin(s3.userData.v)*dt*.25; s3.material.rotation=Math.sin(s3.userData.v*.6)*.25; });
-      var pp=ptg.attributes.position.array; for(var q=0;q<NPt;q++){ pp[q*3+1]-=dt*.35; pp[q*3]+=Math.sin(t+q)*dt*.15; if(pp[q*3+1]<0) pp[q*3+1]=6; } ptg.attributes.position.needsUpdate=true;
-      E.background.offset && (E.background.offset.y=Math.sin(t*.1)*.02);
-      for(var k=chispas.length-1;k>=0;k--){ var c=chispas[k]; c.userData.v-=dt*1.3; c.position.y+=dt*.4; c.material.opacity=Math.max(0,c.userData.v); if(c.userData.v<=0){ E.remove(c); chispas.splice(k,1); } }
+      OTRO.pose(dt,'quieto',1); if(OTRO.g.parent){ var dxo=yx-(meta.c+.5), dzo=yz-(meta.f+.5); OTRO.g.rotation.y=Math.hypot(dxo,dzo)<3?Math.atan2(dxo,dzo):0; }
+      /* los regalos flotan y giran; el que se abre suelta la tapa y se encoge */
+      regalos.forEach(function(r,i){ var o=r.obj; if(!o.visible) return;
+        if(r.abre!=null){ r.abre+=dt; var u=o.userData; u.tapa.position.y=.31+r.abre*2.2; u.tapa.rotation.z=r.abre*5; o.scale.setScalar(Math.max(.01,1-r.abre*1.4)); if(r.abre>.75) o.visible=false; return; }
+        o.rotation.y=t*.7+i; o.userData.caja.position.y=.15+Math.sin(t*2.2+i)*.03; o.userData.halo.material.opacity=.4+Math.sin(t*3+i)*.18; o.userData.aro.rotation.z=t*.5; });
+      ME.corazon.rotation.y=t*1.1; ME.corazon.position.y=1.05+Math.sin(t*1.8)*.04;
+      /* cámara: detrás, baja y cerca (se ve el personaje y el pasillo de adelante, no todo el laberinto) */
+      if(fin){ tmpV.set(meta.c+.5+1.1,1.25,meta.f+.5+1.7); tmpM.set(meta.c+.5,.45,meta.f+.5); }
+      else {
+        /* ¿alguna pared tapa al personaje? (se mira en la cuadrícula: barato) */
+        var tapa=paredEntre(yx,yz,camYaw,camPitch+extraPitch,camDist);
+        extraPitch+=((tapa?Math.min(1.42-camPitch,extraPitch+.35):0)-extraPitch)*Math.min(1,dt*(tapa?4:1.2));
+        var pit=Math.min(1.45,camPitch+extraPitch), hd=Math.cos(pit)*camDist;
+        tmpV.set(yx+Math.sin(camYaw)*hd,.3+Math.sin(pit)*camDist,yz+Math.cos(camYaw)*hd);
+        tmpM.set(yx-Math.sin(camYaw)*.55,.1,yz-Math.cos(camYaw)*.55); }
+      if(intro>0){ var u=Mundos.suave(0,1,1-intro/INTRO); camPos.copy(introDe).lerp(tmpV,u); camMira.copy(introMira).lerp(tmpM,u); }
+      else { camPos.lerp(tmpV,Math.min(1,dt*(fin?1.6:3.2))); camMira.lerp(tmpM,Math.min(1,dt*4)); }
+      C.position.copy(camPos); C.lookAt(camMira);
+      L.actualizar(dt,t,C.position,{x:yx,z:yz});
       R.render(E,C); })();
-    /* mandos: palanca (joystick), teclado, o arrastrar el dedo en cualquier parte */
+    /* mandos: palanca, teclado, o arrastrar el dedo en cualquier parte */
     addEventListener('keydown',function(e){ if(/^(ArrowUp|ArrowDown|ArrowLeft|ArrowRight|w|a|s|d)$/.test(e.key)){ e.preventDefault(); teclas[e.key]=true; } });
     addEventListener('keyup',function(e){ teclas[e.key]=false; });
     var joy=box.querySelector('.joy'), per=joy.querySelector('i'), jid=null, j0={x:0,y:0};
@@ -2817,13 +2982,21 @@ function laberinto(){
     joy.addEventListener('pointerdown',function(e){ e.preventDefault(); jid=e.pointerId; joy.setPointerCapture(jid); var r=joy.getBoundingClientRect(); j0={x:r.left+r.width/2,y:r.top+r.height/2}; mueve(e,j0.x,j0.y); });
     joy.addEventListener('pointermove',function(e){ if(e.pointerId===jid) mueve(e,j0.x,j0.y); });
     ['pointerup','pointercancel'].forEach(function(n){ joy.addEventListener(n,function(e){ if(e.pointerId!==jid) return; jid=null; jx=jy=0; per.style.transform=''; }); });
-    var c0=null;
-    cv.addEventListener('pointerdown',function(e){ c0={x:e.clientX,y:e.clientY,id:e.pointerId}; });
-    cv.addEventListener('pointermove',function(e){ if(!c0||e.pointerId!==c0.id) return; var dx=e.clientX-c0.x, dy=e.clientY-c0.y, ll=Math.hypot(dx,dy), mx=60; if(ll<8){ jx=jy=0; return; } if(ll>mx){ dx*=mx/ll; dy*=mx/ll; } jx=dx/mx; jy=-dy/mx; });
-    ['pointerup','pointercancel','pointerleave'].forEach(function(n){ cv.addEventListener(n,function(){ c0=null; if(jid===null){ jx=jy=0; } }); });
-    window.__lab={ir:function(x,z){ yx=x; yz=z; },estado:function(){ return {x:yx,z:yz,abiertos:abiertos}; },regalos:regalos.map(function(r){ return {c:r.cel.c,f:r.cel.f}; }),mover:function(a,b){ jx=a; jy=b; }};
-    pista('Usa la palanca o arrastra el dedo para caminar');
-  });
+    var dedos={}, pinza=0, girosHechos=0;
+    function nDedos(){ return Object.keys(dedos).length; }
+    cv.addEventListener('pointerdown',function(e){ dedos[e.pointerId]={x:e.clientX,y:e.clientY}; saltarEntrada(); if(nDedos()===2){ var p=Object.values(dedos); pinza=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); } });
+    cv.addEventListener('pointermove',function(e){ var d=dedos[e.pointerId]; if(!d) return; var dx=e.clientX-d.x, dy=e.clientY-d.y; d.x=e.clientX; d.y=e.clientY;
+      if(nDedos()>=2){ var p=Object.values(dedos), nd=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); if(pinza){ camDist=Math.max(1.6,Math.min(7,camDist*pinza/Math.max(20,nd))); } pinza=nd; return; }
+      camYaw-=dx*.009; camPitch=Math.max(.45,Math.min(1.4,camPitch+dy*.006)); if(Math.abs(dx)>2) girosHechos++; });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(n){ cv.addEventListener(n,function(e){ delete dedos[e.pointerId]; if(nDedos()<2) pinza=0; }); });
+    cv.addEventListener('wheel',function(e){ e.preventDefault(); camDist=Math.max(1.6,Math.min(7,camDist*(e.deltaY>0?1.1:.9))); },{passive:false});
+    window.__lab={ir:function(x,z){ yx=x; yz=z; },estado:function(){ return {x:yx,z:yz,abiertos:abiertos,mundo:mundo.id,pareja:OTRO.id,cartel:deQuien,entrada:intro>0,atajos:L.tramos.filter(function(t){ return t.abierto||t.bajando; }).length}; },
+      regalos:regalos.map(function(r){ return {c:r.cel.c,f:r.cel.f}; }),meta:{c:meta.c,f:meta.f},mover:function(a,b){ jx=a; jy=b; },pista:function(){ mostrarCamino(false); },
+      petalos:function(){ return petT>0; },camara:function(){ return {yaw:camYaw,pitch:camPitch+extraPitch,dist:camDist,tapado:paredEntre(yx,yz,camYaw,camPitch+extraPitch,camDist)}; },girar:function(a){ camYaw+=a; },
+      sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); e.quiere=ambQuiere; return e; }};
+    var PRIMERA='Camina con la palanca · arrastra la pantalla para girar y ver todo'; pista(PRIMERA);
+    setTimeout(function(){ var p=document.getElementById('pista-j'); if(p && p.textContent===PRIMERA) pista(''); },6000);
+  },function(){ aviso('No se pudo abrir el laberinto: revisa tu conexión'); });
 }
 
 /* ============ muñecos 3D para la isla y la carrera ============
@@ -2855,9 +3028,15 @@ var AVATARES={ruway:{glb:window.__GLB_RUWAY||RUWAY_GLB,nom:'Ruway'},killa:{glb:w
 /* Los ocho personajes (av-<id>.glb): mismos huesos que Ruway. pareja: quién espera al otro lado.
    manos:false = sus brazos sostienen algo (bolsa, libro, tableta) y no se mueven: la flor no sale
    y la antorcha va en el pecho. */
-[['oso','Osito','zorro'],['zorro','Zorrito','oso',1],['pinguino','Pingüino','pollito',1],['pollito','Pollito','pinguino',1],
- ['mono','Mono','oso'],['nina','Niña','nino'],['nino','Niño','nina'],['explorador','Explorador','nina']].forEach(function(a){
+[['oso','Uku','conejo'],['conejo','Puyu','oso'],['shiba','Sami','vaca'],['vaca','Tika','shiba'],['panda','Nina','qori'],['qori','Qori','panda'],['atuq','Atuq','*'],
+ ['mono','Kusi','*ella'],['escolar','Escolar','rulitos'],['nova','Chaska','explorador'],['rulitos','Rulitos','nova'],['explorador','Rumi','nova'],['exploradora','Wayra','paladin'],['paladin','Inti','exploradora'],
+ ['myke','Yaku','lavender'],['lavender','Urpi','myke'],['tom','Tom','escolar'],['zorro','Zorrito','oso'],['pinguino','Pingüino','pollito',1],['pollito','Pollito','pinguino',1],['tensy','Kantu','leo'],['leo','Ari','tensy'],['fuego','Fuego','tensy']].forEach(function(a){
   AVATARES[a[0]]={glb:'av-'+a[0]+EXT_GLB,nom:a[1],pareja:a[2],manos:!a[3]}; });
+/* los peluches cabezones (Uku, Puyu y Sami: el osito, el conejito y el shiba, del mismo autor): bracitos cortos que se mueven poco, como sus pies (brazos: cuánto
+   de cada movimiento les llega, desde la pose en que vienen hechos), y pasos que suenan a esponja */
+['oso','conejo','shiba','atuq','qori'].forEach(function(id){ if(AVATARES[id]){ AVATARES[id].brazos=.4; AVATARES[id].pasos='esponja'; } });
+/* Tika, la vaquita (un huevito con bracitos y patitas aparte): sus bracitos también se mueven poco */
+if(AVATARES.vaca) AVATARES.vaca.brazos=.4;
 function esVRM(id){ return !!AVATARES[id]; }            /* se baja de un archivo y se anima con los huesos de Ruway */
 function vestible(id){ return id==='ruway'||id==='killa'; }   /* solo ellos se visten (su ropa está pintada por zonas) */
 function cargarRuway(listo,rw){ cargarAvatar('ruway',listo,rw); }
@@ -3018,6 +3197,16 @@ function armarRuway(escena,rw,id){
   if(kCabeza!==1 && H.C_Head){ var hy0=H.C_Head.getWorldPosition(new THREE.Vector3()).y;
     H.C_Head.scale.setScalar(kCabeza); altoM=(hy0-caja.min.y)+(caja.max.y-hy0)*kCabeza; kA=altoM/1.82; escena.updateMatrixWorld(true); }
   var base={}, meta={}; Object.keys(H).forEach(function(k){ base[k]=H[k].quaternion.clone(); meta[k]=H[k].quaternion.clone(); });
+  /* brazos cortos: la pose en que vino hecho el personaje (la de sus matrices de enlace), para mover los brazos solo un poco desde ahí */
+  var kBrazos=(AVATARES[id]&&AVATARES[id].brazos)||0, natural={}, BRAZOS=['L_Shoulder','R_Shoulder','L_UpperArm','R_UpperArm','L_LowerArm','R_LowerArm','L_Hand','R_Hand'];
+  if(kBrazos){ var sk=null; mallas.forEach(function(o){ if(!sk && o.isSkinnedMesh) sk=o.skeleton; });
+    if(sk){ var mw={}, m4=new THREE.Matrix4(), m5=new THREE.Matrix4(), pp=new THREE.Vector3(), ss=new THREE.Vector3();
+      sk.bones.forEach(function(b,i){ mw[b.name.replace(/^J_Bip_/,'')]=new THREE.Matrix4().copy(sk.boneInverses[i]).invert(); });
+      BRAZOS.forEach(function(n){ var pa=H[n]&&H[n].parent&&H[n].parent.name.replace(/^J_Bip_/,''); if(!mw[n]||!mw[pa]) return;
+        m4.copy(mw[pa]).invert().multiply(mw[n]); var qq=new THREE.Quaternion(); m4.decompose(pp,qq,ss); natural[n]=qq; }); }
+    if(!Object.keys(natural).length) kBrazos=0; }
+  var conPasos=AVATARES[id]&&AVATARES[id].pasos, ultPaso=null;
+  if(conPasos && !armarRuway.oye){ armarRuway.oye=1; document.addEventListener('pointerdown',despertarAudio,true); }   /* el iPhone despierta el sonido con un toque */
   var cadera0=H.C_Hips?H.C_Hips.position.y:0, caderaY=cadera0, kC=cadera0?cadera0/.663:1;   /* los movimientos se midieron en Ruway */
   var fase=0, parpa=2, t=0, e=new THREE.Euler(), q=new THREE.Quaternion(), ges=gestos(), bs=besos(g), flor=florMano(), yaSolto=0, andar=0, trote=0, primera=true;
   var ramo=ramoFlores(); if(H.C_Chest){ H.C_Chest.add(ramo); ramo.position.set(0,.02*kA,.34*kA); ramo.rotation.x=-.5; ramo.scale.setScalar(kA); }
@@ -3067,6 +3256,7 @@ function armarRuway(escena,rw,id){
     /* cuánto está caminando / corriendo, con inercia */
     andar+=((anda?1:0)-andar)*Math.min(1,dt*6); trote+=((corre?1:0)-trote)*Math.min(1,dt*5);
     var paso=(7+4*trote)*(vel||1); fase+=dt*paso*Math.max(.001,andar);
+    if(conPasos){ var np=Math.floor(fase/Math.PI); if(andar>.5 && (modo==='anda'||modo==='corre')){ if(ultPaso!==null && np!==ultPaso) pasoEsponja(trote); } ultPaso=np; }
     var s=Math.sin(fase), c=Math.cos(fase), A=(.5+.45*trote)*andar, resp=Math.sin(t*2.1);
     var abajo=1.2, arriba=0, sonrisa=.35, boca=0;
     flor.visible=modo==='flor' && conManos; ramo.visible=!!M.tieneRamo;
@@ -3118,6 +3308,7 @@ function armarRuway(escena,rw,id){
     capaCuadro(dt,modo,vel); var wc=capa.c?capa.w:0;
     if(wc>0 && (modo==='baila'||capa.nom===modo||capa.acc)) flor.visible=false;
     /* mezcla suave hacia la pose (con la capa entera manda la capa, sin retraso) */
+    if(kBrazos) BRAZOS.forEach(function(n){ if(!natural[n]) return; qc.copy(meta[n]); meta[n].copy(natural[n]).slerp(qc,kBrazos); });   /* poquito, desde su pose */
     var kq=primera?1:1-Math.exp(-dt*(anda?16:11)); kq+=(1-kq)*wc*.85; primera=false;
     Object.keys(meta).forEach(function(n){ H[n].quaternion.slerp(meta[n],kq); });
     caderaY+=(cadera0+arriba*(1-wc)*kA+(wc?capa.y*kC:0)-caderaY)*Math.min(1,dt*(wc>.5?30:14));
@@ -3299,8 +3490,15 @@ function muneco3D(K,pj,listo){
    Con los personajes, su pareja (AVATARES[id].pareja); con "Mi avatar", el osito. Se devuelve al
    toque (un grupo vacío) y el avatar entra cuando termina de bajar: el juego no espera. Alto 1. */
 function parejaDe(pj){ return pj.id==='killa'?'ruway':(pj.id==='ruway'?'killa':null); }
+/* quién espera a cada personaje: su pareja; a Kusi, una chica al azar ('*ella'); a Atuq, cualquiera al azar ('*'). Solo de los que ya despertaron. */
+function parejaPara(id){ var p=AVATARES[id]&&AVATARES[id].pareja; if(p!=='*ella' && p!=='*') return p;
+  var c=PJS.filter(function(q){ return !q.oculto && !q.marca && q.id!==id && AVATARES[q.id] && pjLibre(q.id) && (p!=='*ella' || q.f); });
+  return c.length?c[(Math.random()*c.length)|0].id:null; }
+function nomPJ(id){ for(var i=0;i<PJS.length;i++) if(PJS[i].id===id) return PJS[i].nom; return ''; }
 function pareja3D(K){
-  var P={g:new THREE.Group(),alto:1,tieneRamo:false,M:null,id:parejaDe(PJ)||(AVATARES[PJ.id]&&AVATARES[PJ.id].pareja)||'oso',
+  /* la pareja de cada personaje (si todavía duerme, espera el osito: nadie ve a alguien que no despertó) */
+  var ella=parejaPara(PJ.id); if(ella&&(!AVATARES[ella]||!pjLibre(ella))) ella=null;
+  var P={g:new THREE.Group(),alto:1,tieneRamo:false,M:null,id:parejaDe(PJ)||ella||(PJ.id==='oso'?'panda':'oso'),
     pose:function(dt,m,v){ if(P.M){ P.M.tieneRamo=P.tieneRamo; P.M.pose(dt,m,v); } }};
   function poner(M){ P.M=M; M.g.scale.setScalar(1/M.alto); M.g.traverse(function(o){ if(o.isMesh) o.castShadow=true; }); P.g.add(M.g); }
   if(esVRM(P.id)) cargarAvatar(P.id,function(M){ poner(M||munecoKit(K,{id:'avatar',av:{piel:1,pelo:1,peinado:'largo',ropa:1}},true)); },trajeDe(PJ,P.id));   /* quien espera, con la ropa que le eligieron */
@@ -3361,7 +3559,7 @@ function isla(){
   document.body.appendChild(ui);
   var escn=document.createElement('div'); escn.className='escena'; var cv=document.createElement('canvas'); escn.appendChild(cv); document.getElementById('app').appendChild(escn);
 
-  cargarThree(function(){
+  conMundosSuave(function(){
   var K=Kit3D();
   muneco3D(K,PJ,function(YO){
     /* ================= el mundo =================
@@ -3510,19 +3708,32 @@ function isla(){
     var R3=fluido(new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true})); R3.setPixelRatio(Math.min(devicePixelRatio||1,1.6));
     R3.shadowMap.enabled=true; R3.shadowMap.type=THREE.PCFSoftShadowMap;
     var E=new THREE.Scene(), C=new THREE.PerspectiveCamera(55,1,.1,300);
-    E.background=K.lienzo(8,512,function(x,w,h){ var g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#2F7FE0'); g.addColorStop(.45,'#5FA8F2'); g.addColorStop(.75,'#A9D4FA'); g.addColorStop(1,'#DDF0FF'); x.fillStyle=g; x.fillRect(0,0,w,h); });
-    E.fog=new THREE.Fog('#CFE6FA',42,130);
-    E.add(new THREE.HemisphereLight('#FFFFFF','#7F9A7A',.82));
-    var sol=new THREE.DirectionalLight('#FFF6E8',.8); sol.castShadow=true; sol.shadow.mapSize.set(1024,1024);
+    /* el mundo de la pareja (como el laberinto, el planeta y Corre): los colores del pasto, las hojas, la arena y el agua, el cielo,
+       la luz, lo que vuela y los sonidos. Los bloques y lo construido NO cambian (son los mismos en los dos teléfonos): solo su color.
+       Trujillo se queda con la isla de siempre. Sin ruway-mundos.js, la isla de siempre. */
+    var MW=window.Mundos&&Mundos.de?Mundos.de(PJ.id):null, CMi=MW&&MW.cielo, vidaF=null;
+    var PALI=({sierra:{pasto:'#93AE4C',hojas:'#5E7D4C',arena:'#D8C69A',agua:['#4A8CCB','#5296D4','#4282C2','#64A6DE'],mar:'#4A90CF',fondo:'#2C6A9A',piedra:'#9C978F'},
+      costa:{pasto:'#B9C46C',hojas:'#4E9A3A',arena:'#F3DFB2',agua:['#2FB0D8','#38BAE0','#28A2CC','#55C8EA'],mar:'#36B4DC',fondo:'#1E86A8'},
+      desierto:{pasto:'#CDAA80',hojas:'#7C8C46',arena:'#E8CFA8',agua:['#3AA2C4','#44AACC','#3496B8','#5CBAD6'],mar:'#3FA6C8',fondo:'#2A7E9C',piedra:'#B59A7A'},
+      noche:{pasto:'#4F7F6A',hojas:'#2E5A52',arena:'#B8B4A0',agua:['#2A4E86','#30588F','#26467A','#3C6AA0'],mar:'#2E548C',fondo:'#1A3460'},
+      selva:{pasto:'#2F9A3A',hojas:'#1F7A2C',arena:'#C9A878',agua:['#4F8E74','#58987C','#47846A','#68A88A'],mar:'#4A8E78',fondo:'#2E6A54'}})[MW?MW.id:'']||{};
+    E.background=K.lienzo(8,512,function(x,w,h){ var g=x.createLinearGradient(0,0,0,h);
+      if(CMi){ g.addColorStop(0,CMi.cenit); g.addColorStop(.45,CMi.medio); g.addColorStop(.75,CMi.horizonte); g.addColorStop(1,CMi.horizonte); }
+      else { g.addColorStop(0,'#2F7FE0'); g.addColorStop(.45,'#5FA8F2'); g.addColorStop(.75,'#A9D4FA'); g.addColorStop(1,'#DDF0FF'); }
+      x.fillStyle=g; x.fillRect(0,0,w,h); });
+    E.fog=new THREE.Fog(MW?MW.niebla.color:'#CFE6FA',42,130);
+    E.add(new THREE.HemisphereLight(MW?MW.luz.cielo:'#FFFFFF',MW?MW.luz.suelo:'#7F9A7A',MW?(MW.id==='noche'?1.05:Math.max(.8,MW.luz.hemi+.3)):.82));
+    var sol=new THREE.DirectionalLight(MW?MW.luz.sol:'#FFF6E8',.8);
+    if(MW){ ambiente(MW.id); nucleo(function(N){ if(!N.tono()) cartelMundo(MW,'Con '+pjAl().replace(/^(al|a la|a) /,'')); }); } sol.castShadow=true; sol.shadow.mapSize.set(1024,1024);
     var sc=sol.shadow.camera; sc.left=-20; sc.right=20; sc.top=20; sc.bottom=-20; sc.near=1; sc.far=60; sol.shadow.bias=-.0015; E.add(sol); E.add(sol.target);
     /* el sol cuadrado, bajito, y su brillo */
     var solT=K.lienzo(128,128,function(x,w,h){ var g=x.createRadialGradient(64,64,10,64,64,64); g.addColorStop(0,'rgba(255,240,200,.9)'); g.addColorStop(1,'rgba(255,200,160,0)'); x.fillStyle=g; x.fillRect(0,0,w,h); x.fillStyle='#FFF8E6'; x.fillRect(40,40,48,48); });
     var solS=new THREE.Sprite(new THREE.SpriteMaterial({map:solT,fog:false,depthWrite:false})); solS.scale.set(40,40,1); solS.position.set(-70,20,-110); E.add(solS);
     /* el mar y el fondo del mar */
-    var olaT=K.lienzo(64,64,function(x,w,h){ x.fillStyle='#4FB4E6'; x.fillRect(0,0,w,h); for(var i=0;i<60;i++){ x.fillStyle='rgba(255,255,255,'+(.08+Math.random()*.18)+')'; x.fillRect(Math.random()*w|0,Math.random()*h|0,2+Math.random()*6|0,1); } });
+    var olaT=K.lienzo(64,64,function(x,w,h){ x.fillStyle=PALI.mar||'#4FB4E6'; x.fillRect(0,0,w,h); for(var i=0;i<60;i++){ x.fillStyle='rgba(255,255,255,'+(.08+Math.random()*.18)+')'; x.fillRect(Math.random()*w|0,Math.random()*h|0,2+Math.random()*6|0,1); } });
     olaT.wrapS=olaT.wrapT=THREE.RepeatWrapping; olaT.repeat.set(60,60); olaT.magFilter=THREE.NearestFilter;
     /* el mar de afuera: cuatro franjas alrededor de la isla (adentro el agua son bloques, para poder bucear) */
-    var mMar=new THREE.MeshLambertMaterial({map:olaT,transparent:true,opacity:.82}), mFon=new THREE.MeshLambertMaterial({color:'#2F86B8'});
+    var mMar=new THREE.MeshLambertMaterial({map:olaT,transparent:true,opacity:.82}), mFon=new THREE.MeshLambertMaterial({color:PALI.fondo||'#2F86B8'});
     [[-60,-60,168,60],[-60,X,168,60],[-60,0,60,Z],[X,0,60,Z]].forEach(function(f){ [[mMar,3.9],[mFon,.5]].forEach(function(mm){ var p=new THREE.Mesh(new THREE.PlaneGeometry(f[2],f[3]),mm[0]); p.rotation.x=-Math.PI/2; p.position.set(f[0]+f[2]/2,mm[1],f[1]+f[3]/2); E.add(p); }); });
 
     /* ---- texturas de 16×16, pixeladas a propósito ---- */
@@ -3543,16 +3754,16 @@ function isla(){
       g.fillStyle='rgba(0,0,0,.2)'; g.fillRect(0,S-2,S,2); g.fillRect(S-2,0,2,S);
       var t=new THREE.CanvasTexture(c); t.magFilter=THREE.LinearFilter; t.minFilter=THREE.LinearMipmapLinearFilter; t.anisotropy=4; t.userData={c:c}; return t; }
     function vetas(col,paso,vert){ return function(g,S){ g.fillStyle=col; for(var k=paso;k<S;k+=paso) if(vert) g.fillRect(k,0,1.5,S); else g.fillRect(0,k,S,1.5); }; }
-    T.pasto=rb('#4DBB4B',{studs:1});
+    T.pasto=rb(PALI.pasto||'#4DBB4B',{studs:1});
     T.tierra=rb('#8E5F3D');
-    T.lado=rb('#8E5F3D',{dib:function(g,S){ g.fillStyle='#4DBB4B'; g.fillRect(0,0,S,9); for(var x=0;x<S;x+=4){ g.fillRect(x,9,4,(R()*4|0)); } g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(0,0,S,2); }});
-    T.piedra=rb('#A4A3AB',{dib:function(g,S){ g.strokeStyle='rgba(60,60,70,.35)'; g.lineWidth=1.2; g.beginPath(); g.moveTo(4,20); g.lineTo(12,16); g.lineTo(18,22); g.moveTo(20,6); g.lineTo(26,10); g.stroke(); }});
+    T.lado=rb('#8E5F3D',{dib:function(g,S){ g.fillStyle=PALI.pasto||'#4DBB4B'; g.fillRect(0,0,S,9); for(var x=0;x<S;x+=4){ g.fillRect(x,9,4,(R()*4|0)); } g.fillStyle='rgba(255,255,255,.18)'; g.fillRect(0,0,S,2); }});
+    T.piedra=rb(PALI.piedra||'#A4A3AB',{dib:function(g,S){ g.strokeStyle='rgba(60,60,70,.35)'; g.lineWidth=1.2; g.beginPath(); g.moveTo(4,20); g.lineTo(12,16); g.lineTo(18,22); g.moveTo(20,6); g.lineTo(26,10); g.stroke(); }});
     T.corteza=rb('#7C5030',{dib:vetas('rgba(40,20,10,.3)',6,true),ruido:20});
     T.anillos=rb('#C99D66',{dib:function(g){ g.strokeStyle='rgba(120,80,40,.6)'; g.lineWidth=1.5; [4,8,12].forEach(function(r){ g.beginPath(); g.arc(16,16,r,0,6.3); g.stroke(); }); }});
-    T.hojas=rb('#3AA548',{dib:function(g){ for(var i=0;i<7;i++){ g.fillStyle=i%2?'rgba(120,220,110,.35)':'rgba(20,90,30,.3)'; g.beginPath(); g.arc(R()*32,R()*32,3+R()*4,0,6.3); g.fill(); } }});
+    T.hojas=rb(PALI.hojas||'#3AA548',{dib:function(g){ for(var i=0;i<7;i++){ g.fillStyle=i%2?'rgba(120,220,110,.35)':'rgba(20,90,30,.3)'; g.beginPath(); g.arc(R()*32,R()*32,3+R()*4,0,6.3); g.fill(); } }});
     T.cerezo=rb('#F59CC2',{dib:function(g){ for(var i=0;i<8;i++){ g.fillStyle=i%2?'rgba(255,255,255,.55)':'rgba(230,110,160,.4)'; g.beginPath(); g.arc(R()*32,R()*32,2+R()*3,0,6.3); g.fill(); } }});
     T.ladrillo=rb('#C0573F',{ruido:20,dib:function(g,S){ g.fillStyle='rgba(235,225,210,.75)'; for(var f=0;f<4;f++){ g.fillRect(0,f*8+7,S,1.5); var o=f%2?8:0; for(var k=o;k<S;k+=16) g.fillRect(k,f*8,1.5,8); } }});
-    T.arena=rb('#EFD69B',{ruido:70});
+    T.arena=rb(PALI.arena||'#EFD69B',{ruido:70});
     T.vidrio=tx(function(g){ g.clearRect(0,0,16,16); g.fillStyle='rgba(200,235,255,.3)'; g.fillRect(0,0,16,16); g.fillStyle='rgba(255,255,255,.95)'; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); g.fillStyle='rgba(255,255,255,.6)'; g.fillRect(3,3,1,4); g.fillRect(4,3,3,1); });
     T.corazon=tx(function(g){ g.fillStyle='#FF7AA8'; g.fillRect(0,0,16,16); g.fillStyle='#FFD1E1';
       ['0110110','1111111','1111111','0111110','0011100','0001000'].forEach(function(f,y){ for(var x=0;x<7;x++) if(f[x]==='1') g.fillRect(x*2+1,y*2+3,2,2); }); });
@@ -3566,7 +3777,7 @@ function isla(){
     T.pino=rb('#2F7A40',{dib:function(g){ for(var i=0;i<6;i++){ g.fillStyle='rgba(15,60,25,.35)'; g.beginPath(); g.moveTo(R()*32,R()*32); g.lineTo(R()*32,R()*32); g.lineTo(R()*32,R()*32); g.fill(); } }});
     T.concreto=rb('#E7E4DF',{studs:1});
     T.vidrioA=tx(function(g){ g.clearRect(0,0,16,16); g.fillStyle='rgba(90,170,255,.5)'; g.fillRect(0,0,16,16); g.fillStyle='rgba(40,60,90,.9)'; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); g.fillRect(7,0,1,16); g.fillStyle='rgba(255,255,255,.7)'; g.fillRect(2,2,1,4); });
-    T.agua=tx(function(g){ ruidoPx(g,['#3FA7E0','#46B0E8','#3A9ED8','#5BC0F0']); g.fillStyle='rgba(255,255,255,.35)'; for(var i=0;i<4;i++) g.fillRect(R()*12|0,R()*16|0,3+(R()*3|0),1); });
+    T.agua=tx(function(g){ ruidoPx(g,PALI.agua||['#3FA7E0','#46B0E8','#3A9ED8','#5BC0F0']); g.fillStyle='rgba(255,255,255,.35)'; for(var i=0;i<4;i++) g.fillRect(R()*12|0,R()*16|0,3+(R()*3|0),1); });
     T.foto=tx(function(g){ g.fillStyle='#FFFDF6'; g.fillRect(0,0,16,16); g.fillStyle='#FF9A8B'; g.fillRect(2,2,12,10); g.fillStyle='#FFF1DA'; g.fillRect(6,5,4,3); });
     function M(t,extra){ return new THREE.MeshPhongMaterial(Object.assign({map:t,shininess:26,specular:'#262626'},extra||{})); }   /* brillo de plástico */
     var MAT=[];
@@ -3690,7 +3901,7 @@ function isla(){
     YO.g.scale.setScalar(1.5/YO.alto); YO.g.rotation.order='YXZ'; E.add(YO.g);
     YO.g.traverse(function(o){ if(o.isMesh) o.castShadow=true; });
     var OTRO=pareja3D(K); OTRO.g.scale.setScalar(1.4/OTRO.alto); E.add(OTRO.g);
-    var cartelOtro=cartel3D('💗 '+nomDe); cartelOtro.position.y=1.25*OTRO.alto+.35; cartelOtro.scale.set(2/OTRO.g.scale.x,.5/OTRO.g.scale.x,1); OTRO.g.add(cartelOtro);
+    var nomOtro=nomPJ(OTRO.id)||nomDe, cartelOtro=cartel3D('💗 '+nomOtro); cartelOtro.position.y=1.25*OTRO.alto+.35; cartelOtro.scale.set(2/OTRO.g.scale.x,.5/OTRO.g.scale.x,1); OTRO.g.add(cartelOtro);
     var otro={x:PAREJA.x,z:PAREJA.z,y:suelo(PAREJA.x,PAREJA.z),rot:0};
     if(EST.pareja){ otro.x=INICIO.x+1.2; otro.z=INICIO.z+.8; otro.y=suelo(otro.x,otro.z); }
 
@@ -3978,7 +4189,7 @@ function isla(){
     function laFlor(){ EST.fin=true; guardarEst(); misiones();
       for(var i=0;i<60;i++) chispa(flor.position.x,flor.position.y+1,flor.position.z);
       capa('<img class="masc" src="'+MASCOTA+'" alt=""><h2>Esta flor existe en dos mundos</h2><p>Una puedes tocar.\nLa otra siempre estará aquí.</p><button class="primario" data-cerrar>'+esc(CIERRE.bt)+'</button>',function(){
-        final(CIERRE.tit,'Seguir en la isla',function(){}); }); }
+        apagarAmbiente(2.5); final(CIERRE.tit,'Seguir en la isla',function(){}); }); }
 
     /* ================= mandos ================= */
     var joy=document.getElementById('joy'), perilla=joy.querySelector('i'), jid=null, j0={x:0,y:0};
@@ -4018,9 +4229,11 @@ function isla(){
 
     /* ================= cada cuadro ================= */
     var reloj3=new THREE.Clock(), tFotos=0;
-    window.__isla={cierre:function(){ return CIERRE; },peso:function(){ return {rec:Math.round(tRec),mallas:mallas.length,trozos:Object.keys(TROZOS).length}; },parejaId:function(){ return OTRO.M?(OTRO.M.id||'kit'):''; },otro:otro,base:base,tuneles:TUNELES,tunel:TUNEL,parcelas:PARCELAS,doble:function(){ return !!yo.doble; },saltar:function(){ saltoPedido=true; },volar:volar,romper:function(x,y,z){ romperEn({x:x,y:y,z:z,n:[0,1,0]}); },plantilla:armarPlantilla,enAgua:enAgua,fondo:fondo,marcos:MARCOS,casa:CASA,lago:LAGO,estado:function(){ return {volando:volando,nadando:nadando,bajoAgua:bajoAgua,modo:modo}; },info:function(){ return R3.info.render; },escena:E,mu:YO,yo:yo,G:G,I:I,cambiar:cambiar,tocar:tocar,modo:function(){ return construyendo; },est:EST,pend:PEND,srv:function(){ return SRV; },corazones:CORS,pareja:PAREJA,jardin:JAR,suelo:suelo,camara:function(y,p,d){ yaw=y; pitch=p; dist=d; }};
+    if(MW && Mundos.vida){ var vidaG=new THREE.Group(); vidaG.position.set(X/2,6,Z/2); vidaG.scale.setScalar(1.6); E.add(vidaG); try{ vidaF=Mundos.vida(vidaG,MW,{cx:0,cz:0,w:24,h:24}); }catch(e){ vidaF=null; } }
+    window.__isla={espera:OTRO.id,cartel:nomOtro,mundo:MW?MW.id:'',sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); e.quiere=ambQuiere; return e; },cierre:function(){ return CIERRE; },peso:function(){ return {rec:Math.round(tRec),mallas:mallas.length,trozos:Object.keys(TROZOS).length}; },parejaId:function(){ return OTRO.M?(OTRO.M.id||'kit'):''; },otro:otro,base:base,tuneles:TUNELES,tunel:TUNEL,parcelas:PARCELAS,doble:function(){ return !!yo.doble; },saltar:function(){ saltoPedido=true; },volar:volar,romper:function(x,y,z){ romperEn({x:x,y:y,z:z,n:[0,1,0]}); },plantilla:armarPlantilla,enAgua:enAgua,fondo:fondo,marcos:MARCOS,casa:CASA,lago:LAGO,estado:function(){ return {volando:volando,nadando:nadando,bajoAgua:bajoAgua,modo:modo}; },info:function(){ return R3.info.render; },escena:E,mu:YO,yo:yo,G:G,I:I,cambiar:cambiar,tocar:tocar,modo:function(){ return construyendo; },est:EST,pend:PEND,srv:function(){ return SRV; },corazones:CORS,pareja:PAREJA,jardin:JAR,suelo:suelo,camara:function(y,p,d){ yaw=y; pitch=p; dist=d; }};
     pista(EST.pareja?'':'Busca a '+nomDe+': cruza el puente del gran cañón 🌉');
     (function cuadro(){ requestAnimationFrame(cuadro); var dt=Math.min(.05,reloj3.getDelta()), t=reloj3.elapsedTime;
+      if(vidaF) try{ vidaF(dt,t,C.position); }catch(e){ vidaF=null; }
       if(bBajar){ var verB=volando||nadando; if(bBajar.hidden===verB) bBajar.hidden=!verB;
         if(nadando && !avisoBuceo){ avisoBuceo=true; pista('Mantén ⤵ para bucear y ⤴ para subir'); setTimeout(function(){ pista(''); },3500); } }
       if(quieto>0){ quieto-=dt; if(YO.haciendo && !YO.haciendo()) quieto=0; }
@@ -4104,16 +4317,38 @@ function corre(){
   var marc=document.createElement('div'); marc.className='marcador'; marc.innerHTML='<b id="c-pts">0</b><span id="c-vid">❤️❤️❤️</span>'; document.body.appendChild(marc);
   var barra=document.createElement('div'); barra.className='barra-m'; barra.innerHTML='<i id="c-bar"></i><span>💗</span>'; document.body.appendChild(barra);
   var escn=document.createElement('div'); escn.className='escena'; var cv=document.createElement('canvas'); escn.appendChild(cv); document.getElementById('app').appendChild(escn);
-  cargarThree(function(){
+  conMundosSuave(function(){
   var K=Kit3D();
   muneco3D(K,PJ,function(YO){
     var R3=fluido(new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true})); R3.setPixelRatio(Math.min(devicePixelRatio||1,1.6));
     R3.shadowMap.enabled=true; R3.shadowMap.type=THREE.PCFSoftShadowMap;
     var E=new THREE.Scene(), C=new THREE.PerspectiveCamera(60,1,.1,260);
-    E.background=K.lienzo(8,256,function(x,w,h){ var g=x.createLinearGradient(0,0,0,h); g.addColorStop(0,'#6EC3FF'); g.addColorStop(.6,'#BFE6FF'); g.addColorStop(1,'#FFE9F3'); x.fillStyle=g; x.fillRect(0,0,w,h); });
-    E.fog=new THREE.Fog('#E4F2FF',40,120);
-    E.add(new THREE.HemisphereLight('#FFFFFF','#9A8FB8',.85));
-    var sol=new THREE.DirectionalLight('#FFF3DC',.75); sol.position.set(6,14,6); sol.castShadow=true; sol.shadow.mapSize.set(1024,1024);
+    /* el mundo de la pareja (como el laberinto y el planeta): cielo, neblina, luz, veredas, paredes, lo que vuela y los sonidos.
+       Trujillo se queda con su calle de casonas de colores. Sin ruway-mundos.js, la calle de siempre. */
+    var MW=window.Mundos&&Mundos.de?Mundos.de(PJ.id):null, CMc=MW&&MW.cielo, vidaF=null;
+    E.background=K.lienzo(8,256,function(x,w,h){ var g=x.createLinearGradient(0,0,0,h);
+      if(CMc){ g.addColorStop(0,CMc.cenit); g.addColorStop(.6,CMc.medio); g.addColorStop(1,CMc.horizonte); } else { g.addColorStop(0,'#6EC3FF'); g.addColorStop(.6,'#BFE6FF'); g.addColorStop(1,'#FFE9F3'); }
+      x.fillStyle=g; x.fillRect(0,0,w,h); });
+    E.fog=new THREE.Fog(MW?MW.niebla.color:'#E4F2FF',40,120);
+    E.add(new THREE.HemisphereLight(MW?MW.luz.cielo:'#FFFFFF',MW?MW.luz.suelo:'#9A8FB8',MW?Math.max(.8,MW.luz.hemi+.3):.85));
+    var sol=new THREE.DirectionalLight(MW?MW.luz.sol:'#FFF3DC',.75);
+    if(MW){ ambiente(MW.id); nucleo(function(N){ if(!N.tono()) cartelMundo(MW,'Con '+pjAl().replace(/^(al|a la|a) /,'')); }); }
+    var PAREDES=MW && MW.id!=='ciudad' && Mundos.muros ? (function(){ try{ return Mundos.muros(MW); }catch(e){ return null; } })() : null;
+    /* las paredes de un tramo (cuatro trozos por lado) se juntan UNA vez en una geometría por material: así cada tramo son
+       2 o 3 dibujos y no 24 (con 24 la calle iba lenta). Todos los tramos comparten esas geometrías. */
+    var FRANJA=null;
+    function armarFranja(){ try{ var EP=3, LP=6, porMat=[], mt=new THREE.Matrix4(), q0=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2), escP=new THREE.Vector3(LP,EP,EP);
+      /* dos trozos largos por lado (estirados a lo largo, que de lejos no se nota): la mitad de triángulos */
+      [-1,1].forEach(function(l){ for(var k=0;k<2;k++){ PAREDES.variantes[(k+(l>0?1:0))%PAREDES.variantes.length].forEach(function(pt){
+        mt.compose(new THREE.Vector3(l*(5.85+PAREDES.grosor*EP/2),.18,-L/2+LP/2+k*LP),q0,escP);
+        var e=null; porMat.forEach(function(x){ if(x.mat===pt.mat) e=x; }); if(!e){ e={mat:pt.mat,geos:[]}; porMat.push(e); } e.geos.push(pt.geo.clone().applyMatrix4(mt)); }); } });
+      FRANJA=porMat.map(function(e){ var g0=e.geos[0], nombres=Object.keys(g0.attributes).filter(function(n){ return e.geos.every(function(g){ return g.attributes[n] && g.attributes[n].itemSize===g0.attributes[n].itemSize; }); }), datos={}, idx=[], base=0;
+        nombres.forEach(function(n){ datos[n]=[]; });
+        e.geos.forEach(function(g){ var nv=g.attributes.position.count; nombres.forEach(function(n){ var a=g.attributes[n].array; for(var i=0;i<a.length;i++) datos[n].push(a[i]); });
+          if(g.index){ var ix=g.index.array; for(var i=0;i<ix.length;i++) idx.push(ix[i]+base); } else for(var i=0;i<nv;i++) idx.push(i+base); base+=nv; g.dispose(); });
+        var G=new THREE.BufferGeometry(); nombres.forEach(function(n){ G.setAttribute(n,new THREE.Float32BufferAttribute(datos[n],g0.attributes[n].itemSize)); });
+        G.setIndex(base>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1)); G.computeBoundingSphere(); return {geo:G,mat:e.mat}; });
+    }catch(e){ FRANJA=null; PAREDES=null; } }   /* se llama cuando ya se sabe el largo de un tramo (L) */ sol.position.set(6,14,6); sol.castShadow=true; sol.shadow.mapSize.set(1024,1024);
     var sc=sol.shadow.camera; sc.left=-8; sc.right=8; sc.top=12; sc.bottom=-12; E.add(sol); E.add(sol.target); sol.target.position.set(0,0,-4);
     var CARR=[-1.8,0,1.8], L=12, TRAMOS=11;
     function lz(w,h,f){ return K.lienzo(w,h,f); }
@@ -4122,6 +4357,7 @@ function corre(){
       x.fillStyle='#FFFFFF'; [w*.34,w*.66].forEach(function(px){ for(var y=0;y<h;y+=64) x.fillRect(px-2,y,4,34); });
       x.fillStyle='#FFD23F'; x.fillRect(4,0,5,h); x.fillRect(w-9,0,5,h); });
     var vereda=lz(64,64,function(x,w,h){ x.fillStyle='#E9DCCF'; x.fillRect(0,0,w,h); x.fillStyle='#D6C5B6'; x.fillRect(0,0,w,2); x.fillRect(0,0,2,h); x.fillRect(31,0,2,h); x.fillRect(0,31,w,2); });
+    if(MW && MW.id!=='ciudad' && Mundos.texSuelo && Mundos.texSuelo(MW.suelo)){ vereda=Mundos.texSuelo(MW.suelo).clone(); vereda.needsUpdate=true; }   /* veredas de puna, arena, tierra, escarcha u hojarasca */
     vereda.wrapS=vereda.wrapT=THREE.RepeatWrapping; vereda.repeat.set(1,4);
     var mPista=new THREE.MeshLambertMaterial({map:asfalto}), mVer=new THREE.MeshLambertMaterial({map:vereda}), mBord=new THREE.MeshLambertMaterial({color:'#B9A9C9'});
     var COLS=['#FF9EBB','#9FD8FF','#FFD27A','#B8F0C8','#D6B8FF','#FFB38A','#8FE3E0','#FFF1A8'];
@@ -4135,8 +4371,8 @@ function corre(){
       var p=new THREE.Mesh(new THREE.PlaneGeometry(6.4,L),mPista); p.rotation.x=-Math.PI/2; p.receiveShadow=true; g.add(p);
       [-1,1].forEach(function(l){ var v=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,L),mVer); v.position.set(l*4.5,.09,0); v.receiveShadow=true; g.add(v);
         var b=new THREE.Mesh(new THREE.BoxGeometry(.18,.22,L),mBord); b.position.set(l*3.25,.11,0); g.add(b);
-        /* dos casitas por lado, de colores, con toldo */
-        for(var k=0;k<2;k++){ var col=COLS[(i*3+k*5+(l>0?2:0))%COLS.length], pisos=2+((i+k+(l>0?1:0))%3), alto=pisos*2.3;
+        /* dos casitas por lado, de colores, con toldo (en los otros mundos van las paredes del mundo, abajo) */
+        if(!PAREDES) for(var k=0;k<2;k++){ var col=COLS[(i*3+k*5+(l>0?2:0))%COLS.length], pisos=2+((i+k+(l>0?1:0))%3), alto=pisos*2.3;
           var casa=new THREE.Mesh(new THREE.BoxGeometry(4.5,alto,5.6),new THREE.MeshLambertMaterial({map:fachada(col,pisos)})); casa.position.set(l*8.2,alto/2,-L/4+k*L/2); casa.castShadow=true; g.add(casa);
           var techo=new THREE.Mesh(new THREE.BoxGeometry(4.8,.3,5.9),new THREE.MeshLambertMaterial({color:new THREE.Color(col).multiplyScalar(.8)})); techo.position.set(l*8.2,alto+.15,-L/4+k*L/2); g.add(techo);
           var toldo=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,4),new THREE.MeshLambertMaterial({color:k?'#FF6F91':'#FFFFFF'})); toldo.position.set(l*5.8,2.3,-L/4+k*L/2); toldo.rotation.z=l*.35; g.add(toldo); }
@@ -4146,7 +4382,10 @@ function corre(){
       /* banderines cruzando la calle */
       if(i%2===0){ var cuerda=new THREE.Mesh(new THREE.BoxGeometry(7.2,.02,.02),new THREE.MeshBasicMaterial({color:'#FFFFFF'})); cuerda.position.set(0,3.5,-L/2+.5); g.add(cuerda);
         for(var b=0;b<11;b++){ var tri=new THREE.Mesh(new THREE.ConeGeometry(.2,.42,3),new THREE.MeshLambertMaterial({color:COLS[(b+i)%COLS.length]})); tri.rotation.x=Math.PI; tri.position.set(-3.3+b*.66,3.28-Math.sin(b/10*Math.PI)*.25,-L/2+.5); g.add(tri); } }
+      /* las paredes del mundo (muro inca, totora, adobe de Chan Chan, piedra de noche, follaje), ya juntas */
+      if(FRANJA){ g.userData.paredes=FRANJA.map(function(f){ var m=new THREE.Mesh(f.geo,f.mat); m.receiveShadow=true; g.add(m); return m; }); }
       g.position.z=-i*L; E.add(g); return g; }
+    if(PAREDES) armarFranja();
     for(var t0=0;t0<TRAMOS;t0++) tramos.push(armarTramo(t0));
 
     /* ---- lo que aparece en la calle ---- */
@@ -4224,7 +4463,7 @@ function corre(){
     /* ---- quien juega y quien espera al final ---- */
     YO.g.scale.setScalar(1.5/YO.alto); YO.g.rotation.y=Math.PI; E.add(YO.g);
     var OTRO=pareja3D(K); OTRO.g.scale.setScalar(1.4/OTRO.alto); OTRO.g.visible=false; E.add(OTRO.g);
-    var cartelO=cartel3D('💗 '+(nombreDe()||'Aquí te espero')); cartelO.position.y=1.25*OTRO.alto+.35; cartelO.scale.set(2/OTRO.g.scale.x,.5/OTRO.g.scale.x,1); OTRO.g.add(cartelO);
+    var nomOtro=nomPJ(OTRO.id)||nombreDe()||'Aquí te espero', cartelO=cartel3D('💗 '+nomOtro); cartelO.position.y=1.25*OTRO.alto+.35; cartelO.scale.set(2/OTRO.g.scale.x,.5/OTRO.g.scale.x,1); OTRO.g.add(cartelO);
     var arco=new THREE.Group(); (function(){ var m=new THREE.MeshStandardMaterial({color:'#FF7AA8',emissive:'#FF3D7F',emissiveIntensity:.35,roughness:.4});
       var tor=new THREE.Mesh(new THREE.TorusGeometry(3.1,.22,12,40,Math.PI),m); tor.position.y=0; arco.add(tor);
       for(var i=0;i<14;i++){ var h=new THREE.Mesh(gC,m); var a=i/13*Math.PI; h.position.set(Math.cos(a)*3.1,Math.sin(a)*3.1,.1); h.scale.setScalar(.6); arco.add(h); } })();
@@ -4268,7 +4507,7 @@ function corre(){
       var conf=[]; for(var i=0;i<80;i++){ var p=new THREE.Mesh(new THREE.PlaneGeometry(.12,.08),new THREE.MeshBasicMaterial({color:COLS[i%COLS.length],side:THREE.DoubleSide})); p.position.set((Math.random()-.5)*4,3+Math.random()*3,-1.5+(Math.random()-.5)*3); p.userData.v=Math.random()*1.5+1; E.add(p); conf.push(p); }
       window.__conf=conf;
       setTimeout(function(){ var c=document.createElement('div'); c.className='capa'; c.innerHTML='<div class="carta"><img class="masc" src="'+MASCOTA+'" alt=""><h2>¡Llegaste hasta '+esc(nombreDe()||'mí')+'! ❤️</h2><p>'+pts+' puntos de amor y ningún problema pudo detenerte.</p><button class="primario">Abrir mi mensaje</button></div>';
-        document.body.appendChild(c); c.querySelector('button').onclick=function(){ c.remove(); final('Todo lo que corrí fue para llegar a ti','Correr otra vez',function(){ location.reload(); }); }; },4200); }
+        document.body.appendChild(c); c.querySelector('button').onclick=function(){ c.remove(); apagarAmbiente(2.5); final('Todo lo que corrí fue para llegar a ti','Correr otra vez',function(){ location.reload(); }); }; },4200); }
 
     /* ---- mandos: deslizar el dedo o flechas ---- */
     function accion(a){ if(!jugando) return;
@@ -4285,13 +4524,15 @@ function corre(){
     addEventListener('keydown',function(e){ if(TK[e.key]){ e.preventDefault(); accion(TK[e.key]); } });
     function medir(){ var w=innerWidth, h=innerHeight; R3.setSize(w,h,false); C.aspect=w/h; C.fov=w<h?68:55; C.updateProjectionMatrix(); }
     addEventListener('resize',medir); medir();
-    window.__corre={tipos:function(){ return TIPOS_C.slice(); },cartelTrabajo:CARTEL_T,sig:function(){ var r=cosas.filter(function(g){ return g.userData.tipo==='regalo'; }).sort(function(a,b){ return b.position.z-a.position.z; })[0]; return r?r.userData.carril:-1; },accion:accion,estado:function(){ return {dist:dist,pts:pts,vidas:vidas,jugando:jugando,llegando:llegando,fin:fin,cosas:cosas.length,c:yo.c}; },meta:function(m){ META=m; },dios:function(){ invul=9999; }};
+    if(MW && Mundos.vida){ var vidaG=new THREE.Group(); vidaG.position.set(0,0,-8); vidaG.scale.setScalar(2.2); E.add(vidaG); try{ vidaF=Mundos.vida(vidaG,MW,{cx:0,cz:0,w:5,h:9}); }catch(e){ vidaF=null; } }
+    window.__corre={espera:OTRO.id,cartel:nomOtro,mundo:MW?MW.id:'',paredes:!!FRANJA,tris:FRANJA?FRANJA.reduce(function(a,f){ return a+f.geo.index.count/3; },0)*TRAMOS:0,sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); e.quiere=ambQuiere; return e; },tipos:function(){ return TIPOS_C.slice(); },cartelTrabajo:CARTEL_T,sig:function(){ var r=cosas.filter(function(g){ return g.userData.tipo==='regalo'; }).sort(function(a,b){ return b.position.z-a.position.z; })[0]; return r?r.userData.carril:-1; },accion:accion,estado:function(){ return {dist:dist,pts:pts,vidas:vidas,jugando:jugando,llegando:llegando,fin:fin,cosas:cosas.length,c:yo.c}; },meta:function(m){ META=m; },dios:function(){ invul=9999; }};
 
     /* ================= cada cuadro ================= */
     var reloj=new THREE.Clock(), cam=new THREE.Vector3(0,3.4,5.6);
     pintarVidas(); jugando=true; pista('Desliza el dedo: ◀ ▶ cambia de carril, ▲ salta, ▼ agáchate');
     setTimeout(function(){ pista(''); },5000);
     (function cuadro(){ requestAnimationFrame(cuadro); var dt=Math.min(.05,reloj.getDelta()), t=reloj.elapsedTime;
+      if(vidaF) try{ vidaF(dt,t,C.position); }catch(e){ vidaF=null; }
       if(escena===1){ /* frena justo a tiempo: sin pasarse ni pararse de golpe */
         var rem=-2.6-OTRO.g.position.z; vel=Math.max(0,Math.min(vel,Math.sqrt(Math.max(0,2*16*rem))));
         if(rem<=.03||vel<.05){ vel=0; escena=2; te=0; } }
@@ -4301,7 +4542,8 @@ function corre(){
         if(!llegando && dist>=META-100) llegar();
         bBar.style.width=Math.min(100,dist/META*100)+'%'; }
       /* la calle avanza */
-      tramos.forEach(function(g){ g.position.z+=dz; if(g.position.z>L) g.position.z-=TRAMOS*L; });
+      tramos.forEach(function(g){ g.position.z+=dz; if(g.position.z>L) g.position.z-=TRAMOS*L;
+        if(g.userData.paredes){ var ve=g.position.z>-84; if(g.userData.ve!==ve){ g.userData.ve=ve; g.userData.paredes.forEach(function(m){ m.visible=ve; }); } } });   /* las de muy lejos (en la neblina) no se dibujan */
       for(var i=cosas.length-1;i>=0;i--){ var g=cosas[i], u=g.userData; g.position.z+=dz;
         if(u.gira) u.gira.rotation.y=t*3;
         g.children.forEach(function(c){ var ud=c.userData;
@@ -4421,7 +4663,14 @@ function Kit3D(){
    un costado y unos pocos árboles. El osito camina (el planeta gira debajo de
    él, como en los juegos de planetas pequeños) y en cada regalo que alcanza
    se abre una foto. Si hay nota de voz, hay además un tocadiscos. Detrás, el
-   cielo del anochecer con estrellas que titilan y cometas que pasan. */
+   cielo del anochecer con estrellas que titilan y cometas que pasan.
+   Como el laberinto, el planeta vive en el mundo de la pareja elegida (lib/mundos): el piso (puna, arena,
+   tierra de Chan Chan, escarcha u hojarasca; Trujillo es un parque con faroles), las plantas (árboles,
+   palmeras, cactus), lo sembrado (ichu, conchas, helechos), lo que se mueve en el aire, los colores del
+   cielo de día, los colores de los regalos y los sonidos del lugar (botón 🔊). La noche andina es siempre
+   de noche. Si ruway-mundos.js no llega, queda el planeta de siempre. */
+/* trae los mundos para el planeta y Corre; sin ellos, el juego sigue como siempre */
+function conMundosSuave(listo){ cargarThree(function(){ if(window.Mundos&&Mundos.MUNDOS){ listo(); return; } cargarJS(MUNDOS_JS,listo,listo); }); }
 function planeta(){
   document.body.classList.add('juego');
   var n=FOTOS.length, hayVoz=false, total=Math.max(1,n);   /* la voz ya no va en un regalo del camino: es el premio del final */
@@ -4431,10 +4680,16 @@ function planeta(){
   palanca.style.cssText='position:fixed;width:110px;height:110px;border-radius:50%;border:2px solid rgba(255,241,218,.35);background:rgba(255,241,218,.08);pointer-events:none;z-index:5;display:none;transform:translate(-50%,-50%)';
   var perilla=document.createElement('div'); perilla.style.cssText='position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(255,241,218,.75);box-shadow:0 4px 14px rgba(0,0,0,.35)';
   palanca.appendChild(perilla); document.body.appendChild(palanca);
-  cargarThree(function(){
+  conMundosSuave(function(){
     var R=fluido(new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true})); R.setPixelRatio(Math.min(devicePixelRatio||1,2));
     R.shadowMap.enabled=true; R.shadowMap.type=THREE.PCFSoftShadowMap;
     var E=new THREE.Scene(), C=new THREE.PerspectiveCamera(50,1,.1,400), RAD=5;
+    /* el mundo de la pareja (null si no llegó ruway-mundos.js) */
+    var MW=window.Mundos&&Mundos.de?Mundos.de(PJ.id):null, NOCHE=!!(MW&&MW.id==='noche'), vidaF=null;
+    if(MW){ ambiente(MW.id); nucleo(function(N){ if(!N.tono()) cartelMundo(MW,'Con '+pjAl().replace(/^(al|a la|a) /,'')); }); }
+    /* solo para las pruebas */
+    window.__planeta={mundo:MW?MW.id:'',sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); e.quiere=ambQuiere; return e; }};
+    function hexMezcla(a,b,t){ return '#'+new THREE.Color(a).lerp(new THREE.Color(b),t).getHexString(); }
     function lienzo(w,h,pinta){ var c=document.createElement('canvas'); c.width=w; c.height=h; pinta(c.getContext('2d'),w,h); return new THREE.CanvasTexture(c); }
     function ruido(x,w,h,base,cols,n,trazo){ x.fillStyle=base; x.fillRect(0,0,w,h);
       for(var k=0;k<n;k++){ x.fillStyle=cols[(Math.random()*cols.length)|0]; x.globalAlpha=.5; trazo(x,Math.random()*w,Math.random()*h); } x.globalAlpha=1; }
@@ -4446,7 +4701,8 @@ function planeta(){
       paradas.forEach(function(p){ g.addColorStop(p[0],p[1]); }); x.fillStyle=g; x.fillRect(0,0,w,h); }); }
     var cieloNoche=degradado([[0,'#02030F'],[.3,'#070C2E'],[.45,'#101A4E'],[.56,'#22306E'],[1,'#0C1235']]);
     var cieloTarde=degradado([[0,'#0B0A2A'],[.28,'#2A1A5E'],[.4,'#6A2F80'],[.49,'#C2508C'],[.55,'#FF9C6E'],[.62,'#FFC58A'],[1,'#B85C8E']]);
-    var cieloDia=degradado([[0,'#1E6FD6'],[.3,'#4C9FEE'],[.46,'#8CCBFF'],[.56,'#DFF3FF'],[.62,'#FFF3DA'],[1,'#BFE3FF']]);
+    var CM=MW&&MW.cielo, cieloDia=CM?degradado([[0,CM.cenit],[.3,hexMezcla(CM.cenit,CM.medio,.45)],[.46,CM.medio],[.56,CM.horizonte],[.62,hexMezcla(CM.horizonte,'#FFFFFF',.35)],[1,CM.medio]])
+      :degradado([[0,'#1E6FD6'],[.3,'#4C9FEE'],[.46,'#8CCBFF'],[.56,'#DFF3FF'],[.62,'#FFF3DA'],[1,'#BFE3FF']]);   /* el cielo de día con los colores del mundo */
     /* el cielo va inclinado hacia atrás: la cámara mira el planeta desde arriba y así lo que se ve detrás es la noche estrellada */
     var bove=new THREE.Group(); bove.rotation.x=-1.1; E.add(bove);
     function capaCielo(r,mapa,orden,transp){ var m=new THREE.Mesh(new THREE.SphereGeometry(r,32,24),new THREE.MeshBasicMaterial({map:mapa,side:THREE.BackSide,fog:false,transparent:transp,depthWrite:false}));
@@ -4508,7 +4764,10 @@ function planeta(){
     var mundo=new THREE.Group(); E.add(mundo); mundo.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),.16);   /* el osito empieza en el pasto, al lado de la pista */
     /* césped: miles de hojitas finas dibujadas en la textura (empalma por los bordes), con manchas de luz y sombra.
        El planeta es un cubo inflado y no una esfera de gajos: así no hay "polos" donde el pasto se arremolina */
-    var pasto=lienzo(1024,1024,function(x,w,h){ x.fillStyle='#3E7A28'; x.fillRect(0,0,w,h);
+    /* el piso del mundo: puna, arena o tierra de Chan Chan. Trujillo es un parque, la Amazonía un césped verde vivo y la noche
+       andina un pasto de escarcha (sus texturas del laberinto son oscuras: de lejos, el planeta parecía una bola negra) */
+    var PISO=null; if(MW && /^(puna|arena|tierra)$/.test(MW.suelo) && Mundos.texSuelo){ var t0=Mundos.texSuelo(MW.suelo); if(t0){ PISO=t0.clone(); PISO.needsUpdate=true; PISO.wrapS=PISO.wrapT=THREE.RepeatWrapping; PISO.repeat.set(2,2); PISO.anisotropy=8; } }
+    var pasto=PISO||lienzo(1024,1024,function(x,w,h){ x.fillStyle='#3E7A28'; x.fillRect(0,0,w,h);
       for(var k=0;k<60;k++){ var cx=Math.random()*w, cy=Math.random()*h, r=40+Math.random()*90, c=Math.random()<.5?'rgba(28,66,18,.28)':'rgba(150,200,80,.2)';
         [[0,0],[w,0],[-w,0],[0,h],[0,-h]].forEach(function(o){ var g=x.createRadialGradient(cx+o[0],cy+o[1],0,cx+o[0],cy+o[1],r); g.addColorStop(0,c); g.addColorStop(1,'rgba(0,0,0,0)');
           x.fillStyle=g; x.fillRect(cx+o[0]-r,cy+o[1]-r,2*r,2*r); }); }
@@ -4518,7 +4777,7 @@ function planeta(){
         x.strokeStyle='hsl('+(82+Math.random()*32|0)+','+(42+Math.random()*28|0)+'%,'+(20+Math.random()*30|0)+'%)'; x.lineWidth=.8+Math.random()*.9;
         hoja(a,b,L,inc); if(b-L<0) hoja(a,b+h,L,inc); if(a+inc>w) hoja(a-w,b,L,inc); if(a+inc<0) hoja(a+w,b,L,inc); }
       for(k=0;k<9000;k++){ x.fillStyle='rgba(205,238,125,'+(.18+Math.random()*.3)+')'; x.fillRect(Math.random()*w,Math.random()*h,1,1.5); } });
-    pasto.wrapS=pasto.wrapT=THREE.RepeatWrapping; pasto.repeat.set(2.5,2.5); pasto.anisotropy=8;
+    if(!PISO){ pasto.wrapS=pasto.wrapT=THREE.RepeatWrapping; pasto.repeat.set(2.5,2.5); pasto.anisotropy=8; }
     var geoS=new THREE.BoxGeometry(1,1,1,56,56,56), pp=geoS.attributes.position, nn=geoS.attributes.normal, vv=new THREE.Vector3(), cols=[];
     for(var sk=0;sk<pp.count;sk++){ vv.fromBufferAttribute(pp,sk).normalize(); nn.setXYZ(sk,vv.x,vv.y,vv.z);
       var nz=.5+.25*Math.sin(vv.x*3.1+vv.y*1.7)+.2*Math.sin(vv.z*4.3-vv.x*2.2)+.1*Math.sin(vv.y*9+vv.z*7);
@@ -4526,6 +4785,8 @@ function planeta(){
       vv.multiplyScalar(RAD); pp.setXYZ(sk,vv.x,vv.y,vv.z); }
     geoS.setAttribute('color',new THREE.Float32BufferAttribute(cols,3));
     var suelo=new THREE.Mesh(geoS,new THREE.MeshStandardMaterial({map:pasto,bumpMap:pasto,bumpScale:.05,roughness:.95,vertexColors:true})); suelo.receiveShadow=true; mundo.add(suelo);
+    var CLARO={sierra:1.2,desierto:1.1}[MW?MW.id:'']; if(CLARO) suelo.material.color.setScalar(CLARO);
+    if(NOCHE) suelo.material.color.set('#A9BEE6'); else if(MW && MW.id==='selva') suelo.material.color.set('#B8F0A0');   /* escarcha azulada; verde selva */
     var ARRIBA=new THREE.Vector3(0,1,0);
     function pararEn(o,dir,alto){ dir=dir.clone().normalize(); o.position.copy(dir).multiplyScalar(RAD+(alto||0)); o.quaternion.setFromUnitVectors(ARRIBA,dir); mundo.add(o); return o; }
     function azar(){ var u=Math.random()*2-1, t=Math.random()*6.283, s=Math.sqrt(1-u*u); return new THREE.Vector3(s*Math.cos(t),u,s*Math.sin(t)); }
@@ -4565,7 +4826,10 @@ function planeta(){
     /* sin hojitas de pasto en punta: el suelo es un césped liso con su textura */
     /* árboles más de verdad: tronco con corteza y copa llena de hojitas */
     var corteza=lienzo(64,256,function(x,w,h){ ruido(x,w,h,'#6B4A30',['#5A3C26','#7D5838','#4C3220'],900,function(x,a,b){ x.fillRect(a,b,2,10+Math.random()*16); }); });
-    var hojas=lienzo(256,256,function(x,w,h){ ruido(x,w,h,'#2F6E2A',['#3F8A34','#2A5E25','#4E9C3C','#5DAA44','#24521F'],2600,function(x,a,b){
+    /* las hojas según el mundo: eucalipto en los Andes, verde de noche, verde vivo en la Amazonía */
+    var HOJAS={sierra:['#56704A',['#6B8560','#4A6340','#7D9470','#3F5838','#8A9C78']],noche:['#1F3A3A',['#2A4A4A','#183030','#335A50','#22403C','#2E5248']],
+               selva:['#1F6A26',['#2F8A34','#1A5A20','#48A83C','#5DC044','#14501A']]}[MW?MW.id:'']||['#2F6E2A',['#3F8A34','#2A5E25','#4E9C3C','#5DAA44','#24521F']];
+    var hojas=lienzo(256,256,function(x,w,h){ ruido(x,w,h,HOJAS[0],HOJAS[1],2600,function(x,a,b){
       x.beginPath(); x.ellipse(a,b,3+Math.random()*3,1.6+Math.random()*1.5,Math.random()*3,0,6.3); x.fill(); }); });
     hojas.wrapS=hojas.wrapT=THREE.RepeatWrapping;
     function copa(r){ var geo=new THREE.IcosahedronGeometry(r,3), p=geo.attributes.position, v=new THREE.Vector3();
@@ -4701,7 +4965,7 @@ function planeta(){
     for(i=1;i<dirs.length;i++){ var gi=0; while((enGranja(dirs[i],.1)||enPista(dirs[i],.05)) && gi++<14) dirs[i].applyAxisAngle(ARRIBA,.45); }
     var nube=lienzo(128,128,function(x){ var g=x.createRadialGradient(64,64,0,64,64,64); g.addColorStop(0,'rgba(255,255,255,.95)'); g.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=g; x.fillRect(0,0,128,128); });
     for(i=0;i<total;i++){
-      var g=new THREE.Group(), esVoz=hayVoz && i===total-1, col=['#FF7AA8','#FFC94A','#B79CFF','#7FE0C4','#FF9A5C','#58D2FF','#FFD84D','#F48FB1'][i%8];
+      var g=new THREE.Group(), esVoz=hayVoz && i===total-1, PAL=MW&&MW.regalos||['#FF7AA8','#FFC94A','#B79CFF','#7FE0C4','#FF9A5C','#58D2FF','#FFD84D','#F48FB1'], col=PAL[i%PAL.length];
       if(esVoz){ var base=new THREE.Mesh(new THREE.BoxGeometry(.42,.18,.42),new THREE.MeshStandardMaterial({color:'#8B5A3C',roughness:.6})); base.position.y=.09; g.add(base);
         var disco=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.02,24),new THREE.MeshStandardMaterial({color:'#221A2C',roughness:.3})); disco.position.y=.19; g.add(disco);
         var bocina=new THREE.Mesh(new THREE.ConeGeometry(.2,.4,20,1,true),new THREE.MeshStandardMaterial({color:'#FFC94A',metalness:.6,roughness:.3,side:THREE.DoubleSide}));
@@ -4715,9 +4979,43 @@ function planeta(){
       var brillo=new THREE.Sprite(new THREE.SpriteMaterial({map:nube,color:col,transparent:true,opacity:.6,depthWrite:false})); brillo.position.y=.3; brillo.scale.setScalar(1.1); g.add(brillo); g.userData.brillo=brillo;
       g.userData.n=esVoz?-1:i; g.userData.voz=esVoz; g.scale.setScalar(.6); pararEn(g,dirs[i],.008); puntos.push(g); }
     function libre(d,m){ return dirs.every(function(x){ return x.angleTo(d)>m; }) && d.angleTo(ARRIBA)>.3 && !enGranja(d,.1) && !enPista(d,.08); }
-    /* pocos árboles */
-    [[-.2,-1.5,.75],[.6,-1.7,.7],[1.35,-1.55,.62]].forEach(function(q){ arbol(sitio(q[0],q[1]),q[2]); });
-    var k2=0, t2=0; while(k2<3 && t2<500){ t2++; var d=azar(); if(libre(d,.4)){ arbol(d,.6+Math.random()*.25); k2++; } }
+    /* pocos árboles (o palmeras en Huanchaco, cactus en Chan Chan; en la Amazonía más y más grandes) */
+    function palmera(dir,esc){ var a=new THREE.Group(), seg=7, cm=new THREE.MeshStandardMaterial({map:corteza,color:'#C9A27A',roughness:1}), curva=.18+Math.random()*.12;
+      for(var k=0;k<seg;k++){ var y0=k/seg*1.5, tr=new THREE.Mesh(new THREE.CylinderGeometry(.05-k*.003,.065-k*.003,1.5/seg+.02,9),cm);
+        tr.position.set(Math.pow(y0/1.5,2)*curva,y0+1.5/seg/2,0); tr.rotation.z=-Math.pow(y0/1.5,1)*curva*.9; tr.castShadow=true; a.add(tr); }
+      var cima=new THREE.Vector3(curva,1.5,0), hm=new THREE.MeshStandardMaterial({color:'#4E9A3A',roughness:.85,side:THREE.DoubleSide});
+      for(k=0;k<8;k++){ var g=new THREE.PlaneGeometry(.16,.85,1,6); g.translate(0,.42,0);
+        var pp=g.attributes.position; for(var v=0;v<pp.count;v++){ var yy=pp.getY(v); pp.setX(v,pp.getX(v)*(1-yy/.9)); pp.setZ(v,-yy*yy*.55); } g.computeVertexNormals();
+        var f=new THREE.Mesh(g,hm); f.position.copy(cima); f.rotation.set(-1.0,k/8*6.283,0,'YXZ'); f.castShadow=true; a.add(f); }
+      for(k=0;k<3;k++){ var co=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),new THREE.MeshStandardMaterial({color:'#6B4A2A',roughness:.7})); co.position.set(cima.x+Math.cos(k*2.1)*.06,cima.y-.06,Math.sin(k*2.1)*.06); a.add(co); }
+      a.rotation.y=Math.random()*6; a.scale.setScalar(esc); pararEn(a,dir); obstaculos.push({m:a,r:.1*esc+.08}); }
+    function cactus(dir,esc){ var a=new THREE.Group(), cm=new THREE.MeshStandardMaterial({color:'#4F8A4A',roughness:.8});
+      function brazo(x,y0,y1,r){ var c=new THREE.Mesh(new THREE.CylinderGeometry(r,r,y1-y0,10),cm); c.position.set(x,(y0+y1)/2,0); c.castShadow=true; a.add(c);
+        var p=new THREE.Mesh(new THREE.SphereGeometry(r,10,6,0,6.283,0,Math.PI/2),cm); p.position.set(x,y1,0); a.add(p); }
+      brazo(0,0,1.05,.09);
+      [[-1,.38,.7],[1,.5,.85]].forEach(function(q){ var c=new THREE.Mesh(new THREE.CylinderGeometry(.055,.055,.2,8),cm); c.rotation.z=Math.PI/2; c.position.set(q[0]*.15,q[1],0); a.add(c); brazo(q[0]*.24,q[1]-.03,q[2],.055); });
+      a.rotation.y=Math.random()*6; a.scale.setScalar(esc); pararEn(a,dir); obstaculos.push({m:a,r:.12*esc+.08}); }
+    function planta(dir,esc){ var id=MW?MW.id:''; if(id==='costa') palmera(dir,esc*1.05); else if(id==='desierto') cactus(dir,esc*.9); else arbol(dir,esc*(id==='selva'?1.3:1)); }
+    [[-.2,-1.5,.75],[.6,-1.7,.7],[1.35,-1.55,.62]].forEach(function(q){ planta(sitio(q[0],q[1]),q[2]); });
+    var k2=0, t2=0, masPlantas=MW&&MW.id==='selva'?7:3; while(k2<masPlantas && t2<500){ t2++; var d=azar(); if(libre(d,.4)){ planta(d,.6+Math.random()*.25); k2++; } }
+    /* Trujillo: faroles de fierro, que se encienden de noche como las ventanas */
+    if(MW && MW.id==='ciudad'){ var mFierro=new THREE.MeshStandardMaterial({color:'#2B2F2A',metalness:.5,roughness:.5}), kf=0, tf=0;
+      while(kf<4 && tf<400){ tf++; var df=azar(); if(!libre(df,.35)) continue; var fa=new THREE.Group();
+        var palo=new THREE.Mesh(new THREE.CylinderGeometry(.018,.03,.8,8),mFierro); palo.position.y=.4; fa.add(palo);
+        var cab=new THREE.Mesh(new THREE.BoxGeometry(.1,.13,.1),mVentana); cab.position.y=.86; fa.add(cab);
+        var techo=new THREE.Mesh(new THREE.ConeGeometry(.09,.08,4),mFierro); techo.position.y=.96; techo.rotation.y=Math.PI/4; fa.add(techo);
+        sombras(fa); pararEn(fa,df); obstaculos.push({m:fa,r:.1}); kf++; } }
+    /* lo sembrado del mundo (ichu, piedritas, conchas, helechos, florcitas que brillan de noche) */
+    if(MW && Mundos.matojo && Mundos.SIEMBRA){ (Mundos.SIEMBRA[MW.suelo]||[]).forEach(function(sm,si){
+      var rs=Mundos.azar(70+si), nS=Math.round(sm.n*.4*(Mundos.calidad()==='baja'?.5:1)), geoS=Mundos.matojo(sm.t,rs);
+      var matS=sm.brilla?new THREE.MeshBasicMaterial({vertexColors:true,toneMapped:false}):new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95,side:sm.t==='helecho'?THREE.DoubleSide:THREE.FrontSide});
+      var im=new THREE.InstancedMesh(geoS,matS,nS), ob=new THREE.Object3D(), puestos=0, intentos=0;
+      while(puestos<nS && intentos<nS*10){ intentos++; var dS=azar(); if(!libre(dS,.1)) continue;
+        ob.position.copy(dS).multiplyScalar(RAD); ob.quaternion.setFromUnitVectors(ARRIBA,dS); ob.rotateY(rs()*6.283); ob.scale.setScalar((.7+rs()*.7)*.75); ob.updateMatrix(); im.setMatrixAt(puestos++,ob.matrix); }
+      im.count=puestos; im.receiveShadow=true; mundo.add(im); }); }
+    /* lo que se mueve en el aire del mundo, alrededor de quien juega (va con la cámara, no gira con el planeta) */
+    if(MW && Mundos.vida){ var vidaG=new THREE.Group(); vidaG.position.set(0,RAD,0); vidaG.scale.setScalar(.55); E.add(vidaG);
+      try{ vidaF=Mundos.vida(vidaG,MW,{cx:0,cz:0,w:7,h:7}); }catch(e){ vidaF=null; } }
 
     /* el personaje elegido y sus herramientas (compartidas con el laberinto 3D) */
     var K=Kit3D(), pz=K.pz, S=K.S, pelaje=K.pelaje, liso=K.liso, ojoM=K.ojoM, luzOjo=K.luzOjo, ponerPelo=K.ponerPelo, armarPersonaje=K.armarPersonaje;
@@ -4731,9 +5029,9 @@ function planeta(){
 
     /* ---- de día o de noche según cuánto camina el osito ----
        fase 0 = medianoche, .5 = mediodía. Una vuelta de día completa cada ~34 pasos de planeta */
-    var fase=.82, cNocheH=new THREE.Color('#5563B8'), cDiaH=new THREE.Color('#DDEBFF'), cNocheL=new THREE.Color('#9AA8FF'), cDiaL=new THREE.Color('#FFE9C8');
+    var fase=.82, cNocheH=new THREE.Color('#5563B8'), cDiaH=new THREE.Color(MW?MW.luz.cielo:'#DDEBFF'), cNocheL=new THREE.Color('#9AA8FF'), cDiaL=new THREE.Color(MW?MW.luz.sol:'#FFE9C8');
     window.__fase=function(p){ fase=p; };   /* solo para las pruebas */
-    function ponerHora(p){ var f=.5-.5*Math.cos(p*6.283);
+    function ponerHora(p){ var f=.5-.5*Math.cos(p*6.283); if(NOCHE) f*=.1;   /* la noche andina: siempre de noche, bajo las estrellas */
       matDia.opacity=Math.min(1,Math.max(0,(f-.42)/.38)); matTarde.opacity=Math.max(0,1-Math.abs(f-.36)/.3);
       var a=p*6.283, el=-.42+1.0*f;                                           /* el sol sube hasta arriba de la pantalla al mediodía */
       sol.position.set(Math.sin(a)*40,Math.sin(el)*150,-130); sol.material.opacity=Math.min(1,f*2.2);
@@ -4744,6 +5042,7 @@ function planeta(){
         cl.position.x+=cl.userData.v*.016; if(cl.position.x>210) cl.position.x=-210; });
       hemi.intensity=.5+.22*f; hemi.color.copy(cNocheH).lerp(cDiaH,f);
       luz.intensity=.45+.75*f; luz.color.copy(cNocheL).lerp(cDiaL,f); contra.intensity=.45*(1-f)+.15;
+      if(NOCHE){ hemi.intensity=1.0; hemi.color.set('#8EA6E6'); luz.intensity=.75; luz.color.set('#C4D4FF'); }   /* noche clara de luna, como en el laberinto */
       return f; }
 
     /* ---- el carrito: da vueltas por la pista, por su carril, y frena si el osito está delante ----
@@ -4846,7 +5145,7 @@ function planeta(){
     function llegar(g){
       jugando=false; soltar(); abiertos[puntos.indexOf(g)]=1; cuantos++; H0.puntos(cuantos);
       H0.sub(cuantos>=total?'¡Encontraste todo!':'Regalos abiertos: '+cuantos+' de '+total);
-      var fin=function(){ jugando=true; if(cuantos>=total) setTimeout(function(){ final('Recorriste todo nuestro planeta','Seguir paseando'); },400); };
+      var fin=function(){ jugando=true; if(cuantos>=total) setTimeout(function(){ apagarAmbiente(2.5); final('Recorriste todo nuestro planeta','Seguir paseando'); },400); };
       if(g.userData.voz){
         var c=document.getElementById('recuerdo'), cj=c.querySelector('.carta'), viejo=cj.innerHTML;
         cj.innerHTML='<div class="icono">🎙️</div><h2>Un mensaje para ti</h2><p>Grabé esto para que lo escuches con mi voz.</p><button class="primario">Escuchar</button>';
@@ -4873,7 +5172,7 @@ function planeta(){
       var f=ponerHora(fase);
       brillos.forEach(function(pm,k){ pm.opacity=(.45+.4*Math.sin(t*(1.3+k*.7)+k*2))*Math.max(0,1-f*1.7); });
       if(!QUIETO && (proxCometa-=dt)<=0){ if(f<.4) cometa(); proxCometa=1.5+Math.random()*3; }
-      andarCarro(dt,t,f); granjaViva(dt,t,f); estelaViva(dt,anda);
+      andarCarro(dt,t,f); granjaViva(dt,t,f); estelaViva(dt,anda); if(vidaF) try{ vidaF(dt,t,C.position); }catch(e){ vidaF=null; }
       for(var c=cometas.length-1;c>=0;c--){ var co=cometas[c]; co.position.addScaledVector(co.userData.v,dt); co.userData.vida-=dt;
         co.children.forEach(function(ch){ ch.material.opacity=Math.min(1,co.userData.vida)*Math.max(0,1-f*2.5); });
         if(co.userData.vida<=0){ bove.remove(co); cometas.splice(c,1); } }
@@ -4900,7 +5199,203 @@ function planeta(){
    sin librerías, para que vaya fluido hasta en un celular sencillo.
    En cada arco de corazón se abre un recuerdo; al cruzar la meta, la
    dedicatoria. El auto es el descapotable rosado con su monito al volante. */
+/* ================= LA GRAN CARRERA EN 3D =================
+   Autitos de verdad en una pista por el mundo de la pareja (Los Andes, Huanchaco, Chan Chan, Trujillo, la noche andina o la
+   Amazonía): semáforo de largada, tres vueltas, curvas que empujan hacia afuera, turbo, choques con los rivales, arcos de
+   corazón que abren los recuerdos, minimapa y velocímetro. Maneja el personaje elegido en el descapotable rosado y su pareja
+   corre como rival. La pista y su paisaje salen de lib/mundos/pista.js. Sin 3D (o sin ruway-mundos.js) queda la carrera retro. */
 function carrito(){
+  function hayGL(){ try{ var c=document.createElement('canvas'); return !!(window.WebGLRenderingContext && (c.getContext('webgl')||c.getContext('experimental-webgl'))); }catch(e){ return false; } }
+  if(!hayGL() || window.__RUWAY_CARRERA_RETRO){ carritoRetro(); return; }
+  var ya=false; function decide(){ if(ya) return; ya=true; if(window.Mundos && Mundos.pista) carrera3D(); else carritoRetro(); }
+  cargarThree(function(){ if(window.Mundos && Mundos.pista) decide(); else cargarJS(MUNDOS_JS,decide,decide); },function(){ if(!ya){ ya=true; carritoRetro(); } });
+}
+function carrera3D(){
+  document.body.classList.add('juego');
+  var n=FOTOS.length, H0=hud('La gran carrera','Rebasa a todos · cada arco guarda un recuerdo',Math.max(1,n)); H0.puntos(0);
+  var box=document.createElement('div'); box.className='escena'; var cv=document.createElement('canvas'); box.appendChild(cv); document.getElementById('app').appendChild(box);
+  nucleo(function(N){ N.video.lienzo(cv); });
+  var hc=document.createElement('canvas'); hc.style.cssText='position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4'; document.body.appendChild(hc); var hx=hc.getContext('2d');
+  var pad=document.createElement('div'); pad.className='pad';
+  pad.innerHTML='<button id="izq" aria-label="Izquierda">◀</button><button id="turbo" aria-label="Turbo">🔥 ×3</button><button id="der" aria-label="Derecha">▶</button>';
+  document.body.appendChild(pad);
+  var R3=fluido(new THREE.WebGLRenderer({canvas:cv,antialias:true,preserveDrawingBuffer:true})); R3.setPixelRatio(Math.min(devicePixelRatio||1,1.6));
+  var C=new THREE.PerspectiveCamera(62,1,.1,400), E=null, CI=null, MW=null, TN='';
+  /* las pistas: una por mundo (los nombres viejos siguen sirviendo: lo guardado en el teléfono vale) */
+  var PISTAS3={nevado:{m:'sierra',nom:'Los Andes',ic:'🏔️'},costa:{m:'costa',nom:'Huanchaco',ic:'🌊'},desierto:{m:'desierto',nom:'Chan Chan',ic:'🏜️'},
+    ciudad:{m:'ciudad',nom:'Trujillo',ic:'⛪'},noche:{m:'noche',nom:'La noche andina',ic:'🌌'},bosque:{m:'selva',nom:'La Amazonía',ic:'🌳'}};
+  var ORDEN3=['nevado','costa','desierto','ciudad','noche','bosque'], VUELTAS=3, VMAX=9, KC=.1;
+  var propia=(function(){ var m=Mundos.de(PJ.id).id; for(var k in PISTAS3) if(PISTAS3[k].m===m) return k; return 'nevado'; })();
+  /* ---- los autitos: el descapotable del planeta («Pony Cartoon», Slava Z., CC BY 4.0), pintado de otro color para cada rival ---- */
+  var AUTO=null, LARGO_K=1.25, ALTO_K=.5, COLS3=['#FF7AA8','#2F7FE0','#3FAE4A','#FFC531','#FF8A3D','#8E6BD8','#16A39A','#E23B4A'];
+  var RIVALES=['escolar','rulitos','fuego','tom','zorro','pinguino','pollito'];   /* los ocultos y los que salieron de la elección */
+  function kart(col,conPiloto){ var g=new THREE.Group(), cuerpo=new THREE.Group(); g.add(cuerpo); g.userData.cuerpo=cuerpo; g.userData.casco=[];
+    if(AUTO){ var m=AUTO.clone(true); m.traverse(function(o){ if(o.isMesh){ o.material=o.material.clone(); if(col) o.material.color.multiply(new THREE.Color(col).lerp(new THREE.Color('#ffffff'),.35)); o.castShadow=true; } }); cuerpo.add(m); }
+    else { var b=new THREE.Mesh(new THREE.BoxGeometry(.62,.32,LARGO_K),new THREE.MeshStandardMaterial({color:col||'#FF7AA8',roughness:.4})); b.position.y=.28; cuerpo.add(b); }
+    if(conPiloto){ var cas=new THREE.Mesh(new THREE.SphereGeometry(.16,16,12),new THREE.MeshStandardMaterial({color:col,roughness:.3,metalness:.2})); cas.position.set(0,ALTO_K*.95,-.05); cuerpo.add(cas);
+      var vis=new THREE.Mesh(new THREE.SphereGeometry(.12,12,8,0,Math.PI*2,0,Math.PI/2.4),new THREE.MeshStandardMaterial({color:'#222833',roughness:.2,metalness:.5})); vis.rotation.x=Math.PI/2.1; vis.position.set(0,ALTO_K*.95,.06); cuerpo.add(vis);
+      var tor=new THREE.Mesh(new THREE.CylinderGeometry(.12,.15,.26,10),new THREE.MeshStandardMaterial({color:'#ffffff',roughness:.6})); tor.position.set(0,ALTO_K*.62,-.05); cuerpo.add(tor); g.userData.casco=[cas,vis,tor]; }
+    var som=Mundos.sombrita(.55); som.scale.set(.9,1.5,1); g.add(som); return g; }
+  function sentar(M,g){ var talla=ALTO_K*1.5, k=talla/M.alto; M.g.scale.setScalar(k); var cad=M.huesos.C_Hips?M.huesos.C_Hips.position.y*k:talla*.3;
+    M.g.position.set(0,ALTO_K*.55-cad,-LARGO_K*.05); M.g.traverse(function(o){ if(o.isMesh) o.castShadow=true; }); M.pose(1,'sentado'); M.pose(1,'sentado'); M.pose(1,'sentado'); g.userData.cuerpo.add(M.g); g.userData.piloto=M;   /* sentados: se acomodan una vez (no en cada cuadro: con ocho pilotos pesaba) */
+    (g.userData.casco||[]).forEach(function(c){ c.visible=false; }); }   /* con su personaje, sin el piloto de casco */
+  /* ---- el estado ---- */
+  var CIR=null, karts=[], yo=null, jugando=false, eligiendo=true, fin=false, cuenta=0, turbo=3, turboT=0, izq=false, der=false, lugar=8, t=0, arcos=[], arcoG=[], TOTAL=1, mot=null;
+  function limpiar(o){ o.traverse(function(x){ if(x.geometry) x.geometry.dispose(); if(x.material){ (Array.isArray(x.material)?x.material:[x.material]).forEach(function(m){ m.dispose(); }); } }); }
+  function montar(nom){
+    if(E){ limpiar(E); } TN=PISTAS3[nom]?nom:propia; MW=Mundos.MUNDOS[PISTAS3[TN].m];
+    E=new THREE.Scene(); Mundos.preparar(R3,MW); CI=Mundos.pista(E,MW);
+    karts=[]; for(var i=0;i<8;i++){ var g=kart(COLS3[i],i>1); E.add(g); karts.push({g:g,s:0,x:0,v:0,prog:0,vmax:VMAX*(.84+.018*i),linea:[-.45,.45,0][i%3],yo:!i}); }
+    yo=karts[0];
+    /* quien juega maneja el rosado; su pareja, el azul */
+    cargarAvatar(PJ.id,function(M){ if(M && karts[0]===yo) sentar(M,yo.g); });
+    var par=parejaPara(PJ.id); if(par && pjLibre(par)){ karts[1].pid=par; cargarAvatar(par,function(M){ if(M && karts[1]) sentar(M,karts[1].g); }); }
+    /* en los otros autitos, seis de los que ya no se eligen (al azar), de a uno para no bajar todo junto */
+    var otros=RIVALES.filter(function(id){ return id!==PJ.id && id!==par && AVATARES[id]; }).sort(function(){ return Math.random()-.5; }).slice(0,6), mios=karts;
+    (function siguiente(j){ if(j>=otros.length || karts!==mios) return; var k=karts[j+2]; if(!k){ return; } k.pid=otros[j];
+      cargarAvatar(otros[j],function(M){ if(M && karts===mios) sentar(M,k.g); setTimeout(function(){ siguiente(j+1); },150); }); })(0);
+    /* los arcos de corazón: uno a la vez, el que sigue */
+    TOTAL=VUELTAS*CI.L; arcos=[]; arcoG.forEach(function(a){ }); arcoG=[];
+    for(i=0;i<n;i++) arcos.push({prog:TOTAL*(i+1)/(n+1),hecho:false});
+    var mA=new THREE.MeshStandardMaterial({color:'#FF5C93',emissive:'#FF2E74',emissiveIntensity:.45,roughness:.3}), gC=geoCorazon();
+    var arco=new THREE.Group(); [-1,1].forEach(function(l){ var p=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,2.6,10),mA); p.position.set(l*(CI.W/2+.35),1.3,0); arco.add(p); });
+    var cor=new THREE.Mesh(gC,mA); cor.scale.setScalar(2.6); cor.position.y=3.05; arco.add(cor); arco.userData.cor=cor;
+    var cintaA=new THREE.Mesh(new THREE.TorusGeometry(CI.W/2+.35,.07,8,32,Math.PI),mA); cintaA.position.y=2.6; arco.add(cintaA);
+    E.add(arco); arcoG.push(arco);
+    reiniciar(); }
+  function reiniciar(){ fin=false; turbo=3; turboT=0; lugar=8; cuenta=3.6; yaCont=0; jugando=false; pintarTurbo();
+    arcos.forEach(function(a){ a.hecho=false; }); H0.puntos(0);
+    karts.forEach(function(k,i){ var fila=7-i; k.prog=-2.2-fila*2.1; k.s=k.prog; k.x=fila%2?-.45:.45; k.v=0; });
+    ponerArco(); }
+  function ponerArco(){ var a=arcos.filter(function(q){ return !q.hecho; })[0], g=arcoG[0]; if(!g) return; g.visible=!!a; if(!a) return;
+    var sa=a.prog%CI.L, p=CI.pos(sa,0), d=CI.dir(sa); g.position.set(p.x,0,p.z); g.rotation.y=Math.atan2(d.x,d.z); }
+  /* ---- el motor: un zumbido grave que sube con la velocidad (se apaga con 🔊) ---- */
+  function motor(){ var c=audioCtx(); if(!c || mot) return; try{ var o=c.createOscillator(), o2=c.createOscillator(), gn=c.createGain(), f=c.createBiquadFilter();
+    o.type='sawtooth'; o2.type='square'; f.type='lowpass'; f.frequency.value=420; gn.gain.value=0; o.connect(f); o2.connect(f); f.connect(gn); gn.connect(c.destination); o.start(); o2.start(); mot={o:o,o2:o2,g:gn}; }catch(e){ mot=null; } }
+  function motorAl(v){ if(!mot) return; var c=audioCtx(); if(!c) return; var k=v/VMAX, on=ambQuiere && jugando && !document.hidden;
+    mot.o.frequency.setTargetAtTime(48+k*70,c.currentTime,.08); mot.o2.frequency.setTargetAtTime(24+k*35,c.currentTime,.08); mot.g.gain.setTargetAtTime(on?.012+.016*k:0,c.currentTime,.15); }
+  /* ---- la elección de pista ---- */
+  var sel=document.createElement('div'); sel.id='pistas'; sel.hidden=true;
+  sel.innerHTML='<div class="pi-c"><h2>Elige tu pista</h2><p>Cada una pasa por un lugar del Perú</p><div class="pi-g"></div></div>';
+  document.body.appendChild(sel);
+  if(!document.getElementById('pi-css')){ var st=document.createElement('style'); st.id='pi-css';
+    st.textContent='#pistas{position:fixed;inset:0;z-index:11;display:flex;align-items:center;justify-content:center;background:rgba(35,41,30,.35);padding:16px}'+
+    '#pistas[hidden]{display:none}#pistas .pi-c{background:#FFFBF4;border-radius:26px;padding:18px 16px 16px;max-width:380px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.35);text-align:center;font-family:"Baloo 2",Fredoka,sans-serif}'+
+    '#pistas h2{margin:0;color:#5C6B4A;font-size:28px;line-height:1.1}#pistas p{margin:2px 0 12px;color:#8A7A66;font-size:14px}'+
+    '#pistas .pi-g{display:grid;grid-template-columns:1fr 1fr;gap:10px}'+
+    '#pistas button{border:0;border-radius:18px;padding:0 0 8px;overflow:hidden;cursor:pointer;background:#fff;box-shadow:0 3px 0 #D2A877,0 6px 14px rgba(0,0,0,.12);font:800 16px "Baloo 2",Fredoka,sans-serif;color:#23291E}'+
+    '#pistas button.suya{outline:3px solid #FF7AA8}#pistas button:active{transform:translateY(2px);box-shadow:0 1px 0 #D2A877}#pistas canvas{display:block;width:100%;height:92px;margin-bottom:6px}';
+    document.head.appendChild(st); }
+  var grilla=sel.querySelector('.pi-g');
+  ORDEN3.forEach(function(nom){ var T=PISTAS3[nom], Mm=Mundos.MUNDOS[T.m], b=document.createElement('button'); b.setAttribute('data-pista',nom); if(nom===propia) b.className='suya';
+    var c=document.createElement('canvas'); c.width=320; c.height=184; b.appendChild(c); b.appendChild(document.createTextNode(T.ic+' '+T.nom));
+    var x=c.getContext('2d'), gv=x.createLinearGradient(0,0,0,184); gv.addColorStop(0,Mm.cielo.cenit); gv.addColorStop(.5,Mm.cielo.horizonte); gv.addColorStop(.51,Mm.luz.suelo); gv.addColorStop(1,Mm.niebla.color);
+    x.fillStyle=gv; x.fillRect(0,0,320,184); x.strokeStyle='#ffffff'; x.lineWidth=9; x.lineJoin='round'; x.beginPath();
+    [[-20,-24],[0,-26],[20,-24],[34,-16],[38,-2],[32,10],[20,12],[12,20],[16,30],[6,36],[-8,32],[-14,20],[-26,22],[-36,12],[-38,-4],[-32,-18],[-20,-24]].forEach(function(p,i){ var X=160+p[0]*2.1, Y=92+p[1]*2.1; if(i) x.lineTo(X,Y); else x.moveTo(X,Y); }); x.stroke();
+    x.strokeStyle=Mm.acento; x.lineWidth=3; x.stroke();
+    b.addEventListener('click',function(){ empezar(nom); }); grilla.appendChild(b); });
+  function elegir(){ jugando=false; eligiendo=true; sel.hidden=false; pad.style.visibility='hidden'; }
+  function empezar(nom){ try{ localStorage.setItem('ruway:pista',nom); }catch(e){}
+    cuandoAuto(function(){ if(nom!==TN || !CI) montar(nom); else reiniciar();
+    sel.hidden=true; eligiendo=false; pad.style.visibility=''; apagarAmbiente(0); ambiente(MW.id); motor();
+    nucleo(function(N){ if(!N.tono()) cartelMundo(MW,'Con '+pjAl().replace(/^(al|a la|a) /,'')); });
+    pista('Mantén ◀ ▶ para doblar · 🔥 turbo · las curvas te empujan hacia afuera'); setTimeout(function(){ pista(''); },5000); }); }
+  /* ---- los recuerdos y la meta ---- */
+  function abrir(k){ jugando=false; var cuantos=arcos.filter(function(a){ return a.hecho; }).length; H0.puntos(cuantos); nucleo(function(N){ N.gano('estrella'); });
+    campanita([660,830,990]); ponerArco();
+    setTimeout(function(){ recuerdo(k,'Recuerdo '+(k+1)+' de '+n,cuantos>=n?'¡A la meta!':'Seguir manejando',function(){ jugando=true; }); },250); }
+  function terminar(){ fin=true; jugando=false;
+    for(var k=0;k<30;k++) setTimeout(function(){ nota(700+Math.random()*500,.08,'triangle',.03); },k*40);
+    setTimeout(function(){ final(lugar===1?'¡Ganaste la carrera, y a mí también!':'Llegaste '+lugar+'º, pero en mi corazón vas primero','Correr otra vez',function(){ pintarTurbo(); elegir(); }); },900); }
+  /* ---- cada cuadro ---- */
+  var vP=new THREE.Vector3(), vD=new THREE.Vector3(), camP=new THREE.Vector3(), camM=new THREE.Vector3(), primera=true;
+  function actualizar(dt){
+    if(!CI) return; var L=CI.L;
+    if(!eligiendo && !fin && cuenta>0 && !document.querySelector('#recuerdo:not([hidden])')){ var antes=Math.ceil(cuenta); cuenta-=dtReal; var ahora=Math.ceil(cuenta);   /* el semáforo cuenta segundos de verdad */
+      CI.semaforo(cuenta<=0?6:Math.min(5,(4-Math.ceil(cuenta))*2)); if(ahora!==antes) nota(cuenta<=0?880:440,.18,'square',.05);
+      if(cuenta<=0){ jugando=true; } }
+    if(jugando){
+      var giro=(izq?-1:0)+(der?1:0);
+      karts.forEach(function(k,i){
+        var c=CI.curva(k.s);
+        if(k.yo){ k.x+=giro*1.9*dt*(.55+.45*k.v/VMAX); k.x+=c*k.v*k.v*KC*dt;
+          var fuera=Math.abs(k.x)>1.05, tope=VMAX*(turboT>0?1.32:1)*(fuera?.5:1); k.v+=(tope-k.v)*dt*(k.v<tope?.6:2.4); }
+        else { var meta=Math.max(-.75,Math.min(.75,k.linea-c*5)), bando=(yo.prog-k.prog)>14?1.1:((k.prog-yo.prog)>18?.93:1);
+          k.x+=(meta-k.x)*dt*1.3; var tope2=k.vmax*bando*(1-Math.min(.28,Math.abs(c)*1.6)); k.v+=(tope2-k.v)*dt*.7; }
+        if(k.x>1.45){ k.x=1.45; k.v*=.96; } if(k.x<-1.45){ k.x=-1.45; k.v*=.96; }
+        k.s+=k.v*dt; k.prog+=k.v*dt; });
+      /* los choques entre autitos: se empujan de costado y el de atrás frena */
+      for(var a=0;a<karts.length;a++) for(var b=a+1;b<karts.length;b++){ var A=karts[a], B=karts[b], dsp=B.prog-A.prog, dxp=(B.x-A.x)*CI.W/2;
+        if(Math.abs(dsp)<1.15 && Math.abs(dxp)<.72){ var emp=(dxp>=0?1:-1)*.06; A.x-=emp; B.x+=emp; if(dsp>0) A.v*=.93; else B.v*=.93; if(A.yo||B.yo) nota(150,.07,'square',.04); } }
+      if(turboT>0) turboT-=dt;
+      arcos.forEach(function(q,k){ if(!q.hecho && yo.prog>=q.prog){ q.hecho=true; abrir(k); } });
+      lugar=1+karts.filter(function(k){ return !k.yo && k.prog>yo.prog; }).length;
+      if(yo.prog>=TOTAL) terminar(); }
+    motorAl(yo?yo.v:0);
+    /* poner los autitos donde van */
+    karts.forEach(function(k){ CI.pos(k.s,k.x,vP); CI.dir(k.s,vD); var g=k.g; g.position.set(vP.x,0,vP.z);
+      var yaw=Math.atan2(vD.x,vD.z)+(k.yo?(izq?.22:der?-.22:0):(k.x-(k.px||k.x))*-6); k.px=k.x; g.rotation.y+= ((yaw-g.rotation.y+Math.PI*3)%(Math.PI*2)-Math.PI)*.25;
+      g.userData.cuerpo.rotation.z=k.yo?((der?1:0)-(izq?1:0))*.06:0; g.userData.cuerpo.position.y=k.v>.5?Math.sin(t*22+k.prog)*.012:0;
+      });
+    /* la cámara, detrás y un poco arriba de quien juega */
+    if(yo){ CI.pos(yo.s-3.4,yo.x*.75,camM); camM.y=1.75; CI.pos(yo.s+3,yo.x*.6,vD); vD.y=.45;
+      if(primera){ camP.copy(camM); primera=false; } camP.lerp(camM,Math.min(1,dt*6)); C.position.copy(camP); C.lookAt(vD);
+      CI.pos(yo.s,yo.x,vP); CI.actualizar(dt,t,vP.x,vP.z,C.position); }
+  }
+  /* ---- el tablero: vuelta, puesto, velocidad, turbo y el minimapa ---- */
+  function tablero(){ var w=hc.clientWidth, h=hc.clientHeight, d=Math.min(devicePixelRatio||1,2); if(hc.width!==Math.round(w*d)){ hc.width=Math.round(w*d); hc.height=Math.round(h*d); }
+    hx.setTransform(d,0,0,d,0,0); hx.clearRect(0,0,w,h); if(!CI || eligiendo) return;
+    function txt(s,x,y,tam,col,al){ hx.font='900 '+tam+'px "Baloo 2",Fredoka,Nunito,sans-serif'; hx.textAlign=al||'left'; hx.lineWidth=5; hx.strokeStyle='rgba(20,12,30,.75)'; hx.strokeText(s,x,y); hx.fillStyle=col; hx.fillText(s,x,y); }
+    var vu=Math.min(VUELTAS,Math.max(1,Math.floor(Math.max(0,yo.prog)/CI.L)+1)), y0=h-150;
+    txt(lugar+'º',w-16,y0,54,lugar===1?'#FFD23F':'#FFFFFF','right'); txt('de 8',w-16,y0+22,16,'#FFF1DA','right');
+    txt('Vuelta '+vu+'/'+VUELTAS,w-16,y0-52,18,'#FFF1DA','right');
+    txt(Math.round(yo.v/VMAX*140*(turboT>0?1.1:1))+' km/h',16,y0+22,20,'#FFFFFF');
+    /* minimapa */
+    var mm=CI.mini, mx=1e9,Mx=-1e9,mz=1e9,Mz=-1e9; mm.forEach(function(p){ mx=Math.min(mx,p[0]); Mx=Math.max(Mx,p[0]); mz=Math.min(mz,p[1]); Mz=Math.max(Mz,p[1]); });
+    var tam=96, k=tam/Math.max(Mx-mx,Mz-mz), ox=16, oy=y0-tam-14;
+    hx.fillStyle='rgba(20,12,30,.35)'; hx.beginPath(); hx.roundRect?hx.roundRect(ox-8,oy-8,tam+16,tam+16,14):hx.rect(ox-8,oy-8,tam+16,tam+16); hx.fill();
+    hx.strokeStyle='#FFFFFF'; hx.lineWidth=4; hx.lineJoin='round'; hx.beginPath(); mm.forEach(function(p,i){ var X=ox+(p[0]-mx)*k, Y=oy+(p[1]-mz)*k; if(i) hx.lineTo(X,Y); else hx.moveTo(X,Y); }); hx.closePath(); hx.stroke();
+    karts.slice().reverse().forEach(function(kk){ CI.pos(kk.s,kk.x,vP); hx.fillStyle=kk.yo?'#FF7AA8':COLS3[karts.indexOf(kk)]; hx.beginPath(); hx.arc(ox+(vP.x-mx)*k,oy+(vP.z-mz)*k,kk.yo?5.5:3.5,0,6.3); hx.fill(); if(kk.yo){ hx.strokeStyle='#fff'; hx.lineWidth=2; hx.stroke(); } });
+    if(cuenta>0 && !jugando && !fin){ var nn=Math.ceil(cuenta); txt(nn>3?'':String(nn),w/2,h*.42,96,'#FFFFFF','center'); }
+    else if(cuenta>-1 && jugando){ txt('¡YA!',w/2,h*.42,96,'#3CFF6A','center'); }
+  }
+  function medir(){ var w=innerWidth, h=innerHeight; R3.setSize(w,h,false); C.aspect=w/h; C.fov=w<h?70:58; C.updateProjectionMatrix(); }
+  addEventListener('resize',medir); medir();
+  var reloj=new THREE.Clock(), yaCont=0;
+  var dtReal=0;
+  (function cuadro(){ requestAnimationFrame(cuadro); var d0=reloj.getDelta(), dt=Math.min(.05,d0); dtReal=Math.min(.3,d0); t+=dt;
+    if(jugando && cuenta<=0 && cuenta>-1){ if(!yaCont) yaCont=performance.now(); if(performance.now()-yaCont>1300) cuenta=-2; }   /* el «¡YA!» dura un segundo de verdad */
+    actualizar(dt); if(E) R3.render(E,C); tablero(); })();
+  function pintarTurbo(){ var b=document.getElementById('turbo'); b.textContent='🔥 ×'+turbo; b.disabled=!turbo; }
+  function usarTurbo(){ if(!turbo || !jugando) return; turbo--; turboT=2.2; pintarTurbo(); nota(520,.25,'sawtooth',.05); }
+  function mantener(id,fn){ var b=document.getElementById(id);
+    b.addEventListener('pointerdown',function(e){ e.preventDefault(); despertarAudio(); fn(true); });
+    ['pointerup','pointerleave','pointercancel'].forEach(function(ev){ b.addEventListener(ev,function(){ fn(false); }); }); }
+  mantener('izq',function(v){ izq=v; }); mantener('der',function(v){ der=v; });
+  document.getElementById('turbo').addEventListener('pointerdown',function(e){ e.preventDefault(); usarTurbo(); });
+  cv.addEventListener('pointerdown',function(e){ despertarAudio(); if(e.clientX<innerWidth/2) izq=true; else der=true; });
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ cv.addEventListener(ev,function(){ izq=der=false; }); });
+  addEventListener('keydown',function(e){ if(e.key==='ArrowLeft') izq=true; if(e.key==='ArrowRight') der=true; if(e.key===' '){ e.preventDefault(); usarTurbo(); } });
+  addEventListener('keyup',function(e){ if(e.key==='ArrowLeft') izq=false; if(e.key==='ArrowRight') der=false; });
+  /* solo para las pruebas (lo mismo que la carrera retro, más el mundo) */
+  window.__carro={tresD:true,elegir:empezar,estado:function(){ return {tema:TN,mundo:MW?MW.id:'',pilotos:karts.map(function(k){ return k.yo?PJ.id:(k.pid||''); }),conPersonaje:karts.filter(function(k){ return !!k.g.userData.piloto; }).length,N:CI?CI.K:0,jugando:jugando,eligiendo:eligiendo,dist:yo?yo.prog:0,lugar:lugar,pX:yo?yo.x:0,mapa:CI?CI.mini.length:0,cuenta:cuenta,fin:fin,v:yo?yo.v:0}; },
+    saltar:function(d){ if(!yo) return; yo.prog+=d; yo.s+=d; }, lado:function(v){ if(yo) yo.x=v; },
+    sonido:function(){ var e=AMB?AMB.estado():{vivo:false}; e.ctx=ac?ac.state:'ninguno'; e.boton=!!document.getElementById('b-amb'); return e; }};
+  /* el autito llega aparte; mientras, se elige la pista (detrás se ve la pista guardada o la del mundo de la pareja) */
+  var autoListo=false, esperaAuto=[];
+  function cuandoAuto(fn){ if(autoListo) fn(); else esperaAuto.push(fn); }
+  function yaAuto(){ if(autoListo) return; autoListo=true; if(!CI) montar(guardada); esperaAuto.splice(0).forEach(function(f){ f(); }); }
+  setTimeout(yaAuto,8000);   /* si el autito no llega, se corre igual (con autitos de caja) */
+  conCargador(function(){ try{ new THREE.GLTFLoader().load('auto-planeta'+EXT_GLB,function(gl){
+    var m=gl.scene, caja=new THREE.Box3().setFromObject(m), tam=caja.getSize(new THREE.Vector3()), k=LARGO_K/tam.z; m.scale.setScalar(k); ALTO_K=tam.y*k;
+    m.position.set(-(caja.min.x+caja.max.x)/2*k,-caja.min.y*k,-(caja.min.z+caja.max.z)/2*k);
+    m.traverse(function(o){ if(!o.isMesh) return; var mt=o.material; mt.color.setRGB(1.2,1.12,1.05); if(mt.map){ mt.emissiveMap=mt.map; mt.emissive.set('#FFFFFF'); mt.emissiveIntensity=.1; } });
+    var envol=new THREE.Group(); envol.add(m); AUTO=envol; yaAuto(); },null,yaAuto); }catch(e){ yaAuto(); } },yaAuto);
+  var guardada=propia; try{ var gq=localStorage.getItem('ruway:pista'); if(PISTAS3[gq]) guardada=gq; }catch(e){}
+  elegir();
+}
+
+function carritoRetro(){
   document.body.classList.add('juego');
   var n=FOTOS.length, H0=hud('La gran carrera','Rebasa a todos · cada arco guarda un recuerdo',Math.max(1,n)); H0.puntos(0);
   var cv=lienzo2d(), g=cv.getContext('2d'), W=0, H=0, DPR=1;

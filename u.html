@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v45">
+<meta name="ruway-version" content="v46">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -816,7 +816,56 @@ function traer(par, ok, mal) {
      palabras. Esos tres solo hacen latir la mochila; los demás avisan si no hay nada abierto. */
   var CALLADOS={primero:1,todos:1,fin:1};
   function logro(id){ if(!P||P.logros[id]) return; var l=LOGROS.filter(function(x){ return x.id===id; })[0]; if(!l) return;
-    P.logros[id]=Date.now(); guardar(); if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',l.txt); }
+    P.logros[id]=Date.now(); guardar(); var amigos=desbloquear(id);
+    if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',amigos?'¡Despiertan '+amigos+'!':l.txt); }
+
+  /* ---- los amigos que despiertan (personajes que se desbloquean) ----
+     Con quién se juega se elige en el teléfono (ruway:pj), no en el regalo; por eso lo que se
+     desbloquea también es del teléfono: una sola llave nueva, ruway:desb = {v:1, l:{logro:fecha},
+     vistos:{logro:1}}. Cada logro despierta a una pareja. Quien despertó a unos con un regalo los
+     tiene en todos los demás. Los desbloqueos salen de los logros que el núcleo YA cuenta, así que no
+     hay un segundo contador que pueda desacordarse. Un regalo de recuerdo (TONO) no suma ni muestra nada.
+     Los logros nunca se quitan: no hay rachas que se rompan. La tabla lleva solo los personajes que
+     existen: un logro sin personajes todavía igual se anota y, cuando lleguen, ya están despiertos. */
+  var DESB_LL='ruway:desb';
+  /* los nombres (nov-2026): cortos, en quechua y fáciles de aprender. Los ids no cambian (oso, conejo…). */
+  var PAREJAS=[
+    {logro:'',ids:['oso','conejo'],nom:'Uku y Puyu'},
+    {logro:'',ids:['panda','qori'],nom:'Nina y Qori'},
+    {logro:'',ids:['mono'],nom:'Kusi'},
+    {logro:'primero',ids:['vaca','shiba'],nom:'Tika y Sami',txt:'Tika y Sami despiertan cuando abras tu primer recuerdo'},
+    {logro:'coleccion',ids:['explorador','nova'],nom:'Rumi y Chaska',txt:'Rumi y Chaska despiertan cuando juntes 20 cosas lindas en tu mochila'},
+    {logro:'fin',ids:['exploradora','paladin'],nom:'Wayra e Inti',txt:'Wayra e Inti despiertan cuando llegues hasta el final'},
+    {logro:'vuelve',ids:['myke','lavender'],nom:'Yaku y Urpi',txt:'Yaku y Urpi despiertan cuando vuelvas a abrir tu regalo otro día'},
+    {logro:'fiel',ids:['tensy','leo'],nom:'Kantu y Ari',txt:'Un secreto despierta con los días',secreto:1},
+    {logro:'todos',ids:['atuq'],nom:'Atuq',txt:'Atuq despierta cuando veas todos tus recuerdos'}];
+  function dLeer(){ var d={v:1,l:{},vistos:{}};
+    try{ var x=JSON.parse(localStorage.getItem(DESB_LL)||'null');
+      if(x&&typeof x==='object') PAREJAS.forEach(function(p){ if(!p.logro) return; var t=x.l&&+x.l[p.logro]; if(t>0) d.l[p.logro]=t; if(x.vistos&&x.vistos[p.logro]) d.vistos[p.logro]=1; }); }catch(e){}
+    return d; }
+  function dGuardar(d){ try{ localStorage.setItem(DESB_LL,JSON.stringify(d)); }catch(e){} }
+  function parejaDeId(id){ for(var i=0;i<PAREJAS.length;i++) if(PAREJAS[i].ids.indexOf(id)>=0) return PAREJAS[i]; return null; }
+  /* anota que un logro despertó a su pareja; devuelve los nombres si es la primera vez y hay a quién nombrar */
+  function desbloquear(id){ if(TONO) return ''; var p=null; PAREJAS.forEach(function(x){ if(x.logro&&x.logro===id) p=x; }); if(!p) return '';
+    var d=dLeer(); if(d.l[id]) return ''; d.l[id]=Date.now(); dGuardar(d); return p.ids.length?p.nom:''; }
+  N.desb={
+    /* ¿se puede elegir? Quien no está en ninguna pareja (Ruway, Killa, "Mi avatar") no se bloquea. */
+    libre:function(id){ if(window.__RUWAY_DESBLOQUEAR_TODO) return true; var p=parejaDeId(id); if(!p||!p.logro) return true; return !!dLeer().l[p.logro]; },
+    /* lo que se le dice a quien toca uno bloqueado (nunca dice qué personaje es el secreto) */
+    pista:function(id){ var p=parejaDeId(id); return p&&p.logro?p.txt:''; },
+    secreto:function(id){ var p=parejaDeId(id); return !!(p&&p.secreto&&!N.desb.libre(id)); },
+    /* las parejas despertadas que todavía no se han mostrado al elegir personaje */
+    nuevos:function(){ var d=dLeer(); return PAREJAS.filter(function(p){ return p.logro&&p.ids.length&&d.l[p.logro]&&!d.vistos[p.logro]; })
+      .map(function(p){ return {nom:p.nom,ids:p.ids.slice()}; }); },
+    mostrados:function(){ var d=dLeer(), c=false; Object.keys(d.l).forEach(function(k){ if(!d.vistos[k]){ d.vistos[k]=1; c=true; } }); if(c) dGuardar(d); },
+    /* despierta a todos (para quien arma o prueba la tienda; no cambia nada del regalo) */
+    todos:function(){ var d=dLeer(); PAREJAS.forEach(function(p){ if(p.logro&&!d.l[p.logro]) d.l[p.logro]=Date.now(); }); dGuardar(d); }
+  };
+  /* la línea de la mochila que dice a quién despierta cada logro (el secreto no se nombra) */
+  function amigosDe(logroId,si){ var p=null; PAREJAS.forEach(function(x){ if(x.logro===logroId) p=x; }); if(!p||!p.ids.length) return '';
+    var t=p.secreto&&!si?'Despierta a alguien secreto':(si?'✨ Despertaron: ':'Despierta a: ')+p.nom; return '<small class="rn-am">'+t+'</small>'; }
+  /* lo que ya se había ganado en este regalo antes de que existieran los desbloqueos también cuenta */
+  function desbAlDia(){ if(P&&!TONO) Object.keys(P.logros).forEach(function(id){ desbloquear(id); }); }
 
   /* ---- lo que llaman las experiencias ---- */
   N.iniciar=function(o){
@@ -827,6 +876,7 @@ function traer(par, ok, mal) {
        lleva nada de juego: ni mochila, ni Pase, ni avisos de logros, ni premio. El progreso se
        sigue guardando igual (mismas llaves), solo que no se muestra. */
     TONO=(o.tono==='memoria'||exp==='vela'||(D.extra&&D.extra.publico==='memoria'))?'memoria':'';
+    desbAlDia();
     TEMP=(D.temporada&&AMB[D.temporada.id])?{id:D.temporada.id,ic:String(D.temporada.ic||'').slice(0,4),nom:String(D.temporada.nom||'').slice(0,30)}:null;
     if(o.ambiente!==false) ambiente(o.ambienteZ);
     var h=hoy(); if(P.dias.indexOf(h)<0){ P.dias.push(h); P.dias=P.dias.slice(-30); }
@@ -1641,7 +1691,7 @@ function traer(par, ok, mal) {
    +'.rn-it i{font-style:normal;font-size:26px;display:block}.rn-it b{font:800 18px "Baloo 2",sans-serif;display:block}.rn-it small{font-size:10.5px;color:#8A7A66}'
    +'.rn-barra{height:10px;border-radius:9px;background:#EADBC6;overflow:hidden;margin:12px 0 4px}.rn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--rn-sol),var(--rn-rojo))}'
    +'.rn-log{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:#fff;margin-bottom:7px}.rn-log i{font-style:normal;font-size:24px}.rn-log.no{opacity:.45;filter:grayscale(1)}'
-   +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}'
+   +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}.rn-log small.rn-am{display:block;margin-top:3px;font-weight:800;color:#B25C84}'
    +'.rn-cerrar{display:block;width:100%;margin-top:12px;border:none;border-radius:999px;padding:13px;background:var(--rn-verde);color:#fff;font:800 15px "Baloo 2",sans-serif}'
    +'.rn-pie{text-align:center;color:#B3A58F;font-size:11px;margin-top:10px;letter-spacing:.2em}'
    +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
@@ -1808,7 +1858,7 @@ function traer(par, ok, mal) {
           +'<div class="rn-barra"><i style="width:'+Math.min(100,tot/20*100)+'%"></i></div><small style="color:#8A7A66">'+(tot>=20?'¡Eres coleccionista! 🧺':'Junta 20 para el logro Coleccionista ('+tot+' de 20)')+'</small>'
           +'<p style="font-size:13px;color:#5E6655">Todo lo que juntas en los juegos se guarda aquí, en todas las experiencias de este regalo.</p>';
         cuerpo.innerHTML=h;
-      } else { h+=LOGROS.map(function(l){ var si=!!P.logros[l.id]; return '<div class="rn-log'+(si?'':' no')+'"><i>'+l.ic+'</i><div><b>'+l.nom+'</b><small>'+(si?l.txt:'🔒 '+l.txt)+'</small></div></div>'; }).join('');
+      } else { h+=LOGROS.map(function(l){ var si=!!P.logros[l.id]; return '<div class="rn-log'+(si?'':' no')+'"><i>'+l.ic+'</i><div><b>'+l.nom+'</b><small>'+(si?l.txt:'🔒 '+l.txt)+'</small>'+amigosDe(l.id,si)+'</div></div>'; }).join('');
         cuerpo.innerHTML=h; } }
     c.querySelectorAll('.rn-tabs button').forEach(function(b){ b.onclick=function(){ ir(b.dataset.p); }; });
     ir(pestana==='pase'&&!PASE.length?'rec':(pestana||'rec')); };
