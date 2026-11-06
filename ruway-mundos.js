@@ -757,10 +757,12 @@ M.texSuelo = function (tipo) { return PISOS[tipo] ? texPiso(tipo) : null; };
 M.matojo = function (tipo, r) { return matojo(tipo, r); };
 M.SIEMBRA = SIEMBRA;
 
-/* M.suelo(E, mundo, {cx, cz, r (radio de lo sembrado), libre(x,z) → true si se puede sembrar ahí}) */
+/* M.suelo(E, mundo, {cx, cz, r (radio de lo sembrado), libre(x,z) → true si se puede sembrar ahí,
+                      tam, seg (tamaño y divisiones del piso), alto(x,z) → la altura del piso ahí (la carrera, con relieve)}) */
 M.suelo = function (E, mundo, o) {
   var tipo = mundo.suelo, tx = texPiso(tipo); tx.repeat.set(30, 30);
-  var G = new THREE.PlaneGeometry(140, 140, 48, 48); G.rotateX(-Math.PI / 2);
+  var G = new THREE.PlaneGeometry(o.tam || 140, o.tam || 140, o.seg || 48, o.seg || 48); G.rotateX(-Math.PI / 2);
+  if (o.alto) { var PG = G.attributes.position; for (var iv = 0; iv < PG.count; iv++) PG.setY(iv, o.alto(PG.getX(iv) + o.cx, PG.getZ(iv) + o.cz)); G.computeVertexNormals(); }
   var rnd = M.azar(19), rr = M.ruido(8, rnd), man = MANCHAS[tipo].map(function (h) { return M.col(h); });
   M.pintar(G, function (v) { var n = rr(v.x / 14 + 3, v.z / 14 + 7), k = Math.min(man.length - 1.001, n * man.length); var a = man[k | 0], b = man[Math.min(man.length - 1, (k | 0) + 1)]; return M.mezclaCol(a, b, k % 1); });
   var piso = new THREE.Mesh(G, new THREE.MeshStandardMaterial({ map: tx, vertexColors: true, roughness: 1, metalness: 0 }));
@@ -776,7 +778,7 @@ M.suelo = function (E, mundo, o) {
       intentos++;
       var a = r() * 6.283, d = Math.sqrt(r()) * (o.r || 20), x = o.cx + Math.cos(a) * d, z = o.cz + Math.sin(a) * d;
       if (o.libre && !o.libre(x, z)) continue;
-      m4.position.set(x, 0, z); m4.rotation.set(0, r() * 6.283, 0); m4.scale.setScalar(.7 + r() * .7); m4.updateMatrix(); im.setMatrixAt(puestos++, m4.matrix);
+      m4.position.set(x, o.alto ? o.alto(x, z) : 0, z); m4.rotation.set(0, r() * 6.283, 0); m4.scale.setScalar(.7 + r() * .7); m4.updateMatrix(); im.setMatrixAt(puestos++, m4.matrix);
     }
     im.count = puestos; im.receiveShadow = true; E.add(im);
   });
@@ -833,7 +835,7 @@ function anillo(J, o, rnd, cols, nieve, hz) {
    distancia. o.andenes: en un sector, la ladera se vuelve escalones (andenes). o.solo(x,z): dónde sí. */
 M.terreno = function (E, mundo, o) {
   var rnd = M.azar(o.sem || 77), r1 = M.ruido(16, rnd), r2 = M.ruido(32, rnd), r3 = M.ruido(64, rnd), hz = haze(mundo);
-  var S = o.seg || 150, T = o.tam || 170, G = new THREE.PlaneGeometry(T, T, S, S); G.rotateX(-Math.PI / 2);
+  var S = o.seg || 150, T = o.tam || Math.max(170, (o.r1 || 0) * 2 + 40), G = new THREE.PlaneGeometry(T, T, S, S); G.rotateX(-Math.PI / 2);   /* la carrera es más grande */
   var P = G.attributes.position, alturas = new Float32Array(P.count);
   function cresta(n) { return 1 - Math.abs(n * 2 - 1); }
   function alto(x, z) {
@@ -845,7 +847,7 @@ M.terreno = function (E, mundo, o) {
       var a = Math.atan2(z, x), sec = Math.max(0, Math.cos(a - o.andenes.ang)), en = M.suave(.55, .85, sec) * (1 - M.suave(o.andenes.hMax * .8, o.andenes.hMax, h));
       if (en > 0) { var paso = o.andenes.paso, q = Math.floor(h / paso) * paso + paso * M.suave(.82, 1, (h / paso) % 1); h = h + (q - h) * en; }
     }
-    return h * m - .02;
+    return h * m - .02 - HUNDIR * (1 - m);   /* la carrera lo hunde adentro: ahí manda el suelo con relieve */
   }
   for (var i = 0; i < P.count; i++) { var x = P.getX(i), z = P.getZ(i), h = alto(x, z); P.setY(i, h); alturas[i] = h; }
   G.computeVertexNormals();
@@ -1052,7 +1054,8 @@ LEJOS.arboles = function (E, mundo, o) {
 
 /* M.lejos(E, mundo, {cx, cz, medioX, medioZ, libre?, copasDesde?}) → { actualizar(dt, t) }
    libre(x, z, margen): la carrera la pasa para que nada caiga encima de la pista (el laberinto no la usa). */
-M.lejos = function (E, mundo, o) { var r = LEJOS[mundo.lejos](E, mundo, o); return r && r.actualizar ? r : { actualizar: function () {} }; };
+var HUNDIR = 0;   /* solo mientras se arma lo lejano de la carrera (el laberinto lo deja en 0) */
+M.lejos = function (E, mundo, o) { HUNDIR = o.hundir || 0; var r; try { r = LEJOS[mundo.lejos](E, mundo, o); } finally { HUNDIR = 0; } return r && r.actualizar ? r : { actualizar: function () {} }; };
 })();
 
 ;
@@ -1432,18 +1435,51 @@ function texBandera() { var c = lienzo(48, 32, function (g) { g.fillStyle = '#d9
 
 M.pista = function (E, mundo, o) {
   o = o || {};
-  var baja = M.calidad() === 'baja', W = 4.6, rnd = M.azar(mundo.id.length * 77 + 5), gi = GIRO[mundo.id] || [0, 1];
+  /* 3a (6-nov): pista ancha como en los juegos de karts (antes 4,6) y trazado 1,6 veces más grande (vueltas de unos 45 s) */
+  var baja = M.calidad() === 'baja', W = 7.5, ES = 1.6, rnd = M.azar(mundo.id.length * 77 + 5), gi = GIRO[mundo.id] || [0, 1];
   var ca = Math.cos(gi[0]), sa = Math.sin(gi[0]);
-  var curvaT = new THREE.CatmullRomCurve3(TRAZO.map(function (p) { var x = p[0] * gi[1], z = p[1]; return new V3(x * ca - z * sa, 0, x * sa + z * ca); }), true, 'centripetal');
+  var curvaT = new THREE.CatmullRomCurve3(TRAZO.map(function (p) { var x = p[0] * gi[1] * ES, z = p[1] * ES; return new V3(x * ca - z * sa, 0, x * sa + z * ca); }), true, 'centripetal');
   var K = 900, PS = curvaT.getSpacedPoints(K), L = curvaT.getLength(), ds = L / K;
   var T = [], R = [], CU = [];
   for (var i = 0; i < K; i++) { var t = PS[(i + 1) % K].clone().sub(PS[i]).normalize(); T.push(t); R.push(new V3(-t.z, 0, t.x)); }
   for (i = 0; i < K; i++) { var a = T[i], b = T[(i + 1) % K]; CU.push(-(a.x * b.z - a.z * b.x) / ds); }   /* > 0: dobla a la izquierda */
   /* curvatura suavizada (para la física y para saber dónde hay curva) */
   var CS = CU.map(function (v, i) { var s = 0; for (var k = -12; k <= 12; k++) s += CU[(i + k + K) % K]; return s / 25; });
+  /* ---------- el relieve (3a): lomas, curvas peraltadas y una loma de salto; la largada (meta, tribunas, podio) queda plana ---------- */
+  var Y = new Float32Array(K), BK = new Float32Array(K), f1 = rnd() * 6.283, f2 = rnd() * 6.283, A1 = 2.2 + rnd() * .8, A2 = 1.1 + rnd() * .5;
+  function lejosLargada(s) { return M.suave(32, 62, s) * M.suave(38, 68, L - s); }   /* 0 en la largada, 1 en el resto */
+  /* la loma del salto: en la recta más larga lejos de la largada; se sube despacio y la cumbre es filuda (ahí se despega) */
+  var sJ = L * .5, mJ = 1e9; for (var s1 = L * .3; s1 < L * .7; s1 += 2) { var cs1 = 0; for (var k1 = -10; k1 <= 10; k1 += 2) cs1 += Math.abs(CS[Math.floor(((s1 + k1) % L + L) % L / ds) % K]); if (cs1 < mJ) { mJ = cs1; sJ = s1; } }
+  var HJ = 1.7, SUBE = 7, BAJA = 5;
+  function loma(s) { var u = s - sJ; if (u < -SUBE || u > BAJA) return 0; if (u > 0) return HJ * (1 - u / BAJA);
+    var lin = HJ * (1 + u / SUBE), pie = M.suave(-SUBE, -SUBE + 2, u); return lin * pie; }   /* recta y pareja hasta la cumbre (ahí se despega) */
+  for (i = 0; i < K; i++) { var si = i * ds, w0 = lejosLargada(si);
+    Y[i] = w0 * (A1 * Math.sin(6.2832 * si / L + f1) + A2 * Math.sin(25.1327 * si / L + f2)) + loma(si);
+    BK[i] = w0 * Math.max(-.2, Math.min(.2, CS[i] * 7)); }   /* peralte: el lado de afuera de la curva más alto */
+  /* la altura de la pista: el centro, más el peralte de costado */
   function ix(s) { var u = ((s % L) + L) % L / ds, i = Math.floor(u); return [i % K, (i + 1) % K, u - i]; }
-  function pos(s, x, v) { var q = ix(s), A = PS[q[0]], B = PS[q[1]], r = R[q[0]]; v = v || new V3();
-    v.set(A.x + (B.x - A.x) * q[2] + r.x * x * W / 2, 0, A.z + (B.z - A.z) * q[2] + r.z * x * W / 2); return v; }
+  function pos(s, x, v) { var q = ix(s), A = PS[q[0]], B = PS[q[1]], r = R[q[0]], f = q[2]; v = v || new V3();
+    var lp = Math.max(-(W / 2 + .6), Math.min(W / 2 + .6, x * W / 2)), y = Y[q[0]] + (Y[q[1]] - Y[q[0]]) * f + (BK[q[0]] + (BK[q[1]] - BK[q[0]]) * f) * lp;
+    v.set(A.x + (B.x - A.x) * f + r.x * x * W / 2, y, A.z + (B.z - A.z) * f + r.z * x * W / 2); return v; }
+  function alto(s) { var q = ix(s); return Y[q[0]] + (Y[q[1]] - Y[q[0]]) * q[2]; }
+  function peralte(s) { var q = ix(s); return BK[q[0]] + (BK[q[1]] - BK[q[0]]) * q[2]; }
+  var yMin = 1e9, yMax = -1e9; for (i = 0; i < K; i++) { yMin = Math.min(yMin, Y[i]); yMax = Math.max(yMax, Y[i]); }
+  /* el suelo sigue a la pista: debajo del asfalto un poco más hondo, en el bordillo a ras, y se va a la ondulación del campo
+     (que se apaga lejos, donde está lo lejano de siempre: el mar, los cerros, la catedral) */
+  var GR = 8, grilla = {};
+  function clave(kx, kz) { return (kx + 2048) * 4096 + (kz + 2048); }
+  for (i = 0; i < K; i++) { var kg = clave(Math.floor(PS[i].x / GR), Math.floor(PS[i].z / GR)); (grilla[kg] || (grilla[kg] = [])).push(i); }
+  function cercano(x, z) { var kx = Math.floor(x / GR), kz = Math.floor(z / GR), mejor = -1, m = 1e18;
+    for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) { var l = grilla[clave(kx + a, kz + b)]; if (!l) continue;
+      for (var j = 0; j < l.length; j++) { var P = PS[l[j]], dx = P.x - x, dz = P.z - z, d = dx * dx + dz * dz; if (d < m) { m = d; mejor = l[j]; } } }
+    return mejor; }
+  var ondas = M.ruido(8, M.azar(mundo.id.length * 41 + 3));
+  function campo(x, z) { return (ondas(x / 30 + 11, z / 30 + 5) - .5) * 3.2 * (1 - M.suave(48, 68, Math.hypot(x, z))); }
+  function altoSuelo(x, z) { var j = cercano(x, z), yn = campo(x, z); if (j < 0) return yn;
+    var P = PS[j], r = R[j], tj = T[j], l = (x - P.x) * r.x + (z - P.z) * r.z, d = Math.abs(l), lim = W / 2 + .6, sp = j * ds + (x - P.x) * tj.x + (z - P.z) * tj.z;
+    var ys = alto(sp) + peralte(sp) * Math.max(-lim, Math.min(lim, l));
+    var w = M.suave(W / 2 + 2.8, W / 2 + 13, d), hondo = .4 * (1 - M.suave(W / 2 + .3, W / 2 + .8, d));   /* hondo bajo el asfalto y el bordillo; el pasto (hasta la valla), a ras */
+    return (ys - .03 - hondo) * (1 - w) + yn * w; }
   function dir(s, v) { var q = ix(s); return (v || new V3()).copy(T[q[0]]).lerp(T[q[1]], q[2]).normalize(); }
   function curva(s) { var q = ix(s); return CS[q[0]] + (CS[q[1]] - CS[q[0]]) * q[2]; }
   /* ¿qué tan lejos está un punto de la pista? (para no sembrar encima) */
@@ -1451,21 +1487,21 @@ M.pista = function (E, mundo, o) {
 
   /* ---------- el mundo alrededor ---------- */
   var cielo = M.cielo(E, mundo), luces = M.luces(E, mundo);
-  E.fog.near = mundo.niebla.cerca * 1.6; E.fog.far = mundo.niebla.lejos * 1.7;   /* en la carrera se mira más lejos */
-  M.suelo(E, mundo, { cx: 0, cz: 0, r: 50, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
+  E.fog.near = mundo.niebla.cerca * 2.2; E.fog.far = mundo.niebla.lejos * 2.5;   /* en la carrera se mira más lejos (y ahora es más grande) */
+  M.suelo(E, mundo, { cx: 0, cz: 0, r: 80, tam: 230, seg: baja ? 80 : 115, alto: altoSuelo, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
   /* lo lejano se hizo para el laberinto (14 × 14): acá se le dice qué tan grande es esto y dónde no poner nada */
   function libre(x, z, margen) { return lejosDePista(x, z) > W / 2 + .55 + (margen || 0); }
-  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 54 : 44, medioZ: mundo.id === 'selva' ? 54 : 42, libre: libre, copasDesde: 48 });   /* los árboles gigantes, lejos de la cámara */
+  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 86 : 70, medioZ: mundo.id === 'selva' ? 86 : 67, libre: libre, copasDesde: 77, hundir: 9 });   /* los árboles gigantes, lejos de la cámara */
   var vidaG = new THREE.Group(), vida = M.vida ? M.vida(vidaG, mundo, { cx: 0, cz: 0, w: 14, h: 14 }) : null; E.add(vidaG);
 
   /* ---------- el asfalto y los bordillos ---------- */
   function cinta(x0, x1, y, mat, vPor) {
     var pos3 = [], uv = [], idx = [];
-    for (var i = 0; i <= K; i++) { var P = PS[i % K], r = R[i % K];
-      pos3.push(P.x + r.x * x0, y, P.z + r.z * x0, P.x + r.x * x1, y, P.z + r.z * x1); uv.push(0, i * ds / vPor, 1, i * ds / vPor); }
+    for (var i = 0; i <= K; i++) { var P = PS[i % K], r = R[i % K], yc = Y[i % K] + y, bk = BK[i % K];
+      pos3.push(P.x + r.x * x0, yc + bk * x0, P.z + r.z * x0, P.x + r.x * x1, yc + bk * x1, P.z + r.z * x1); uv.push(0, i * ds / vPor, 1, i * ds / vPor); }
     for (i = 0; i < K; i++) { var q = i * 2; idx.push(q, q + 1, q + 2, q + 1, q + 3, q + 2); }   /* que miren hacia arriba */
     var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos3, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    g.setIndex(idx); g.computeVertexNormals(); var m = new THREE.Mesh(g, mat); m.receiveShadow = true; E.add(m); return m; }
+    g.setIndex(idx); g.computeVertexNormals(); var m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.userData.pista = true; E.add(m); return m; }   /* el asfalto y los bordillos: son la pista misma */
   var tA = texAsfalto(); tA.repeat.set(1, 1);
   cinta(-W / 2, W / 2, .03, new THREE.MeshStandardMaterial({ map: tA, roughness: .85 }), 7);
   var tB = texBordillo(), mB = new THREE.MeshStandardMaterial({ map: tB, roughness: .6 });
@@ -1482,19 +1518,19 @@ M.pista = function (E, mundo, o) {
   /* ---------- en las curvas, las paredes del mundo (por fuera); en las rectas, vallas ---------- */
   var muro = null; try { muro = M.muros(mundo.id === 'ciudad' ? { muro: 'casona', id: 'casona' } : mundo); } catch (e) { muro = null; }   /* Trujillo: casonas de colores */
   var ESM = 1.35, enMuro = [], enValla = [];
-  for (var s = 0; s < L; s += ESM) { var c = curva(s); if (Math.abs(c) > .045) enMuro.push([s, c > 0 ? 1 : -1]); else if (Math.floor(s / ESM) % 2 === 0) enValla.push(s); }
+  for (var s = 0; s < L; s += ESM) { var c = curva(s); if (Math.abs(c) > .045 / ES) enMuro.push([s, c > 0 ? 1 : -1]); else if (Math.floor(s / ESM) % 2 === 0) enValla.push(s); }
   if (muro) {
     var porVar = {}; enMuro.forEach(function (q, j) { var v = j % muro.variantes.length; (porVar[v] = porVar[v] || []).push(q); });
     var ob = new THREE.Object3D();
     Object.keys(porVar).forEach(function (v) { var lista = porVar[v];
       muro.variantes[v].forEach(function (parte) { var im = new THREE.InstancedMesh(parte.geo, parte.mat, lista.length);
-        lista.forEach(function (q, j) { var lado = q[1], pm = pos(q[0], lado * (1 + (1.1 + muro.grosor * ESM / 2) / (W / 2))), d = dir(q[0]);
-          ob.position.set(pm.x, 0, pm.z); ob.rotation.set(0, Math.atan2(-d.z, d.x), 0); ob.scale.set(ESM, ESM, ESM); ob.updateMatrix(); im.setMatrixAt(j, ob.matrix); });
+        lista.forEach(function (q, j) { var lado = q[1], pm = pos(q[0], lado * (1 + (2.7 + muro.grosor * ESM / 2) / (W / 2))), d = dir(q[0]);
+          ob.position.set(pm.x, altoSuelo(pm.x, pm.z), pm.z); ob.rotation.set(0, Math.atan2(-d.z, d.x), 0); ob.scale.set(ESM, ESM, ESM); ob.updateMatrix(); im.setMatrixAt(j, ob.matrix); });
         im.castShadow = false; im.receiveShadow = true; E.add(im); }); });
   }
   /* vallas blancas y rojas de las rectas (una sola malla) */
   var JV = new M.Junta(), blanco = M.col('#f3f3f0'), rojo = M.col('#d8343a');
-  enValla.forEach(function (s, j) { [-1, 1].forEach(function (l) { var p = pos(s, l * (1 + 1.05 / (W / 2))), d = dir(s), ang = Math.atan2(-d.z, d.x), m = new M4().makeRotationY(ang).setPosition(p.x, 0, p.z);
+  enValla.forEach(function (s, j) { [-1, 1].forEach(function (l) { var p = pos(s, l * (1 + 2.6 / (W / 2))), d = dir(s), ang = Math.atan2(-d.z, d.x), m = new M4().makeRotationY(ang).setPosition(p.x, altoSuelo(p.x, p.z), p.z);
     JV.pieza(new THREE.BoxGeometry(.06, .5, .06).translate(0, .25, 0), blanco, m); JV.pieza(new THREE.BoxGeometry(ESM, .09, .04).translate(0, .42, 0), j % 2 ? rojo : blanco, m); JV.pieza(new THREE.BoxGeometry(ESM, .09, .04).translate(0, .22, 0), j % 2 ? blanco : rojo, m); }); });
   if (JV.base) E.add(new THREE.Mesh(JV.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6 })));
 
@@ -1503,8 +1539,8 @@ M.pista = function (E, mundo, o) {
   var arco = new THREE.Group(), pA = pos(1.2, 0), dA = dir(1.2); arco.position.set(pA.x, 0, pA.z); arco.rotation.y = Math.atan2(dA.x, dA.z); E.add(arco);
   var mPil = new THREE.MeshStandardMaterial({ color: '#2b2f3a', roughness: .5, metalness: .3 });
   /* alto: la cámara va a 1,75 y el semáforo a 2,55 le tapaba media pantalla al pasar; todo va por encima de 3,2 */
-  [-1, 1].forEach(function (l) { var pil = new THREE.Mesh(new THREE.BoxGeometry(.35, 4.6, .35), mPil); pil.position.set(l * (W / 2 + .9), 2.3, 0); pil.castShadow = true; arco.add(pil); });
-  var letrero = new THREE.Mesh(new THREE.BoxGeometry(W + 2.2, .9, .18), [mPil, mPil, mPil, mPil, new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') }), new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') })]);
+  [-1, 1].forEach(function (l) { var pil = new THREE.Mesh(new THREE.BoxGeometry(.35, 4.6, .35), mPil); pil.position.set(l * (W / 2 + 2.9), 2.3, 0); pil.castShadow = true; arco.add(pil); });
+  var letrero = new THREE.Mesh(new THREE.BoxGeometry(W + 6.2, .9, .18), [mPil, mPil, mPil, mPil, new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') }), new THREE.MeshBasicMaterial({ map: texLetrero('RUWAY · LA GRAN CARRERA', acento, '#1c1424') })]);
   letrero.position.y = 4.3; arco.add(letrero);
   var focos = [];
   for (k = 0; k < 5; k++) { var fm = new THREE.MeshBasicMaterial({ color: '#3a1010' }), f = new THREE.Mesh(new THREE.SphereGeometry(.13, 12, 8), fm); f.position.set(-1 + k * .5, 3.55, .12); arco.add(f); focos.push(fm); }
@@ -1514,7 +1550,7 @@ M.pista = function (E, mundo, o) {
   var gente = [], GENTE_N = 0, mPer = null, imPer = null;
   var JT = new M.Junta(), lugares = [];
   [-1, 1].forEach(function (l) { for (var tz = 0; tz < 2; tz++) {
-    var s0 = -6 - tz * 9, p = pos(s0, l * (1 + 2.6 / (W / 2))), d = dir(s0), ang = Math.atan2(-d.z, d.x), m = new M4().makeRotationY(ang).setPosition(p.x, 0, p.z), rr = new V3(-d.z, 0, d.x).multiplyScalar(l);
+    var s0 = -6 - tz * 9, p = pos(s0, l * (1 + 4.2 / (W / 2))), d = dir(s0), ang = Math.atan2(-d.z, d.x), m = new M4().makeRotationY(ang).setPosition(p.x, 0, p.z), rr = new V3(-d.z, 0, d.x).multiplyScalar(l);
     for (var e = 0; e < 4; e++) JT.pieza(new THREE.BoxGeometry(7.5, .4 + e * .45, .7).translate(0, (.4 + e * .45) / 2, e * .7 * l), e % 2 ? M.col('#d9d2c8') : M.col('#c4bcb0'), m);
     JT.pieza(new THREE.BoxGeometry(7.9, .12, 3.4).translate(0, 2.9, 1.1 * l), M.col(acento), m);
     [-3.8, 3.8].forEach(function (xx) { JT.pieza(new THREE.BoxGeometry(.12, 2.9, .12).translate(xx, 1.45, 2.6 * l), M.col('#ffffff'), m); });
@@ -1530,11 +1566,11 @@ M.pista = function (E, mundo, o) {
   }
   /* banderas del Perú en mástiles y globos de colores junto a la largada */
   var tbF = texBandera(), banderas = [];
-  [[-4, -1], [-4, 1], [4, -1], [4, 1], [-15, -1], [-15, 1]].forEach(function (b) { var p = pos(b[0], b[1] * (1 + 1.6 / (W / 2)));
+  [[-4, -1], [-4, 1], [4, -1], [4, 1], [-15, -1], [-15, 1]].forEach(function (b) { var p = pos(b[0], b[1] * (1 + 3.2 / (W / 2)));
     var mast = new THREE.Mesh(new THREE.CylinderGeometry(.04, .05, 3, 6), mPil); mast.position.set(p.x, 1.5, p.z); E.add(mast);
     var fl = new THREE.Mesh(new THREE.PlaneGeometry(.9, .6, 6, 1), new THREE.MeshStandardMaterial({ map: tbF, side: THREE.DoubleSide, roughness: .8 })); fl.position.set(p.x, 2.6, p.z); E.add(fl); banderas.push(fl); });
   var globos = [];
-  [[-9, -1], [-9, 1], [8, 1], [-22, -1]].forEach(function (b, j) { var p = pos(b[0], b[1] * (1 + 2.1 / (W / 2))), gg = new THREE.Group(); gg.position.set(p.x, 0, p.z);
+  [[-9, -1], [-9, 1], [8, 1], [-22, -1]].forEach(function (b, j) { var p = pos(b[0], b[1] * (1 + 3.7 / (W / 2))), gg = new THREE.Group(); gg.position.set(p.x, 0, p.z);
     for (var k = 0; k < 4; k++) { var gl = new THREE.Mesh(new THREE.SphereGeometry(.28, 14, 10), new THREE.MeshStandardMaterial({ color: cols[(j + k) % cols.length], roughness: .25, metalness: .05 })); gl.scale.y = 1.2; gl.position.set((k % 2 - .5) * .45, 2.6 + (k >> 1) * .5, (k >> 1) * .2); gg.add(gl); }
     var hilo = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, 2.4, 4), new THREE.MeshBasicMaterial({ color: '#ffffff' })); hilo.position.y = 1.3; gg.add(hilo); E.add(gg); globos.push(gg); });
 
@@ -1542,44 +1578,48 @@ M.pista = function (E, mundo, o) {
      Antes eran siete cruces por la vuelta, a 3,1 de alto: en el celular vertical se veían enormes y tapaban el cielo.
      Ahora dos, más altos y más chicos: se ven de lejos y pasan por encima. */
   var JBn = new M.Junta();
-  function enRecta(s) { for (var i = 0; i < 8 && Math.abs(curva(s)) > .05; i++) s += 2; return s; }   /* que no caigan en una curva */
+  function enRecta(s) { for (var i = 0; i < 8 && Math.abs(curva(s)) > .05 / ES; i++) s += 2; return s; }   /* que no caigan en una curva */
   [enRecta(8), enRecta(L - 22)].forEach(function (sb, k) {
-    var pi = pos(sb, -1 - 1.1 / (W / 2)), pd = pos(sb, 1 + 1.1 / (W / 2)), alto = 4.6;
-    [pi, pd].forEach(function (p) { JBn.pieza(new THREE.CylinderGeometry(.05, .06, alto, 6).translate(p.x, alto / 2, p.z), M.col('#ffffff')); });
-    for (var q = 0; q < 16; q++) { var u = (q + .5) / 16, x = pi.x + (pd.x - pi.x) * u, z = pi.z + (pd.z - pi.z) * u, y = alto - .1 - Math.sin(u * Math.PI) * .35;
+    var pi = pos(sb, -1 - 2.9 / (W / 2)), pd = pos(sb, 1 + 2.9 / (W / 2)), hb = 4.6;
+    [pi, pd].forEach(function (p) { JBn.pieza(new THREE.CylinderGeometry(.05, .06, hb, 6).translate(p.x, hb / 2, p.z), M.col('#ffffff')); });
+    for (var q = 0; q < 16; q++) { var u = (q + .5) / 16, x = pi.x + (pd.x - pi.x) * u, z = pi.z + (pd.z - pi.z) * u, y = hb - .1 - Math.sin(u * Math.PI) * .35;
       var tri = new THREE.ConeGeometry(.11, .24, 3); tri.rotateX(Math.PI); tri.translate(x, y - .12, z); JBn.pieza(tri, M.col(cols[(q + k) % cols.length])); } });
   E.add(new THREE.Mesh(JBn.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6, side: THREE.DoubleSide })));
 
   /* ---------- carteles de curva (flechas rojas y blancas) y flores ---------- */
   var tFI = texFlecha(true), tFD = texFlecha(false), JPo = new M.Junta(), visto = -99;
-  for (s = 0; s < L; s += 2) { var cv = curva(s); if (Math.abs(cv) < .07 || s - visto < 14) continue; visto = s;
-    for (var r2 = 0; r2 < 3; r2++) { var sc = s + r2 * 1.6, lado = cv > 0 ? 1 : -1, p = pos(sc, lado * (1 + 2.2 / (W / 2))), d = dir(sc);
+  for (s = 0; s < L; s += 2) { var cv = curva(s); if (Math.abs(cv) < .07 / ES || s - visto < 22) continue; visto = s;
+    for (var r2 = 0; r2 < 3; r2++) { var sc = s + r2 * 1.6, lado = cv > 0 ? 1 : -1, p = pos(sc, lado * (1 + 2.5 / (W / 2))), d = dir(sc);
       var cart = new THREE.Mesh(new THREE.PlaneGeometry(1.1, .55), new THREE.MeshBasicMaterial({ map: cv > 0 ? tFI : tFD, side: THREE.DoubleSide }));
-      cart.position.set(p.x, .9, p.z); cart.rotation.y = Math.atan2(d.x, d.z) + Math.PI; E.add(cart);
-      JPo.pieza(new THREE.BoxGeometry(.05, .65, .05).translate(p.x, .32, p.z), M.col('#3a3f48')); } }
+      var yc = altoSuelo(p.x, p.z); cart.position.set(p.x, yc + .9, p.z); cart.rotation.y = Math.atan2(d.x, d.z) + Math.PI; E.add(cart);
+      JPo.pieza(new THREE.BoxGeometry(.05, .65, .05).translate(p.x, yc + .32, p.z), M.col('#3a3f48')); } }
   if (JPo.base) E.add(new THREE.Mesh(JPo.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true })));
   var JFl = new M.Junta();
-  for (k = 0; k < (baja ? 30 : 60); k++) { var sf = rnd() * L, lf = rnd() < .5 ? -1 : 1, pf = pos(sf, lf * (1 + (1.6 + rnd() * 1.4) / (W / 2)));
-    for (var q2 = 0; q2 < 5; q2++) { var fl2 = new THREE.SphereGeometry(.07, 6, 5); fl2.translate(pf.x + (rnd() - .5) * .5, .12, pf.z + (rnd() - .5) * .5); JFl.pieza(fl2, M.col(cols[(k + q2) % cols.length])); }
-    var mata = new THREE.IcosahedronGeometry(.2, 0); mata.scale(1, .5, 1); mata.translate(pf.x, .05, pf.z); JFl.pieza(mata, M.col('#3f8a3a')); }
+  for (k = 0; k < (baja ? 45 : 90); k++) { var sf = rnd() * L, lf = rnd() < .5 ? -1 : 1, pf = pos(sf, lf * (1 + (3 + rnd() * 1.8) / (W / 2))), yf = altoSuelo(pf.x, pf.z);
+    for (var q2 = 0; q2 < 5; q2++) { var fl2 = new THREE.SphereGeometry(.07, 6, 5); fl2.translate(pf.x + (rnd() - .5) * .5, yf + .12, pf.z + (rnd() - .5) * .5); JFl.pieza(fl2, M.col(cols[(k + q2) % cols.length])); }
+    var mata = new THREE.IcosahedronGeometry(.2, 0); mata.scale(1, .5, 1); mata.translate(pf.x, yf + .05, pf.z); JFl.pieza(mata, M.col('#3f8a3a')); }
   E.add(new THREE.Mesh(JFl.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7 })));
 
   /* el minimapa (puntos del trazado) */
   var mini = []; for (i = 0; i < K; i += 10) mini.push([PS[i].x, PS[i].z]);
 
-  var mo = new M4(), q4 = new THREE.Quaternion(), e3 = new V3(), vT = new V3(1, 1, 1);
+  var mo = new M4(), q4 = new THREE.Quaternion(), e3 = new V3(), vT = new V3(1, 1, 1), vAl = new V3();
   return {
     L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG,
-    actualizar: function (dt, t, x, z, cam) {
+    alto: alto, peralte: peralte, altoSuelo: altoSuelo, relieve: yMax - yMin, salto: { s: sJ, pendiente: HJ / SUBE },
+    bordes: { pasto: 1 + .55 / (W / 2), valla: 1 + 2.25 / (W / 2) },   /* en unidades de la pista (1 = el borde del asfalto); la valla está a 2,6 m del borde */
+    altoEn: function (s, x) { var q = pos(s, x, vAl), d = Math.abs(x) * W / 2; if (d <= W / 2 + .55) return q.y;
+      var t = M.suave(W / 2 + .55, W / 2 + 1.6, d); return q.y * (1 - t) + (altoSuelo(q.x, q.z) + .03) * t; },
+    actualizar: function (dt, t, x, z, cam, y) {
       if (cielo) cielo.actualizar(t, cam || { x: x, z: z });
       if (lejos) lejos.actualizar(dt, t);
-      luces.seguir(x, z); vidaG.position.set(x, 0, z); if (vida) vida(dt, t, cam);
+      luces.seguir(x, z); vidaG.position.set(x, y || 0, z); if (vida) vida(dt, t, cam);
       /* lo que vuela se hizo para el laberinto y acá sigue al auto: lo que pasa pegado a la cámara se esconde
          (una mariposa a un metro llenaba la pantalla). Solo se esconde y se vuelve a mostrar lo escondido aquí:
          la estrella fugaz maneja su propio «visible». */
       if (cam) for (var j = 0; j < vidaG.children.length; j++) { var vo = vidaG.children[j]; if (!(vo.isSprite || vo.isMesh)) continue;
         var gp = vo.geometry && vo.geometry.parameters, tam = vo.isSprite ? Math.max(vo.scale.x, vo.scale.y) : ((gp && gp.width) || 2);   /* los rayos de luz: altos y angostos, cuenta su ancho */
-        var dx = x + vo.position.x - cam.x, dy = vo.isSprite ? vo.position.y - cam.y : 0, dz = z + vo.position.z - cam.z, lim = 3.4 + tam * .6, cerca = dx * dx + dy * dy + dz * dz < lim * lim;
+        var dx = x + vo.position.x - cam.x, dy = vo.isSprite ? (y || 0) + vo.position.y - cam.y : 0, dz = z + vo.position.z - cam.z, lim = 3.4 + tam * .6, cerca = dx * dx + dy * dy + dz * dz < lim * lim;
         if (cerca) { if (vo.visible) { vo.visible = false; vo.userData.ocultoCam = true; } } else if (vo.userData.ocultoCam) { vo.visible = true; vo.userData.ocultoCam = false; } }
       if (imPer) { for (var j = 0; j < GENTE_N; j++) { var u = gente[j], salto = Math.max(0, Math.sin(t * 6 + u.f)) * .12;
         e3.set(u.p.x, u.p.y + salto, u.p.z); mo.compose(e3, q4, vT); imPer.setMatrixAt(j, mo); } imPer.instanceMatrix.needsUpdate = true; }
