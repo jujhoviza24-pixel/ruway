@@ -1063,10 +1063,11 @@ LEJOS.catedral = function (E, mundo, o) {
   var lista = [], R = Math.max(o.medioX, o.medioZ) + 4.5;
   [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (s, si) {
     var largo = (s[0] ? o.medioZ : o.medioX) * 2 + 12;
-    for (var u = -largo / 2; u < largo / 2; u += 2.4) {
-      if (si === 0 && Math.abs(u) < 5.5 * (o.escalaCatedral || 1)) continue;   /* al norte, el hueco de la catedral */
+    var kh = o.escalaCasonas || 1;   /* la carrera: casonas de tamaño de casa */
+    for (var u = -largo / 2; u < largo / 2; u += 2.4 * kh) {
+      if (si === 0 && !o.catedralEn && Math.abs(u) < 5.5 * (o.escalaCatedral || 1)) continue;   /* al norte, el hueco de la catedral (si va ahí) */
       var x = o.cx + (s[0] ? s[0] * (o.medioX + 6) : u + 1.2), z = o.cz + (s[1] ? s[1] * (o.medioZ + 6) : u + 1.2);
-      lista.push({ x: x, z: z, giro: s[0] ? -s[0] * Math.PI / 2 : (s[1] > 0 ? Math.PI : 0), v: rnd() * W.variantes.length | 0, alto: 2.3 + rnd() * .9 });
+      lista.push({ x: x, z: z, giro: s[0] ? -s[0] * Math.PI / 2 : (s[1] > 0 ? Math.PI : 0), v: rnd() * W.variantes.length | 0, alto: (2.3 + rnd() * .9) * kh });
     }
   });
   var porVar = {};
@@ -1074,7 +1075,7 @@ LEJOS.catedral = function (E, mundo, o) {
   Object.keys(porVar).forEach(function (v) {
     W.variantes[v].forEach(function (parte) {
       var im = new THREE.InstancedMesh(parte.geo, parte.mat, porVar[v].length);
-      porVar[v].forEach(function (c, i) { m4.position.set(c.x, 0, c.z); m4.rotation.set(0, c.giro, 0); m4.scale.set(2.4, c.alto, 3); m4.updateMatrix(); im.setMatrixAt(i, m4.matrix); });
+      porVar[v].forEach(function (c, i) { m4.position.set(c.x, 0, c.z); m4.rotation.set(0, c.giro, 0); m4.scale.set(2.4 * (o.escalaCasonas || 1), c.alto, 3 * (o.escalaCasonas || 1)); m4.updateMatrix(); im.setMatrixAt(i, m4.matrix); });
       im.receiveShadow = true; E.add(im);
     });
   });
@@ -1094,6 +1095,7 @@ LEJOS.catedral = function (E, mundo, o) {
   var tam = new THREE.CylinderGeometry(1.95, 1.95, 1.2, 18, 1); tam.translate(cx, 5.6, cz - 2.6); J.pieza(tam, BL, null, .8);
   for (var k = 0; k < 8; k++) { var cl = new THREE.BoxGeometry(.4, .7, .1); cl.translate(0, 5.6, 1.96); cl.rotateY(k / 8 * 6.283); cl.translate(cx, 0, cz - 2.6); J.pieza(cl, M.col('#3a3040'), null, .8); }
   var gCat = J.geometria(), kc = o.escalaCatedral || 1; if (kc !== 1) gCat.translate(-cx, 0, -cz).scale(kc, kc, kc).translate(cx, 0, cz);   /* la carrera la pide grande */
+  if (o.catedralEn) { var ce = o.catedralEn; gCat.translate(-cx, 0, -cz).rotateY(ce.giro).translate(ce.x, ce.y || 0, ce.z); }   /* y en Trujillo, frente a la largada */
   var mCat = new THREE.Mesh(gCat, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(29, .14), roughness: .9 })); mCat.matrixAutoUpdate = false; mCat.castShadow = kc > 1 && !o.baja; E.add(mCat);
   if (o.info) o.info.catedral = mCat;
   /* palmeras de la plaza y faroles en las esquinas */
@@ -1420,6 +1422,7 @@ M.flora = function (E, mundo, o) {
       if (o.fuera && o.fuera(x, z)) continue;
       var q = o.sitio(x, z), d = q[0]; if (d < dMin || d > dMax) continue;
       if (d < 19 && o.largada && o.largada(x, z)) continue;
+      if (o.permitido && !o.permitido(x, z, d, q[1])) continue;
       if (r() > 1 - .7 * M.suave(dMin, dMax, d)) continue;
       if (sep) { var k = Math.floor(x / sep) + ',' + Math.floor(z / sep); if (grid[k]) continue; grid[k] = 1; }
       out.push([x, z]); }
@@ -1505,6 +1508,175 @@ M.lugares = function (E, mundo, o) {
   if (mundo.id === 'noche' && o.cielo && o.cielo.g) { tit = titilan(o.cielo, o.baja ? 160 : 320); out.titilan = tit; }
   out.actualizar = function (t) { if (tit) tit.material.uniforms.uT.value = t; };
   return out;
+};
+})();
+
+;
+/* Ruway — LOS MUNDOS. ciudad.js: Trujillo como circuito urbano (7-nov-2026, pedido del dueño: «que pueda ingresar a la
+   ciudad y se vea bien la ciudad como lo sería una verdadera… lo más realistas que se pueda»).
+   La pista pasa por calles de casonas coloniales a tamaño real (el auto mide 1,2; una casona de dos pisos, unos 6,8):
+     · fachadas continuas a los dos lados, de los colores del centro de Trujillo, con zócalo, pilastras y cornisas blancas;
+     · abajo, portones de madera con sus tableros y ventanas con rejas de fierro; arriba, balcones de cajón (madera, con su
+       celosía, sus canes y su techito de tejas), balcones abiertos con baranda y ventanas, alguna encendida;
+     · faroles de pared encendidos y, cada tanto, una bocacalle: una calle que entra a la ciudad con sus casonas
+       (con bolardos: el auto sigue por la pista);
+     · la largada no lleva casas: de un lado la catedral (lejos.js) y del otro la plaza.
+   Las casonas salen de plantillas (largo × variante) que se arman una vez; cada tramo de la vuelta junta sus piezas por
+   material en una sola malla (pocas llamadas de dibujo, y lo que no se ve se recorta). Hecho aquí, sin modelos de nadie.
+
+   M.ciudad(E, mundo, { pos, dir, L, W, alto(x,z), dist(x,z), baja, env, sIni, sFin })
+     → { modulos: [{s, d, alto}], cuenta, mallas, mats, faroles, ms } */
+(function () {
+'use strict';
+var M = window.Mundos, M4 = THREE.Matrix4, V3 = THREE.Vector3;
+var COLORES = ['#e9b949', '#3e6fb0', '#c9443b', '#6fb3a0', '#d9774a', '#efe0b6', '#7fb2d6', '#e48a9a', '#b8c46a', '#f0c27a'];
+var FA = 2.65;            /* la fachada, a 2,65 del borde del asfalto (la vereda va de 0,55 a 2,62) */
+var LARGOS = [5.6, 6.4, 7.2, 8], BOCA = 8, FONDO = 20, DETRAS = 6;   /* la calle lateral: sus casas empiezan detrás de las de la esquina */
+var UVK = { muro: .62, madera: .55, tejas: .45 };
+
+/* ---------- la plantilla de una casona: x de 0 a len (la calle), y hacia arriba, z hacia adentro (la fachada en z = 0) ---------- */
+function plantilla(len, v, baja, fondo) {
+  var r = M.azar(Math.round(len * 10) * 7 + v * 131 + (baja ? 5 : 0)), P = {};
+  ['color', 'blanco', 'madera', 'fierro', 'tejas', 'vidrio', 'luz'].forEach(function (k) { P[k] = new M.Junta(); });
+  var cuenta = { porton: 0, reja: 0, cajon: 0 }, unPiso = v === 3, H = unPiso ? 3.7 : 6.4, D = fondo || 6, B = [1, 1, 1], ZO = [.62, .62, .62], OS = M.col('#24201c');
+  function caja(J, w, h, d, x, y, z, col, giroX) { var g = new THREE.BoxGeometry(w, h, d); if (giroX) g.rotateX(giroX); g.translate(x, y, z); J.pieza(g, col || (J === P.fierro ? OS : B)); }   /* el fierro, oscuro si no se dice otro color */
+  /* el cuerpo, el zócalo, las cornisas, el parapeto y las pilastras */
+  caja(P.color, len, H + 1, D, len / 2, (H + 1) / 2 - 1, D / 2);
+  caja(P.color, len + .02, 1.75, .06, len / 2, -.125, -.03, ZO);
+  caja(P.blanco, len + .16, .22, .26, len / 2, H - .1, -.13); caja(P.blanco, len + .08, .1, .14, len / 2, H - .32, -.07);
+  caja(P.color, len, .5, .22, len / 2, H + .24, .11); caja(P.blanco, len + .04, .08, .26, len / 2, H + .5, .11);
+  if (!unPiso) caja(P.blanco, len + .1, .14, .16, len / 2, 3.05, -.08);
+  [.16, len - .16].forEach(function (x) { caja(P.blanco, .32, H, .1, x, H / 2, -.05); });
+  var nb = Math.max(2, Math.round(len / 2.7)), bw = len / nb, conPorton = r() * nb | 0;
+  for (var i = 0; i < nb; i++) {
+    var xc = bw * (i + .5);
+    if (i > 0) caja(P.blanco, .22, H, .07, bw * i, H / 2, -.035);
+    if (i === conPorton) {   /* el portón de madera con su marco y sus tableros */
+      caja(P.blanco, 2.02, .16, .12, xc, 2.82, -.06); [-1, 1].forEach(function (l) { caja(P.blanco, .16, 2.82, .12, xc + l * 1.0, 1.41, -.06); });
+      caja(P.madera, 1.84, 2.72, .08, xc, 1.36, -.02, M.col('#7a5234'));
+      if (!baja) for (var q = 0; q < 4; q++) caja(P.madera, .62, .92, .04, xc + (q % 2 ? .4 : -.4), q < 2 ? .78 : 1.95, -.07, M.col('#5e3c24'));
+      caja(P.fierro, .06, .06, .1, xc + .3, 1.45, -.1, M.col('#c9a24a')); cuenta.porton++;
+    } else {                 /* la ventana con su reja de fierro */
+      caja(P.vidrio, 1.12, 1.8, .04, xc, 1.86, -.02); caja(P.blanco, 1.4, .1, .22, xc, .92, -.11);
+      if (!baja) { caja(P.blanco, 1.3, .1, .08, xc, 2.82, -.04); [-1, 1].forEach(function (l) { caja(P.blanco, .1, 1.9, .08, xc + l * .61, 1.86, -.04); });
+        for (q = 0; q < 8; q++) caja(P.fierro, .028, 1.96, .028, xc - .49 + q * .14, 1.88, -.16);
+        [1.08, 2.66].forEach(function (y) { caja(P.fierro, 1.16, .035, .035, xc, y, -.16); }); }
+      cuenta.reja++;
+    }
+    if (unPiso) continue;
+    var tipo = r(), xb = xc;
+    if (tipo < .4) {           /* el balcón de cajón: piso, canes, tableros, celosía y su techito de tejas */
+      var BW = Math.min(2.1, bw - .3), BD = .82, y0 = 3.32, cM = M.col('#6e4a2e'), cO = M.col('#4e3320');
+      caja(P.madera, BW + .1, .18, BD, xb, y0, -BD / 2, cM);
+      [-1, 0, 1].forEach(function (k) { caja(P.madera, .12, .4, .55, xb + k * BW * .38, y0 - .28, -.28, cO); });
+      caja(P.madera, BW, .92, .06, xb, y0 + .55, -BD + .03, cM); [-1, 1].forEach(function (l) { caja(P.madera, .06, .92, BD, xb + l * BW / 2, y0 + .55, -BD / 2, cM); });
+      caja(P.madera, BW - .1, .96, .03, xb, y0 + 1.55, -BD + .14, cO);
+      if (!baja) { var ns = Math.round(BW / .2); for (q = 0; q <= ns; q++) caja(P.madera, .05, 1.0, .04, xb - BW / 2 + q * BW / ns, y0 + 1.55, -BD + .03, cM);
+        [-1, 1].forEach(function (l) { for (var q2 = 1; q2 < 4; q2++) caja(P.madera, .04, 1.0, .05, xb + l * BW / 2, y0 + 1.55, -q2 * BD / 4, cM); }); }
+      caja(P.madera, BW + .12, .12, .1, xb, y0 + 2.1, -BD + .03, cM);
+      caja(P.tejas, BW + .4, .09, BD + .35, xb, y0 + 2.32, -BD / 2 - .12, M.col('#ffffff'), .38);
+      cuenta.cajon++;
+    } else if (tipo < .65) {   /* balcón abierto con baranda de fierro y puerta-ventana */
+      caja(P.blanco, Math.min(1.9, bw - .3), .14, .62, xb, 3.28, -.31);
+      caja(P.vidrio, 1.0, 2.05, .04, xb, 4.38, -.02); caja(P.blanco, 1.24, .12, .1, xb, 5.46, -.05);
+      caja(P.fierro, 1.7, .04, .04, xb, 4.18, -.58);
+      if (!baja) for (q = 0; q < 11; q++) caja(P.fierro, .022, .82, .022, xb - .8 + q * .16, 3.76, -.58);
+    } else {                   /* ventana alta, con su cornisita; algunas encendidas */
+      var enc = r() < .22; caja(enc ? P.luz : P.vidrio, 1.0, 1.62, .04, xb, 4.62, -.02, enc ? M.col('#ffd59a') : null);
+      caja(P.blanco, 1.34, .12, .16, xb, 5.55, -.08); caja(P.blanco, 1.18, .08, .16, xb, 3.75, -.08);
+    }
+  }
+  if (unPiso) caja(P.tejas, len + .3, .1, 1.3, len / 2, H + .2, -.35, M.col('#ffffff'), .42);   /* la casa de un piso, con su alero de tejas */
+  if (!baja) for (i = 0; i < nb; i++) { var xt = bw * (i + .5);   /* la espalda también tiene ventanas (en las curvas cerradas se ve desde la otra calle) */
+    [1.9].concat(unPiso ? [] : [4.6]).forEach(function (y) { caja(P.vidrio, .9, 1.4, .04, xt, y, D + .02); caja(P.blanco, 1.1, .08, .14, xt, y - .75, D + .07); }); }
+  var G = {}; Object.keys(P).forEach(function (k) { if (P[k].base) G[k] = P[k].geometria(k === 'color' ? { oscuroAbajo: [.72, 1.1] } : null); });
+  return { geos: G, cuenta: cuenta, alto: H + .54 };
+}
+/* el farol de pared: brazo de fierro, la linterna y su vidrio encendido */
+function farolPared() {
+  var F = new M.Junta(), Lz = new M.Junta(), cF = M.col('#262321');
+  F.caja(.06, .06, .6, 0, 3.45, -.3, cF); F.caja(.05, .4, .05, 0, 3.25, -.05, cF);
+  F.caja(.34, .06, .34, 0, 3.32, -.62, cF); F.caja(.3, .08, .3, 0, 3.9, -.62, cF); var cono = new THREE.ConeGeometry(.24, .22, 4); cono.rotateY(Math.PI / 4); cono.translate(0, 4.05, -.62); F.pieza(cono, cF);
+  Lz.caja(.26, .5, .26, 0, 3.6, -.62, M.col('#ffd59a'));
+  return { fierro: F.geometria(), luz: Lz.geometria() };
+}
+
+M.ciudad = function (E, mundo, o) {
+  var t0 = performance.now(), r = M.azar(777), baja = !!o.baja, L = o.L, W2 = o.W / 2, N = 7;   /* tramos de la vuelta: lo que no se ve se recorta */
+  var mats = {
+    muro: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .92 }),
+    madera: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .72 }),
+    fierro: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .45, metalness: .6 }),
+    tejas: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .85 }),
+    vidrio: new THREE.MeshStandardMaterial({ color: '#1b2630', roughness: .08, metalness: .7, envMap: o.env || null, envMapIntensity: 1.2 }),
+    luz: new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })
+  };
+  var MAT_DE = { color: 'muro', blanco: 'muro', madera: 'madera', fierro: 'fierro', tejas: 'tejas', vidrio: 'vidrio', luz: 'luz' };
+  var TR = []; for (var c = 0; c < N; c++) { TR.push({}); }
+  function junta(ch, m) { return TR[ch][m] || (TR[ch][m] = new M.Junta()); }
+  var PL = {}, farol = farolPared();
+  function plant(len, v, fondo) { var k = len + ':' + v + ':' + fondo; return PL[k] || (PL[k] = plantilla(len, v, baja, fondo)); }
+  /* ¿cabe una casa de este fondo sin pisar otro tramo de la pista? (en las curvas cerradas, el otro lado de la curva queda cerca) */
+  function cabe(a, b, Z, fondo) { for (var k = 0; k <= 4; k++) { var x = a.x + (b.x - a.x) * k / 4, z = a.z + (b.z - a.z) * k / 4;
+      if (o.dist(x + Z.x * fondo, z + Z.z * fondo) < W2 + FA - .1 || o.dist(x + Z.x * fondo / 2, z + Z.z * fondo / 2) < W2 + FA - .1) return false; } return true; }
+  var cuenta = { porton: 0, reja: 0, cajon: 0, farol: 0, bocacalle: 0 }, modulos = [], brillos = [], mt = new M4(), vX = new V3(), vY = new V3(0, 1, 0), vZ = new V3();
+  /* pone una pieza de p0 a p1 con la fachada mirando a -Z (Z: hacia adentro de la casa) */
+  function colocar(p0, p1, Z, s, len, v, calle) {
+    vX.set(Z.z, 0, -Z.x);
+    var a = p0, b = p1; if ((b.x - a.x) * vX.x + (b.z - a.z) * vX.z < 0) { a = p1; b = p0; }
+    var cuerda = Math.hypot(b.x - a.x, b.z - a.z); if (cuerda < 2) return;
+    if (calle) {   /* en la curva de afuera la recta de la fachada se acerca a la pista: se corre hacia adentro de la casa lo que falte */
+      var dmin = 1e9; for (var k = 0; k <= 4; k++) dmin = Math.min(dmin, o.dist(a.x + (b.x - a.x) * k / 4, a.z + (b.z - a.z) * k / 4));
+      var falta = W2 + FA - .05 - dmin; if (falta > 0) { a = a.clone().addScaledVector(Z, falta); b = b.clone().addScaledVector(Z, falta); } }
+    var fondo = cabe(a, b, Z, 6) ? 6 : (cabe(a, b, Z, 3) ? 3 : 0); if (!fondo) return;   /* si no cabe ni una casa angosta, ahí no va casa */
+    var y = Math.min(o.alto(a.x, a.z), o.alto(b.x, b.z)) - .25, P = plant(len, v, fondo), sx = cuerda / len;
+    vZ.copy(Z); mt.makeBasis(vX.clone().multiplyScalar(sx), vY, vZ).setPosition(a.x, y, a.z);
+    var col = M.col(COLORES[r() * COLORES.length | 0]), ch = Math.min(N - 1, Math.max(0, Math.floor(((s % L) + L) % L / (L / N))));
+    Object.keys(P.geos).forEach(function (k) { var mk = MAT_DE[k]; junta(ch, mk).pieza(P.geos[k].clone(), k === 'color' ? col : [1, 1, 1], mt, UVK[mk] || 1); });
+    Object.keys(P.cuenta).forEach(function (k) { cuenta[k] += P.cuenta[k]; });
+    var cx = (a.x + b.x) / 2 - Z.x * .01, cz = (a.z + b.z) / 2 - Z.z * .01;
+    modulos.push({ s: s, d: o.dist(cx, cz), alto: P.alto, tipo: calle ? 'calle' : 'boca' });
+    return { a: a, b: b, ch: ch, y: y };
+  }
+  function farolEn(p, Z, y, ch) {   /* en la unión de dos casonas, a media altura */
+    vX.set(Z.z, 0, -Z.x); mt.makeBasis(vX, vY, Z).setPosition(p.x, y, p.z);
+    junta(ch, 'fierro').pieza(farol.fierro.clone(), [1, 1, 1], mt); junta(ch, 'luz').pieza(farol.luz.clone(), [1, 1, 1], mt);
+    brillos.push(p.x - Z.x * .62, y + 3.6, p.z - Z.z * .62); cuenta.farol++;
+  }
+  var tmp = new V3(), prev = new V3(), dirT = new V3();
+  [1, -1].forEach(function (l) {
+    var off = l * (1 + FA / W2), s = o.sIni, pA = o.pos(s, off).clone(), sA = s, acum = 0, hastaBoca = 3 + (r() * 3 | 0), obj = LARGOS[r() * 4 | 0];
+    prev.copy(pA); var ultimo = null;
+    for (s = o.sIni + .5; s <= o.sFin; s += .5) {
+      var p = o.pos(s, off, tmp); acum += Math.hypot(p.x - prev.x, p.z - prev.z); prev.copy(p);
+      if (acum < obj) continue;
+      o.dir((sA + s) / 2, dirT); var Zm = new V3(-dirT.z * l, 0, dirT.x * l);   /* hacia adentro de la casa: afuera de la pista */
+      var pB = p.clone();
+      if (hastaBoca === 0) {   /* la bocacalle: dos filas de casonas que se van hacia adentro, una que cierra al fondo y los bolardos */
+        var u = Zm, pS = pA, pE = pB, fS = pS.clone().addScaledVector(u, FONDO), fE = pE.clone().addScaledVector(u, FONDO), sm = (sA + s) / 2;
+        var tt = new V3(pE.x - pS.x, 0, pE.z - pS.z).normalize();
+        [[pS, -1], [pE, 1]].forEach(function (q) { var base = q[0], Zl = tt.clone().multiplyScalar(q[1]);
+          for (var k = 0; k < 2; k++) colocar(base.clone().addScaledVector(u, DETRAS + k * 7), base.clone().addScaledVector(u, DETRAS + (k + 1) * 7), Zl, sm, 7.2, r() * 3 | 0); });
+        colocar(fS, fE, u, sm, LARGOS[Math.min(3, Math.round((BOCA - 5.6) / .8))], r() * 3 | 0);
+        var chB = Math.min(N - 1, Math.floor(sm / (L / N)));
+        for (var k2 = 0; k2 < 5; k2++) { var bp = pS.clone().lerp(pE, (k2 + .5) / 5).addScaledVector(u, -.4), yb = o.alto(bp.x, bp.z);
+          var bo = new THREE.CylinderGeometry(.09, .11, .95, 8); bo.translate(bp.x, yb + .47, bp.z); junta(chB, 'fierro').pieza(bo, M.col('#2e2a26')); }
+        cuenta.bocacalle++; hastaBoca = 3 + (r() * 3 | 0); ultimo = null;
+      } else {
+        var v = r() < .16 ? 3 : (r() * 3 | 0), hecho = colocar(pA, pB, Zm, (sA + s) / 2, obj, v, true);
+        if (hecho && ultimo) farolEn(pA, Zm, hecho.y + (v === 3 ? -1.2 : 0), hecho.ch);
+        ultimo = hecho; hastaBoca--;
+      }
+      pA = pB; sA = s; acum = 0; obj = hastaBoca === 0 ? BOCA : (o.curva && Math.abs(o.curva(s)) > .03 ? LARGOS[0] : LARGOS[r() * 4 | 0]);
+    }
+  });
+  /* juntar: una malla por tramo y material (lo que no se ve se recorta solo) */
+  var mallas = [];
+  TR.forEach(function (tr) { Object.keys(tr).forEach(function (mk) { var m = new THREE.Mesh(tr[mk].geometria(), mats[mk]);
+    m.castShadow = !baja && mk === 'muro';   /* la sombra la dan los muros (los balcones y las tejas, no: es caro y casi no se nota) */ m.receiveShadow = mk !== 'luz'; m.userData.ciudad = true; E.add(m); mallas.push(m); }); });
+  if (brillos.length) { var gB = new THREE.BufferGeometry(); gB.setAttribute('position', new THREE.Float32BufferAttribute(brillos, 3));
+    var pb = new THREE.Points(gB, new THREE.PointsMaterial({ color: '#ffcf7a', size: 1.5, map: M.texBrillo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pb.userData.ciudad = true; E.add(pb); mallas.push(pb); }
+  return { modulos: modulos, cuenta: cuenta, mallas: mallas, mats: mats, ms: Math.round(performance.now() - t0) };
 };
 })();
 
@@ -1869,14 +2041,18 @@ M.pista = function (E, mundo, o) {
   var TAM = 230, sueloR = M.suelo(E, mundo, { cx: 0, cz: 0, r: 80, tam: TAM, seg: baja ? 80 : 115, alto: altoSuelo, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
   /* lo lejano se hizo para el laberinto (14 × 14): acá se le dice qué tan grande es esto y dónde no poner nada */
   function libre(x, z, margen) { return lejosDePista(x, z) > W / 2 + .55 + (margen || 0); }
+  var catEn = null;
+  if (mundo.id === 'ciudad') { var sC = 18, pO = pos(sC, 1), pI = pos(sC, -1), lo = Math.hypot(pO.x, pO.z) > Math.hypot(pI.x, pI.z) ? 1 : -1, pc = pos(sC, lo * (1 + 10 / (W / 2))), dC = dir(sC);
+    catEn = { x: pc.x, z: pc.z, y: altoSuelo(pc.x, pc.z) - .2, giro: Math.atan2(dC.z * lo, -dC.x * lo) }; }   /* la catedral mira a la pista, por fuera de la largada */
   var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 86 : 70, medioZ: mundo.id === 'selva' ? 86 : 67, libre: libre, copasDesde: 77, hundir: 9,
-    orilla: ORILLA, olas: mundo.id === 'costa', baja: baja, muelle: 1.6, faroles: true, escalaCatedral: 2, info: INFO });   /* 3c: el mar con olas, el muelle grande y la catedral grande (solo la carrera los pide) */   /* los árboles gigantes, lejos de la cámara */
+    orilla: ORILLA, olas: mundo.id === 'costa', baja: baja, muelle: 1.6, faroles: true, escalaCatedral: 2, catedralEn: catEn, escalaCasonas: mundo.id === 'ciudad' ? 2.2 : 1, info: INFO });   /* 3c: el mar con olas, el muelle grande y la catedral grande (solo la carrera los pide) */   /* los árboles gigantes, lejos de la cámara */
   var vidaG = new THREE.Group(), vida = M.vida ? M.vida(vidaG, mundo, { cx: 0, cz: 0, w: 14, h: 14 }) : null; E.add(vidaG);
   /* 3c: la vegetación de cada lugar, fuera de las vallas (flora.js). sitio: qué tan lejos del centro de la pista y en qué parte de la vuelta */
   function sitioPista(x, z) { var j = cercano(x, z); if (j < 0) return [lejosDePista(x, z), -1]; var P = PS[j]; return [Math.hypot(P.x - x, P.z - z), j * ds]; }
   var vLg = new V3(); function enLargada(x, z) { for (var sl = -52; sl <= 40; sl += 4) { pos(sl, 0, vLg); if ((vLg.x - x) * (vLg.x - x) + (vLg.z - z) * (vLg.z - z) < 361) return true; } return false; }
   var flora = M.flora ? M.flora(E, mundo, { alto: altoSuelo, sitio: sitioPista, largada: enLargada, L: L, W: W, baja: baja, R: mundo.id === 'ciudad' ? 72 : 74,   /* en Trujillo, las casonas empiezan a 76 */
-    fuera: mundo.id === 'costa' ? function (x, z) { return z < ORILLA + 6; } : mundo.id === 'ciudad' ? function (x, z) { return x * x + z * z < 100; } : null }) : null;   /* en Huanchaco, el mar y la playa; en Trujillo, el monumento */
+    fuera: mundo.id === 'costa' ? function (x, z) { return z < ORILLA + 6; } : mundo.id === 'ciudad' ? function (x, z) { return x * x + z * z < 100; } : null,
+    permitido: mundo.id === 'ciudad' ? function (x, z, d, sP) { return x * x + z * z < 576 || (sP >= 0 && (sP < 26 || sP > L - 36) && d > 9 && Math.hypot(x, z) < Math.hypot(PS[Math.floor(sP / ds) % K].x, PS[Math.floor(sP / ds) % K].z)); } : null }) : null;   /* Trujillo: la plaza y el lado de adentro de la largada */   /* en Huanchaco, el mar y la playa; en Trujillo, el monumento */
   var emblemas = M.lugares ? M.lugares(E, mundo, { cielo: cielo, alto: altoSuelo, baja: baja }) : null;   /* «lugares» ya es el nombre de los asientos de las tribunas */
   if (emblemas) { if (emblemas.monumento) INFO.monumento = emblemas.monumento; if (emblemas.titilan) INFO.titilan = emblemas.titilan; }
 
@@ -1902,7 +2078,7 @@ M.pista = function (E, mundo, o) {
   E.add(new THREE.Mesh(JG.geometria(), new THREE.MeshBasicMaterial({ vertexColors: true })));
 
   /* ---------- en las curvas, las paredes del mundo (por fuera); en las rectas, vallas ---------- */
-  var muro = null; try { muro = M.muros(mundo.id === 'ciudad' ? { muro: 'casona', id: 'casona' } : mundo); } catch (e) { muro = null; }   /* Trujillo: casonas de colores */
+  var muro = null; if (!(mundo.id === 'ciudad')) try { muro = M.muros(mundo); } catch (e) { muro = null; }   /* Trujillo: en vez de muros, las casonas de la ciudad (ciudad.js) */
   var ESM = 1.35, enMuro = [], enValla = [], muroId = mundo.id === 'ciudad' ? 'casona' : mundo.muro, murosReal = [], clones = {};
   for (var s = 0; s < L; s += ESM) { var c = curva(s); if (Math.abs(c) > .045 / ES) enMuro.push([s, c > 0 ? 1 : -1]); else if (Math.floor(s / ESM) % 2 === 0) enValla.push(s); }
   if (muro) {
@@ -1914,7 +2090,7 @@ M.pista = function (E, mundo, o) {
         var im = new THREE.InstancedMesh(parte.geo, mat, lista.length);
         lista.forEach(function (q, j) { var lado = q[1], pm = pos(q[0], lado * (1 + (2.7 + muro.grosor * ESM / 2) / (W / 2))), d = dir(q[0]);
           ob.position.set(pm.x, altoSuelo(pm.x, pm.z), pm.z); ob.rotation.set(0, Math.atan2(-d.z, d.x), 0); ob.scale.set(ESM, ESM, ESM); ob.updateMatrix(); im.setMatrixAt(j, ob.matrix); });
-        im.castShadow = false; im.receiveShadow = true; im.frustumCulled = false; E.add(im); }); });
+        im.castShadow = false; im.receiveShadow = true; im.frustumCulled = false; im.userData.muroCurva = true; E.add(im); }); });
   }
   /* 3c: Chan Chan, las murallas de adobe con sus frisos, a escala de muralla, alrededor del circuito (con dos puertas) */
   var murallas = [];
@@ -1934,7 +2110,13 @@ M.pista = function (E, mundo, o) {
   var JV = new M.Junta(), blanco = M.col('#f3f3f0'), rojo = M.col('#d8343a');
   enValla.forEach(function (s, j) { [-1, 1].forEach(function (l) { var p = pos(s, l * (1 + 2.6 / (W / 2))), d = dir(s), ang = Math.atan2(-d.z, d.x), m = new M4().makeRotationY(ang).setPosition(p.x, altoSuelo(p.x, p.z), p.z);
     JV.pieza(new THREE.BoxGeometry(.06, .5, .06).translate(0, .25, 0), blanco, m); JV.pieza(new THREE.BoxGeometry(ESM, .09, .04).translate(0, .42, 0), j % 2 ? rojo : blanco, m); JV.pieza(new THREE.BoxGeometry(ESM, .09, .04).translate(0, .22, 0), j % 2 ? blanco : rojo, m); }); });
-  if (JV.base) E.add(new THREE.Mesh(JV.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6 })));
+  if (JV.base && !(mundo.id === 'ciudad')) { var mVa = new THREE.Mesh(JV.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6 })); mVa.userData.valla = true; E.add(mVa); }
+  /* ---------- Trujillo: la ciudad. Veredas a los dos lados y las calles de casonas (ciudad.js) ---------- */
+  var CIUDAD = null, mVer = null;
+  if (mundo.id === 'ciudad' && M.ciudad) {
+    mVer = new THREE.MeshStandardMaterial({ color: '#cfc7ba', roughness: .9 }); cinta(-W / 2 - 2.62, -W / 2 - .55, .14, mVer, 1.6); cinta(W / 2 + .55, W / 2 + 2.62, .14, mVer, 1.6);
+    CIUDAD = M.ciudad(E, mundo, { pos: pos, dir: dir, curva: curva, L: L, W: W, alto: altoSuelo, dist: lejosDePista, baja: baja, env: baja || !M.envCielo ? null : M.envCielo(mundo), sIni: 30, sFin: L - 40 });
+  }
 
   /* ---------- la largada: arco con letrero y semáforo, tribunas con público, banderas y globos ---------- */
   var cols = mundo.regalos, acento = mundo.acento;
@@ -2000,7 +2182,7 @@ M.pista = function (E, mundo, o) {
   for (k = 0; k < (baja ? 45 : 90); k++) { var sf = rnd() * L, lf = rnd() < .5 ? -1 : 1, pf = pos(sf, lf * (1 + (3 + rnd() * 1.8) / (W / 2))), yf = altoSuelo(pf.x, pf.z);
     for (var q2 = 0; q2 < 5; q2++) { var fl2 = new THREE.SphereGeometry(.07, 6, 5); fl2.translate(pf.x + (rnd() - .5) * .5, yf + .12, pf.z + (rnd() - .5) * .5); JFl.pieza(fl2, M.col(cols[(k + q2) % cols.length])); }
     var mata = new THREE.IcosahedronGeometry(.2, 0); mata.scale(1, .5, 1); mata.translate(pf.x, yf + .05, pf.z); JFl.pieza(mata, M.col('#3f8a3a')); }
-  E.add(new THREE.Mesh(JFl.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7 })));
+  if (!(mundo.id === 'ciudad')) { var mFl = new THREE.Mesh(JFl.geometria(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .7 })); mFl.userData.floresBorde = true; E.add(mFl); }
 
   /* el minimapa (puntos del trazado) */
   var mini = []; for (i = 0; i < K; i += 10) mini.push([PS[i].x, PS[i].z]);
@@ -2036,18 +2218,22 @@ M.pista = function (E, mundo, o) {
       m.needsUpdate = true; }); });
     if (conRelieve && muroId !== 'adobe') pedir(muroId + '-n', function (t) { mN = t; murosRelieve(); }); }
   function murosRelieve() { if (!mC || !mN) return; mN.repeat.set(.5, .5); murosReal.forEach(function (m) { m.normalMap = mN; m.normalScale.set(.6, .6); m.needsUpdate = true; }); }
+  function parReal(nombre, lista, sinRelieve) { var cC = null, cN = null;   /* color y relieve juntos (en r128 el relieve usa el repeat del color) */
+    function poner() { if (!cC) return; lista.forEach(function (m) { m.map = cC; if (cN) { m.normalMap = cN; m.normalScale.set(.7, .7); } m.needsUpdate = true; }); }
+    pedir(nombre, function (t) { cC = t; poner(); }); if (conRelieve && !sinRelieve) pedir(nombre + '-n', function (t) { cN = t; poner(); }); }
+  if (CIUDAD) { parReal('estuco', [CIUDAD.mats.muro, mVer]); parReal('madera', [CIUDAD.mats.madera]); parReal('tejas', [CIUDAD.mats.tejas]); murosReal.push(CIUDAD.mats.muro); }
   if (INFO.nevados && conRelieve) pedir('nieve-n', function (t) { var vie = INFO.nevados.material;   /* el repeat lo pone el color (en r128 todos usan el del map) */   /* 3c: los nevados, con el relieve de la nieve */
     var mn = new THREE.MeshStandardMaterial({ vertexColors: true, map: vie.map, normalMap: t, roughness: .8, metalness: 0, fog: false, envMap: M.envCielo ? M.envCielo(mundo) : null, envMapIntensity: .55 });
     mn.normalScale.set(.9, .9); INFO.nevados.material = mn; vie.dispose(); });
   if (!REAL.pedidas.length) REAL.listo = true;   /* nada que bajar (el asfalto ya estaba) */
   /* al cambiar de pista: se suelta lo de esta (el asfalto compuesto queda: lo usan todas) */
   function soltar() { vivo = false; propias.forEach(function (t) { t.dispose(); });
-    [tipoS, tipoS + '-n', muroId, muroId + '-n', 'nieve-n'].forEach(function (n) { M.soltarReal(n); }); }
+    [tipoS, tipoS + '-n', muroId, muroId + '-n', 'nieve-n'].concat(CIUDAD ? ['estuco', 'estuco-n', 'madera', 'madera-n', 'tejas', 'tejas-n'] : []).forEach(function (n) { M.soltarReal(n); }); }
   var vSol = new V3();
 
   var mo = new M4(), q4 = new THREE.Quaternion(), e3 = new V3(), vT = new V3(1, 1, 1), vAl = new V3();
   return {
-    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG, real: REAL, soltar: soltar, flora: flora, distPista: lejosDePista, lugares: INFO,
+    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG, real: REAL, soltar: soltar, flora: flora, distPista: lejosDePista, lugares: INFO, ciudad: CIUDAD ? Object.assign(CIUDAD, { catedral: INFO.catedral || null }) : null,
     alto: alto, peralte: peralte, altoSuelo: altoSuelo, relieve: yMax - yMin, salto: { s: sJ, pendiente: HJ / SUBE },
     bordes: { pasto: 1 + .55 / (W / 2), valla: 1 + 2.25 / (W / 2) },   /* en unidades de la pista (1 = el borde del asfalto); la valla está a 2,6 m del borde */
     altoEn: function (s, x) { var q = pos(s, x, vAl), d = Math.abs(x) * W / 2; if (d <= W / 2 + .55) return q.y;
