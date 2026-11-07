@@ -30,7 +30,8 @@ M.suave = function (a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a)
 M.lim = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
 M.lienzo = function (w, h) { var c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 M.tex = function (c, srgb, rep) {
-  var t = new THREE.CanvasTexture(c); if (srgb !== false) t.encoding = THREE.sRGBEncoding;
+  var t = new THREE.CanvasTexture(c); if (!t.userData) t.userData = {};   /* en r128 las texturas no traen userData */
+  if (srgb !== false) t.encoding = THREE.sRGBEncoding;
   if (rep) t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; return t;
 };
 /* ruido de valor que se repite cada "per" celdas: texturas sin costura */
@@ -200,6 +201,7 @@ M.calidad = function () {
 
 /* el renderizador como en la intro y el Chasqui: color correcto y luz de cine */
 M.preparar = function (R, mundo) {
+  M._R = R;   /* para las texturas reales (anisotropía) y el reflejo del cielo (PMREM) */
   R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = mundo.luz.exp || 1;
   R.shadowMap.enabled = M.calidad() === 'alta'; R.shadowMap.type = THREE.PCFSoftShadowMap;
 };
@@ -213,6 +215,39 @@ M.luces = function (E, mundo) {
   E.add(sol); E.add(sol.target);
   E.fog = new THREE.Fog(mundo.niebla.color, mundo.niebla.cerca, mundo.niebla.lejos);
   return { hemi: hemi, sol: sol, seguir: function (x, z) { var v = sol.userData.dir; sol.position.set(x + v.x * 14, v.y * 14, z + v.z * 14); sol.target.position.set(x, 0, z); } };
+};
+/* ---------- texturas reales (La gran carrera, 3c): fotos CC0 de Poly Haven pasadas a WebP (lib/tx-*.webp) ----------
+   M.texReal('arena', ok, mal) baja tx-arena.webp una sola vez (las que piden lo mismo esperan juntas). Si no llega, mal():
+   quien la pidió se queda con su textura dibujada. tx-<nombre>-n.webp es el relieve (va sin sRGB). */
+var REALES = {};
+M.texReal = function (nombre, ok, mal) {
+  var c = REALES[nombre];
+  if (c && c.tex) { c.usos++; setTimeout(function () { ok(c.tex); }, 0); return; }
+  if (c) { c.esperan.push([ok, mal]); return; }
+  c = REALES[nombre] = { esperan: [[ok, mal]], usos: 0 };
+  new THREE.TextureLoader().load((window.__MUNDOS_TX || '') + 'tx-' + nombre + '.webp', function (t) {
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; if (!t.userData) t.userData = {}; t.userData.fuente = 'tx-' + nombre + '.webp';
+    if (!/-n$/.test(nombre)) t.encoding = THREE.sRGBEncoding;
+    t.anisotropy = M._R ? Math.min(4, M._R.capabilities.getMaxAnisotropy()) : 1;
+    c.tex = t; var l = c.esperan; c.esperan = []; c.usos += l.length; l.forEach(function (f) { f[0](t); });   /* primero se cuentan todos: así una pista vieja no la suelta antes de que la reciba la nueva */
+  }, undefined, function () { var l = c.esperan; delete REALES[nombre]; l.forEach(function (f) { if (f[1]) f[1](); }); });
+};
+/* suelta una textura real de la memoria del teléfono (la de una pista que ya no se juega): cada uno suelta lo que recibió */
+M.soltarReal = function (nombre) { var c = REALES[nombre]; if (c && c.tex && --c.usos <= 0) { c.tex.dispose(); delete REALES[nombre]; } };
+/* el reflejo del cielo: un panorama pintado con los colores del cielo del mundo y su sol, pasado por PMREM.
+   Se ve en la pintura de los autos (no se baja nada). Uno por mundo, guardado. */
+M.envCielo = function (mundo) {
+  if (!M._R || !THREE.PMREMGenerator) return null;
+  return una('env:' + mundo.id, function () { try {
+    var W = 256, H = 128, c = M.lienzo(W, H), g = c.getContext('2d'), C = mundo.cielo, gr = g.createLinearGradient(0, 0, 0, H);
+    gr.addColorStop(0, C.cenit); gr.addColorStop(.3, C.medio); gr.addColorStop(.49, C.horizonte); gr.addColorStop(.52, mundo.luz.suelo); gr.addColorStop(1, mundo.luz.suelo);
+    g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    var d = new THREE.Vector3(C.sol[0], C.sol[1], C.sol[2]).normalize(), u = Math.atan2(d.z, d.x) / (2 * Math.PI) + .5, v = Math.asin(d.y) / Math.PI + .5;
+    var sx = u * W, sy = (1 - v) * H, rs = g.createRadialGradient(sx, sy, 0, sx, sy, 14);
+    rs.addColorStop(0, C.solCol); rs.addColorStop(.25, C.solCol); rs.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = rs; g.fillRect(sx - 14, sy - 14, 28, 28);
+    var t = new THREE.CanvasTexture(c); t.mapping = THREE.EquirectangularReflectionMapping; t.encoding = THREE.sRGBEncoding;
+    var pm = new THREE.PMREMGenerator(M._R), env = pm.fromEquirectangular(t).texture; pm.dispose(); t.dispose(); return env;
+  } catch (e) { return null; } });
 };
 /* la sombrita redonda bajo alguien (siempre, también en los teléfonos sin sombras) */
 M.sombrita = function (r) {
@@ -862,18 +897,19 @@ M.terreno = function (E, mundo, o) {
   }
   G.setAttribute('color', new THREE.BufferAttribute(col, 3));
   var mat = new THREE.MeshLambertMaterial({ vertexColors: true, fog: false, map: M.texGrano(o.sem || 7, .25) }); M.texGrano(o.sem || 7, .25).repeat.set(40, 40);
-  var malla = new THREE.Mesh(G, mat); malla.position.set(o.cx, 0, o.cz); malla.receiveShadow = true; E.add(malla);
-  return { alto: function (x, z) { return alto(x - o.cx, z - o.cz); } };
+  var malla = new THREE.Mesh(G, mat); malla.position.set(o.cx, 0, o.cz); malla.receiveShadow = true; malla.userData.terreno = true; E.add(malla);
+  return { alto: function (x, z) { return alto(x - o.cx, z - o.cz); }, malla: malla };
 };
 
 var LEJOS = {};
 
 LEJOS.nevados = function (E, mundo, o) {
   var R = Math.max(o.medioX, o.medioZ);
-  M.terreno(E, mundo, { cx: o.cx, cz: o.cz, r0: R + 3, r1: R + 24, amp: 42, nieve: 13, sem: 101, hazeExtra: -16,
+  var tn = M.terreno(E, mundo, { cx: o.cx, cz: o.cz, r0: R + 3, r1: R + 24, amp: 42, nieve: 13, sem: 101, hazeExtra: -16,
     andenes: { ang: -Math.PI / 2, paso: .55, hMax: 9 },
     colores: { bajo: M.col('#6f8a3a'), medio: M.col('#8d8a55'), roca: M.col('#6c6457'), nieve: M.col('#f4f7fb') } });
   /* los muros de piedra de los andenes se pintan solos (roca en lo empinado de cada escalón) */
+  if (o.info) o.info.nevados = tn.malla;
 };
 
 LEJOS.cerrosNoche = function (E, mundo, o) {
@@ -898,10 +934,32 @@ function texOlas() {
   g.putImageData(im, 0, 0); return M.tex(c, false, true);
 }
 LEJOS.mar = function (E, mundo, o) {
-  var rnd = M.azar(151), orilla = o.cz - o.medioZ - 3.2;                  /* la orilla: un poco más allá del borde de atrás del laberinto */
+  var rnd = M.azar(151), orilla = o.orilla != null ? o.orilla : o.cz - o.medioZ - 3.2;   /* la orilla: un poco más allá del borde de atrás del laberinto (la carrera la pide al lado de la largada) */
   var nm = texOlas(); nm.repeat.set(18, 8);
   var mar = new THREE.Mesh(new THREE.PlaneGeometry(220, 110), new THREE.MeshStandardMaterial({ color: '#2b6d8a', roughness: .22, metalness: .05, normalMap: nm, normalScale: new THREE.Vector2(.55, .55) }));
-  mar.rotation.x = -Math.PI / 2; mar.position.set(o.cx, .03, orilla - 55); E.add(mar);
+  mar.rotation.x = -Math.PI / 2; mar.position.set(o.cx, o.olas ? -.12 : .03, orilla - 55); E.add(mar);
+  var OL = { value: 0 }, olas = null, flotan = [];
+  if (o.olas) {   /* 3c (carrera): olas que llegan a la orilla, con espuma en las crestas, y el cielo reflejado */
+    var gO = new THREE.PlaneGeometry(240, 70, o.baja ? 60 : 120, o.baja ? 18 : 35); gO.rotateX(-Math.PI / 2);   /* en los celulares flojos, menos detalle y sin reflejo */
+    var mO = new THREE.MeshStandardMaterial({ color: '#2a6a88', roughness: .2, metalness: .1, normalMap: nm, normalScale: new THREE.Vector2(.35, .35), envMap: !o.baja && M.envCielo ? M.envCielo(mundo) : null, envMapIntensity: 1.1 });
+    mO.onBeforeCompile = function (sh) {
+      sh.uniforms.uT = OL; sh.uniforms.uOrilla = { value: orilla };
+      sh.vertexShader = 'uniform float uT;\nuniform float uOrilla;\nvarying float vOla;\nvarying float vOri;\n' +
+        'float ola(vec2 p) { float d = p.y - uOrilla; float a = clamp(.35 - d / 5., .35, 1.) * (1. - smoothstep(50., 68., -d));\n' +
+        '  return (.16 * sin(.55 * p.y - 1.5 * uT + .12 * sin(.07 * p.x + uT * .3)) + .06 * sin(1.4 * p.y - .3 * p.x - 2.4 * uT) + .04 * sin(.9 * p.x + 1.7 * uT)) * a; }\n' +
+        sh.vertexShader.replace('#include <beginnormal_vertex>',
+          'vec4 wp0 = modelMatrix * vec4(position, 1.); float h0 = ola(wp0.xz), hx = ola(wp0.xz + vec2(.25, 0.)), hz = ola(wp0.xz + vec2(0., .25));\n' +
+          'vec3 objectNormal = normalize(vec3(-(hx - h0) * 4., 1., -(hz - h0) * 4.));\n#ifdef USE_TANGENT\nvec3 objectTangent = vec3(tangent.xyz);\n#endif')
+        .replace('#include <begin_vertex>', 'vec3 transformed = vec3(position); transformed.y += h0; vOla = h0; vOri = wp0.z - uOrilla;');
+      sh.fragmentShader = 'varying float vOla;\nvarying float vOri;\n' + sh.fragmentShader.replace('#include <color_fragment>',
+        '#include <color_fragment>\n  float esp = smoothstep(.1, .19, vOla) * .55 + smoothstep(-2.5, -.2, vOri) * .6;\n  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(.93, .95, .96), clamp(esp, 0., .85));');
+    };
+    olas = new THREE.Mesh(gO, mO); olas.position.set(o.cx, .03, orilla - 32.5); E.add(olas);   /* de orilla + 2,5 (bajo la arena) hasta mar adentro */
+    if (o.info) { o.info.olas = olas; o.info.olasT = OL; }
+  }
+  /* la misma ola en JS: para que los caballitos suban y bajen con ella */
+  function olaEn(x, z, t) { var d = z - orilla, a = Math.max(.35, Math.min(1, .35 - d / 5)) * (1 - M.suave(50, 68, -d));
+    return (.16 * Math.sin(.55 * z - 1.5 * t + .12 * Math.sin(.07 * x + t * .3)) + .06 * Math.sin(1.4 * z - .3 * x - 2.4 * t) + .04 * Math.sin(.9 * x + 1.7 * t)) * a; }
   /* la arena mojada y la espuma de la orilla */
   var espuma = M.lienzo(256, 32), ge = espuma.getContext('2d');
   for (var i = 0; i < 900; i++) { ge.fillStyle = 'rgba(255,255,255,' + (.2 + rnd() * .6) + ')'; ge.beginPath(); ge.arc(rnd() * 256, 10 + Math.pow(rnd(), 2) * 22, .8 + rnd() * 2.2, 0, 6.283); ge.fill(); }
@@ -911,12 +969,24 @@ LEJOS.mar = function (E, mundo, o) {
   var mojada = new THREE.Mesh(new THREE.PlaneGeometry(220, 3), new THREE.MeshStandardMaterial({ color: '#b39468', roughness: .35, transparent: true, opacity: .55 }));
   mojada.rotation.x = -Math.PI / 2; mojada.position.set(o.cx, .02, orilla + 1.4); E.add(mojada);
   /* el muelle de Huanchaco: largo, sobre pilotes, con sus faroles */
-  var J = new M.Junta(), mx = o.cx + 9;
-  J.caja(1.6, .12, 46, mx, 1.1, orilla - 23, M.col('#8a7a66'), null, 2);
-  for (var z = 0; z < 46; z += 2.2) { J.caja(.12, 1.6, .12, mx - .7, .3, orilla - z, M.col('#5e5244'), null, 2); J.caja(.12, 1.6, .12, mx + .7, .3, orilla - z, M.col('#5e5244'), null, 2); }
-  for (z = 0; z < 46; z += 1.15) { J.caja(.05, .32, .05, mx - .78, 1.32, orilla - z, M.col('#d8d2c8'), null, 2); J.caja(.05, .32, .05, mx + .78, 1.32, orilla - z, M.col('#d8d2c8'), null, 2); }
-  J.caja(.05, .05, 46, mx - .78, 1.46, orilla - 23, M.col('#e8e2d8'), null, 2); J.caja(.05, .05, 46, mx + .78, 1.46, orilla - 23, M.col('#e8e2d8'), null, 2);
+  var J = new M.Junta(), mx = o.cx + 9, km = o.muelle || 1, LM = 46 * km, AM = 1.6 * km, YM = 1.1 * km;   /* km: la carrera lo pide más grande */
+  J.caja(AM, .12 * km, LM, mx, YM, orilla - LM / 2, M.col('#8a7a66'), null, 2);
+  for (var z = 0; z < LM; z += 2.2 * km) { J.caja(.12 * km, YM + .5, .12 * km, mx - AM * .4375, (YM - .5) / 2, orilla - z, M.col('#5e5244'), null, 2); J.caja(.12 * km, YM + .5, .12 * km, mx + AM * .4375, (YM - .5) / 2, orilla - z, M.col('#5e5244'), null, 2); }
+  for (z = 0; z < LM; z += 1.15 * km) { J.caja(.05 * km, .32 * km, .05 * km, mx - AM * .4875, YM + .22 * km, orilla - z, M.col('#d8d2c8'), null, 2); J.caja(.05 * km, .32 * km, .05 * km, mx + AM * .4875, YM + .22 * km, orilla - z, M.col('#d8d2c8'), null, 2); }
+  J.caja(.05 * km, .05 * km, LM, mx - AM * .4875, YM + .36 * km, orilla - LM / 2, M.col('#e8e2d8'), null, 2); J.caja(.05 * km, .05 * km, LM, mx + AM * .4875, YM + .36 * km, orilla - LM / 2, M.col('#e8e2d8'), null, 2);
+  var nFar = 0;
+  if (o.faroles) {   /* los faroles del muelle, encendidos al atardecer */
+    var JL = new M.Junta(), brillo = [];
+    for (z = 4; z < LM; z += 7.5) [-1, 1].forEach(function (l) { var fx = mx + l * AM * .4875, fy = YM + .1 * km;
+      J.caja(.07 * km, 1.5 * km, .07 * km, fx, fy + .75 * km, orilla - z, M.col('#2e2a26'), null, 2); J.caja(.36 * km, .05 * km, .05 * km, fx - l * .15 * km, fy + 1.5 * km, orilla - z, M.col('#2e2a26'), null, 2);
+      var fa = new THREE.SphereGeometry(.13 * km, 10, 8); fa.translate(fx - l * .3 * km, fy + 1.38 * km, orilla - z); JL.pieza(fa, M.col('#fff0c0'));
+      brillo.push(fx - l * .3 * km, fy + 1.38 * km, orilla - z); nFar++; });
+    malla(JL, new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }), E);
+    var gB = new THREE.BufferGeometry(); gB.setAttribute('position', new THREE.Float32BufferAttribute(brillo, 3));
+    E.add(new THREE.Points(gB, new THREE.PointsMaterial({ color: '#ffd27a', size: 1.6, map: M.texBrillo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
+  }
   malla(J, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(27, .3), roughness: .9 }), E);
+  if (o.info) { o.info.muelleLargo = LM; o.info.muelleX = mx; o.info.faroles = nFar; o.info.orilla = orilla; }
   /* caballitos de totora parados en la arena, entre el laberinto y el mar */
   var JC = new M.Junta(), perf = [];
   for (var k = 0; k <= 10; k++) { var t = k / 10; perf.push(new THREE.Vector2(.03 + Math.sin(Math.min(1, t * 1.15) * Math.PI) * .2 * (1 - t * .5), t * 2.1)); }
@@ -929,12 +999,28 @@ LEJOS.mar = function (E, mundo, o) {
   var tt = M.lienzo(64, 128), gt = tt.getContext('2d'); gt.fillStyle = '#ccb07a'; gt.fillRect(0, 0, 64, 128);
   for (k = 0; k < 40; k++) { gt.fillStyle = 'rgba(110,80,40,' + (.15 + rnd() * .3) + ')'; gt.fillRect(rnd() * 64, 0, 1 + rnd() * 2, 128); }
   gt.fillStyle = 'rgba(90,60,30,.8)'; [30, 64, 98].forEach(function (y) { gt.fillRect(0, y, 64, 5); });
-  malla(JC, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.tex(tt, true, true), roughness: .9 }), E);
+  var matCab = new THREE.MeshStandardMaterial({ vertexColors: true, map: M.tex(tt, true, true), roughness: .9 });
+  malla(JC, matCab, E);
+  if (o.olas) {   /* 3c (carrera): caballitos en el agua, montados como se montan (el pescador sentado, con su remo de caña) */
+    for (k = 0; k < 6; k++) {
+      var JF = new M.Junta(), lb = new THREE.LatheGeometry(perf, 10); lb.userData.uvPropio = true; lb.rotateZ(-Math.PI / 2); lb.translate(-1.05, 0, 0);
+      M.torcer(lb, function (v) { v.y += Math.pow(Math.max(0, v.x - .3), 2) * .55; });   /* la proa, levantada */
+      JF.pieza(lb, M.col('#d2b67c', .85 + rnd() * .2));
+      if (k % 2 === 0) { var to = new THREE.CylinderGeometry(.08, .11, .36, 8); to.translate(-.35, .32, 0); JF.pieza(to, M.col(['#c9443b', '#3e6fb0', '#e9b949'][k % 3]));
+        var ca = new THREE.SphereGeometry(.08, 10, 8); ca.translate(-.35, .58, 0); JF.pieza(ca, M.col('#8a5a3c'));
+        var re = new THREE.CylinderGeometry(.015, .015, 1.5, 5); re.rotateX(1.1); re.translate(-.3, .4, .25); JF.pieza(re, M.col('#b9a272')); }
+      var cab = new THREE.Mesh(JF.geometria(), matCab); var ax = o.cx - 34 + k * 12 + (rnd() - .5) * 4; if (Math.abs(ax - mx) < 4) ax += 8;
+      cab.userData.x = ax; cab.userData.z = orilla - 6 - rnd() * 14; cab.userData.giro = rnd() * 6.283; cab.scale.setScalar(1.3); cab.position.set(ax, .1, cab.userData.z); E.add(cab); flotan.push(cab);
+    }
+    if (o.info) o.info.caballitos = flotan;
+  }
   /* cerros pálidos detrás de la playa */
   /* r1 nunca antes que r0: en la carrera (medio 44) el 40 fijo dejaba las lomas DENTRO, encima de la pista */
   M.terreno(E, mundo, { cx: o.cx, cz: o.cz, r0: Math.max(o.medioX, o.medioZ) + 6, r1: Math.max(40, Math.max(o.medioX, o.medioZ) + 20), amp: 16, sem: 151, hazeExtra: 0, solo: function (x, z) { return M.suave(3, 11, z); },
     colores: { bajo: M.col('#c9a77e'), medio: M.col('#b48e66'), roca: M.col('#9a7756') } });
-  return { actualizar: function (dt, t) { nm.offset.set(t * .012, t * .02); te.offset.x = t * .01; franja.material.opacity = .6 + Math.sin(t * .9) * .25; franja.position.z = orilla + .3 + Math.sin(t * .9) * .25; } };
+  return { actualizar: function (dt, t) { nm.offset.set(t * .012, t * .02); te.offset.x = t * .01; franja.material.opacity = .6 + Math.sin(t * .9) * .25; franja.position.z = orilla + .3 + Math.sin(t * .9) * .25;
+    OL.value = t; flotan.forEach(function (c) { var x = c.userData.x, z = c.userData.z, h = olaEn(x, z, t), hz = olaEn(x, z + .5, t);
+      c.position.y = .1 + h; c.rotation.set((hz - h) * 1.2, c.userData.giro, Math.sin(t * 1.3 + x) * .05); }); } };
 };
 
 LEJOS.dunas = function (E, mundo, o) {
@@ -978,7 +1064,7 @@ LEJOS.catedral = function (E, mundo, o) {
   [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (s, si) {
     var largo = (s[0] ? o.medioZ : o.medioX) * 2 + 12;
     for (var u = -largo / 2; u < largo / 2; u += 2.4) {
-      if (si === 0 && Math.abs(u) < 5.5) continue;                       /* al norte, el hueco de la catedral */
+      if (si === 0 && Math.abs(u) < 5.5 * (o.escalaCatedral || 1)) continue;   /* al norte, el hueco de la catedral */
       var x = o.cx + (s[0] ? s[0] * (o.medioX + 6) : u + 1.2), z = o.cz + (s[1] ? s[1] * (o.medioZ + 6) : u + 1.2);
       lista.push({ x: x, z: z, giro: s[0] ? -s[0] * Math.PI / 2 : (s[1] > 0 ? Math.PI : 0), v: rnd() * W.variantes.length | 0, alto: 2.3 + rnd() * .9 });
     }
@@ -1007,7 +1093,9 @@ LEJOS.catedral = function (E, mundo, o) {
   var cup = new THREE.SphereGeometry(1.9, 18, 10, 0, 6.283, 0, Math.PI / 2); cup.translate(cx, 6.2, cz - 2.6); J.pieza(cup, AM, null, .8);
   var tam = new THREE.CylinderGeometry(1.95, 1.95, 1.2, 18, 1); tam.translate(cx, 5.6, cz - 2.6); J.pieza(tam, BL, null, .8);
   for (var k = 0; k < 8; k++) { var cl = new THREE.BoxGeometry(.4, .7, .1); cl.translate(0, 5.6, 1.96); cl.rotateY(k / 8 * 6.283); cl.translate(cx, 0, cz - 2.6); J.pieza(cl, M.col('#3a3040'), null, .8); }
-  malla(J, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(29, .14), roughness: .9 }), E);
+  var gCat = J.geometria(), kc = o.escalaCatedral || 1; if (kc !== 1) gCat.translate(-cx, 0, -cz).scale(kc, kc, kc).translate(cx, 0, cz);   /* la carrera la pide grande */
+  var mCat = new THREE.Mesh(gCat, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(29, .14), roughness: .9 })); mCat.matrixAutoUpdate = false; mCat.castShadow = kc > 1 && !o.baja; E.add(mCat);
+  if (o.info) o.info.catedral = mCat;
   /* palmeras de la plaza y faroles en las esquinas */
   var JT = new M.Junta(), JH = new M.Junta();
   [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) { palmera(JT, JH, o.cx + s[0] * (o.medioX + 2.2), o.cz + s[1] * (o.medioZ + 2.2), 3 + rnd() * .8, rnd); });
@@ -1154,6 +1242,270 @@ VIDA.mariposas = function (E, mundo, a, rnd, k) {
 
 /* M.vida(E, mundo, {cx, cz, w, h}) → actualizar(dt, t, posiciónDeCámara) */
 M.vida = function (E, mundo, a) { var k = M.calidad() === 'baja' ? .5 : 1; return VIDA[mundo.vida](E, mundo, a, M.azar(mundo.id.length * 31), k); };
+})();
+
+;
+/* Ruway — LOS MUNDOS. flora.js: la vegetación de La gran carrera (3c, parte 2, 6-nov-2026).
+   Cada lugar con sus plantas, hechas aquí (sin modelos ni fotos de nadie):
+     sierra .... ichu en manojos dorados, queñuas (tronco rojizo, copa tupida) y piedras
+     costa ..... totora en matas, palmeras y grama salada
+     desierto .. algarrobos de copa ancha, cactus San Pedro (columnas con costillas), piedras y grama seca
+     ciudad .... ficus podados en su macetero, jardines con flores, palmeras y grama
+     noche ..... ichu con escarcha, piedras y puyas de Raimondi
+     selva ..... árboles altos con su copa, plátanos de hojas grandes y helechos
+   Todo va en InstancedMesh (una llamada de dibujo por pieza) y se siembra fuera de las vallas: lo bajo desde 3,2 m del
+   borde del asfalto y lo alto desde 7 m (no tapa la pista). Hay más cerca de la pista, que es donde se ve.
+   Las hojas y el pasto se mecen con el viento (en el sombreador, con la posición de cada planta).
+   En los celulares flojos va menos de la mitad y sin sombras.
+
+   M.flora(E, mundo, { alto(x,z), sitio(x,z) → [distancia al centro de la pista, s], L, W, baja, R?, fuera(x,z)?, largada(x,z)? })
+     → { tipos: {especie: cuántas}, mallas: [InstancedMesh], viento: {value}, ms, actualizar(t) } */
+(function () {
+'use strict';
+var M = window.Mundos, M4 = THREE.Matrix4, E3 = THREE.Euler;
+var TX = {};
+function una(k, f) { return TX[k] || (TX[k] = f()); }
+
+/* ---------- texturas (blancas con alfa: el color lo ponen los vértices) ---------- */
+function texPasto() { return una('pasto', function () {
+  var W = 64, H = 128, c = M.lienzo(W, H), g = c.getContext('2d'), r = M.azar(5);
+  for (var i = 0; i < 48; i++) {
+    var x0 = 6 + r() * 52, ld = (r() - .5) * 34, h = H * (.42 + r() * .58), w = 1.8 + r() * 2.4, gr = g.createLinearGradient(0, H, 0, H - h);
+    gr.addColorStop(0, 'rgb(120,120,112)'); gr.addColorStop(1, 'rgb(255,255,246)'); g.fillStyle = gr;
+    g.beginPath(); g.moveTo(x0 - w, H); g.quadraticCurveTo(x0 - w * .3 + ld * .3, H - h * .5, x0 + ld, H - h); g.quadraticCurveTo(x0 + w * .3 + ld * .3, H - h * .5, x0 + w, H); g.closePath(); g.fill();
+  }
+  return M.tex(c, true, false);
+}); }
+function texHojas() { return una('hojas', function () {
+  var N = 128, c = M.lienzo(N, N), g = c.getContext('2d'), r = M.azar(9);
+  for (var i = 0; i < 90; i++) {
+    var a = r() * 6.283, d = Math.sqrt(r()) * 52, x = 64 + Math.cos(a) * d, y = 64 + Math.sin(a) * d, k = 150 + r() * 105 | 0;
+    g.save(); g.translate(x, y); g.rotate(r() * 6.283); g.fillStyle = 'rgb(' + k + ',' + k + ',' + (k - 8) + ')';
+    g.beginPath(); g.ellipse(0, 0, 4 + r() * 4, 2 + r() * 2, 0, 0, 6.283); g.fill(); g.restore();
+  }
+  return M.tex(c, true, false);
+}); }
+/* hoja de plumas (palmera y helecho): un nervio y hojitas a los dos lados */
+function texPluma() { return una('pluma', function () {
+  var c = M.lienzo(64, 256), g = c.getContext('2d'); g.strokeStyle = '#ffffff'; g.lineCap = 'round';
+  for (var y = 10; y < 250; y += 5) { var w = Math.sin(y / 256 * Math.PI) * 27 + 3; g.lineWidth = 2.6;
+    g.beginPath(); g.moveTo(32, y); g.quadraticCurveTo(32 - w * .5, y + 7, 32 - w, y + 18); g.stroke();
+    g.beginPath(); g.moveTo(32, y); g.quadraticCurveTo(32 + w * .5, y + 7, 32 + w, y + 18); g.stroke(); }
+  g.lineWidth = 4; g.beginPath(); g.moveTo(32, 0); g.lineTo(32, 256); g.stroke();
+  return M.tex(c, true, false);
+}); }
+/* la hoja grande del plátano: ovalada, con su nervio y algún corte */
+function texHojaGrande() { return una('hojaGrande', function () {
+  var c = M.lienzo(64, 256), g = c.getContext('2d'), r = M.azar(13);
+  g.fillStyle = '#f2f2ea'; g.beginPath(); g.moveTo(32, 4); g.bezierCurveTo(64, 50, 64, 200, 32, 254); g.bezierCurveTo(0, 200, 0, 50, 32, 4); g.fill();
+  g.globalCompositeOperation = 'destination-out'; for (var i = 0; i < 6; i++) { var y = 50 + r() * 170, l = r() < .5; g.fillRect(l ? 0 : 33, y, 31, 1.6); } g.globalCompositeOperation = 'source-over';
+  g.strokeStyle = '#bdbdb2'; g.lineWidth = 3; g.beginPath(); g.moveTo(32, 4); g.lineTo(32, 254); g.stroke();
+  return M.tex(c, true, false);
+}); }
+
+/* ---------- piezas ---------- */
+function plano(w, h, sx, sy) { var p = new THREE.PlaneGeometry(w, h, sx || 1, sy || 1); p.translate(0, h / 2, 0); p.userData.uvPropio = true; return p; }
+function rot(x, y, z, orden) { return new M4().makeRotationFromEuler(new E3(x, y, z, orden || 'XYZ')); }
+/* un manojo: tres planos de pasto cruzados */
+function manojo(J, w, h, col, r) { for (var k = 0; k < 3; k++) J.pieza(plano(w, h), col, rot((r() - .5) * .25, k * 1.047 + r() * .3, (r() - .5) * .25)); }
+/* una copa de hojas: núcleo de bolas (en J) y planos de hojas alrededor (en JH) */
+function copa(J, JH, cx, cy, cz, rad, n, cols, cHoja, r, nPl, tPl) {
+  for (var i = 0; i < n; i++) { var b = new THREE.IcosahedronGeometry(rad * (.6 + r() * .4), 1); b.scale(1, .75, 1);
+    M.torcer(b, function (v) { var k = 1 + (r() - .5) * .18; v.multiplyScalar(k); });
+    b.translate(cx + (r() - .5) * rad * 1.3, cy + (r() - .5) * rad * .6, cz + (r() - .5) * rad * 1.3); J.pieza(b, cols[i % cols.length]); }
+  for (var j = 0; j < nPl; j++) { var p = new THREE.PlaneGeometry(tPl, tPl); p.userData.uvPropio = true;
+    JH.pieza(p, cHoja, rot(r() * 6.3, r() * 6.3, r() * 6.3).setPosition(cx + (r() - .5) * rad * 2, cy + (r() - .5) * rad * 1.1, cz + (r() - .5) * rad * 2)); }
+}
+function tronco(J, r0, r1, h, col, curva, seg, m) { var t = new THREE.CylinderGeometry(r0, r1, h, seg || 7, 5); t.translate(0, h / 2, 0);
+  M.torcer(t, function (v) { var u = v.y / h; v.x += Math.sin(u * 2.6) * curva; v.z += Math.sin(u * 1.7 + 1) * curva * .6; }); J.pieza(t, col, m || null, 3); }
+/* las especies: cada una devuelve sus geometrías { solido?, cartas?, tex, alto } */
+var ESPECIES = {
+  ichu: function (r) { var J = new M.Junta(); manojo(J, .95, .8, M.col('#cdb064'), r); manojo(J, .6, .55, M.col('#b39a55'), r); return { cartas: J.geometria(), tex: texPasto(), mece: .07, alto: .8 }; },
+  ichuNoche: function (r) { var J = new M.Junta(); manojo(J, .95, .8, M.col('#b6c4e2'), r); manojo(J, .6, .55, M.col('#dfe8f8'), r); return { cartas: J.geometria(), tex: texPasto(), mece: .07, alto: .8 }; },
+  grama: function (r) { var J = new M.Junta(); manojo(J, .7, .4, M.col('#7f9c4a'), r); return { cartas: J.geometria(), tex: texPasto(), mece: .08, alto: .4 }; },
+  gramaSeca: function (r) { var J = new M.Junta(); manojo(J, .7, .42, M.col('#b9a06a'), r); return { cartas: J.geometria(), tex: texPasto(), mece: .08, alto: .42 }; },
+  totora: function (r) { var J = new M.Junta(); manojo(J, .9, 1.9, M.col('#8ea456'), r); manojo(J, .7, 1.5, M.col('#a7ad62'), r); return { cartas: J.geometria(), tex: texPasto(), mece: .035, alto: 1.9 }; },
+  piedra: function (r, mundo) { var J = new M.Junta(), col = { sierra: '#8f897e', noche: '#4f566e', desierto: '#b39a76' }[mundo.id] || '#8f897e';
+    var p = new THREE.DodecahedronGeometry(.5, 0); M.torcer(p, function (v) { v.multiplyScalar(.85 + r() * .3); }); p.scale(1.25, .6, 1); p.translate(0, .12, 0); J.pieza(p, M.col(col));
+    return { solido: J.geometria(), alto: .5, plano: true }; },
+  quenua: function (r) { var J = new M.Junta(), JH = new M.Junta(), cT = M.col('#9a5a3c');
+    tronco(J, .08, .16, 2.2, cT, .25, 6);
+    [-1, 1].forEach(function (l) { var b = new THREE.CylinderGeometry(.035, .06, 1.1, 5); b.translate(0, .55, 0); J.pieza(b, cT, rot(0, 0, l * .7).setPosition(l * .05, 1.3, 0)); });
+    copa(J, JH, 0, 2.45, 0, .7, 4, [M.col('#34502a'), M.col('#3e5d30'), M.col('#2d4624')], M.col('#5a7a3c'), r, 10, 1.1);
+    return { solido: J.geometria(), cartas: JH.geometria(), tex: texHojas(), mece: .006, alto: 3.2, sombra: true }; },
+  algarrobo: function (r) { var J = new M.Junta(), JH = new M.Junta(), cT = M.col('#5a4632');
+    tronco(J, .14, .24, 1.5, cT, .3, 7);
+    for (var k = 0; k < 3; k++) { var b = new THREE.CylinderGeometry(.05, .09, 1.4, 5); b.translate(0, .7, 0); J.pieza(b, cT, rot(0, k * 2.1, .9).setPosition(0, 1.3, 0)); }
+    for (var c = 0; c < 6; c++) { var co = new THREE.IcosahedronGeometry(.75 + r() * .35, 1); co.scale(1.5, .42, 1.3); co.translate((r() - .5) * 2.2, 2 + (r() - .3) * .35, (r() - .5) * 2.2); J.pieza(co, [M.col('#5f6e34'), M.col('#71803c'), M.col('#566430')][c % 3]); }
+    for (var j = 0; j < 12; j++) { var p = new THREE.PlaneGeometry(1.2, 1.2); p.userData.uvPropio = true; JH.pieza(p, M.col('#7a8a44'), rot(-1.3 + r() * .6, r() * 6.3, 0, 'YXZ').setPosition((r() - .5) * 3, 2.1 + r() * .3, (r() - .5) * 3)); }
+    return { solido: J.geometria(), cartas: JH.geometria(), tex: texHojas(), mece: .006, alto: 3, sombra: true }; },
+  cactus: function (r) { var J = new M.Junta(), cC = M.col('#5f8a50');
+    function columna(rad, h, m) { var t = new THREE.CylinderGeometry(rad * .92, rad, h, 10, 2);   /* 10 lados: 8 costillas bastan de lejos */ t.translate(0, h / 2, 0);
+      M.torcer(t, function (v) { var a = Math.atan2(v.z, v.x), k = 1 + .14 * Math.cos(a * 5); v.x *= k; v.z *= k; });   /* las costillas */
+      J.pieza(t, cC, m); var tapa = new THREE.SphereGeometry(rad * .92, 10, 3, 0, 6.283, 0, 1.5); tapa.translate(0, h, 0); J.pieza(tapa, M.col('#6f9a5c'), m); }
+    columna(.17, 2.3, null); var nb = 1 + (r() * 2.5 | 0);
+    for (var k = 0; k < nb; k++) { var a = k * 2.4 + r(), hb = .5 + r() * .7, m = rot(0, a, 0).multiply(new M4().makeTranslation(.32, hb, 0));
+      var codo = new THREE.CylinderGeometry(.11, .12, .34, 8); codo.rotateZ(Math.PI / 2); J.pieza(codo, cC, rot(0, a, 0).multiply(new M4().makeTranslation(.17, hb, 0)));
+      columna(.12, .7 + r() * .7, m); }
+    return { solido: J.geometria(), alto: 2.4, sombra: true }; },
+  palmera: function (r) { var J = new M.Junta(), JH = new M.Junta(), h = 5.2, cur = .45;
+    var t = new THREE.CylinderGeometry(.11, .17, h, 7, 8); t.translate(0, h / 2, 0); M.torcer(t, function (v) { v.x += Math.pow(v.y / h, 2) * cur; v.x *= 1 + .06 * Math.sin(v.y * 9); v.z *= 1 + .06 * Math.sin(v.y * 9); });
+    J.pieza(t, M.col('#8a7458'), null, 3);
+    for (var k = 0; k < 11; k++) { var hj = new THREE.PlaneGeometry(.6, 2.5, 1, 5); hj.translate(0, 1.25, 0); M.torcer(hj, function (v) { v.z -= v.y * v.y * .26; }); hj.userData.uvPropio = true;   /* la hoja cae (con el giro de abajo, +z apuntaba al cielo) */
+      JH.pieza(hj, [M.col('#4f8a3a'), M.col('#62a046'), M.col('#3f7a32')][k % 3], rot(-1.05 + r() * .35, k / 11 * 6.283 + r() * .2, 0, 'YXZ').setPosition(cur, h, 0)); }
+    return { solido: J.geometria(), cartas: JH.geometria(), tex: texPluma(), mece: .0045, alto: 5.5, sombra: true }; },
+  ficus: function (r) { var J = new M.Junta();
+    var mac = new THREE.CylinderGeometry(.55, .46, .4, 14); mac.translate(0, .2, 0); J.pieza(mac, M.col('#ece4d2'));
+    var tierra = new THREE.CylinderGeometry(.5, .5, .04, 14); tierra.translate(0, .41, 0); J.pieza(tierra, M.col('#5b4330'));
+    tronco(J, .07, .1, 1.3, M.col('#6b5a45'), .04, 6);
+    var b = new THREE.IcosahedronGeometry(.95, 2); b.scale(1, .9, 1); M.torcer(b, function (v) { v.multiplyScalar(.95 + r() * .09); }); b.translate(0, 1.95, 0); J.pieza(b, M.col('#2f5a2a'));
+    return { solido: J.geometria(), alto: 2.9, sombra: true }; },
+  jardin: function (r) { var J = new M.Junta();
+    var s = new THREE.BoxGeometry(1.7, .34, .7, 6, 2, 3); M.torcer(s, function (v) { v.y += (r() - .5) * .05; v.x *= 1 + (r() - .5) * .03; }); s.translate(0, .17, 0); J.pieza(s, M.col('#3b6b30'));
+    var bor = new THREE.BoxGeometry(1.86, .12, .84); bor.translate(0, .06, 0); J.pieza(bor, M.col('#d9d0bd'));
+    var cols = ['#e23b4a', '#ffd23f', '#e2508a', '#ffffff', '#ff8a3d', '#9a5ad8'];
+    for (var k = 0; k < 26; k++) { var f = new THREE.IcosahedronGeometry(.055, 0); f.translate((r() - .5) * 1.5, .36 + r() * .05, (r() - .5) * .55); J.pieza(f, M.col(cols[k % cols.length])); }
+    return { solido: J.geometria(), alto: .45 }; },
+  puya: function (r) { var J = new M.Junta();
+    for (var k = 0; k < 46; k++) { var c = new THREE.ConeGeometry(.04, 1.1, 3); c.translate(0, .55, 0); J.pieza(c, M.col(k % 2 ? '#7c8f6a' : '#93a47c'), rot(.35 + r() * 1.1, r() * 6.283, 0, 'YXZ').setPosition(0, .35, 0)); }
+    var e = new THREE.CylinderGeometry(.2, .3, 3.1, 10, 8); e.translate(0, 2, 0); M.torcer(e, function (v) { v.x *= 1 + .12 * Math.sin(v.y * 11 + Math.atan2(v.z, v.x) * 5); v.z *= 1 + .12 * Math.cos(v.y * 11); });
+    J.pieza(e, M.col('#b9b48a')); var p = new THREE.ConeGeometry(.2, .5, 10); p.translate(0, 3.8, 0); J.pieza(p, M.col('#a9a37a'));
+    return { solido: J.geometria(), alto: 4, sombra: true }; },
+  arbol: function (r) { var J = new M.Junta(), JH = new M.Junta(), h = 8;
+    tronco(J, .22, .36, h, M.col('#7a6a55'), .35, 8);
+    for (var k = 0; k < 4; k++) { var ra = new THREE.BoxGeometry(.08, 1.3, 1); ra.translate(0, .5, .5); M.torcer(ra, function (v) { v.z *= 1 - v.y * .35; }); J.pieza(ra, M.col('#6a5a46'), rot(0, k * 1.57 + r() * .4, 0)); }   /* raíces tablares */
+    copa(J, JH, 0, h + .4, 0, 1.9, 6, [M.col('#2f5a24'), M.col('#3b6a2c'), M.col('#27501f')], M.col('#4f8a36'), r, 18, 2);
+    return { solido: J.geometria(), cartas: JH.geometria(), tex: texHojas(), mece: .0012, alto: 9.5, sombra: true }; },
+  platano: function (r) { var J = new M.Junta(), JH = new M.Junta();
+    tronco(J, .09, .14, 1.6, M.col('#7f9c4c'), .05, 7);
+    for (var k = 0; k < 7; k++) { var hj = new THREE.PlaneGeometry(.75, 2.2, 1, 5); hj.translate(0, 1.1, 0); M.torcer(hj, function (v) { v.z -= v.y * v.y * .2; }); hj.userData.uvPropio = true;
+      JH.pieza(hj, [M.col('#5aa040'), M.col('#6db04a'), M.col('#4c8c36')][k % 3], rot(-.75 + r() * .4, k / 7 * 6.283 + r() * .3, 0, 'YXZ').setPosition(0, 1.55, 0)); }
+    return { solido: J.geometria(), cartas: JH.geometria(), tex: texHojaGrande(), mece: .012, alto: 2.9, sombra: true }; },
+  helecho: function (r) { var J = new M.Junta();
+    for (var k = 0; k < 8; k++) { var f = new THREE.PlaneGeometry(.32, 1.15, 1, 3); f.translate(0, .57, 0); M.torcer(f, function (v) { v.z -= v.y * v.y * .55; }); f.userData.uvPropio = true;
+      J.pieza(f, [M.col('#3f8a3a'), M.col('#57a046'), M.col('#2f7230')][k % 3], rot(-.55 + r() * .3, k / 8 * 6.283 + r() * .3, 0, 'YXZ')); }
+    return { cartas: J.geometria(), tex: texPluma(), mece: .05, alto: .9 }; }
+};
+/* qué se siembra en cada mundo: [especie, cuántas (celular bueno)] */
+var PLAN = {
+  sierra: [['ichu', 1300], ['quenua', 60], ['piedra', 140]],
+  costa: [['totora', 380], ['palmera', 45], ['grama', 900]],
+  desierto: [['algarrobo', 55], ['cactus', 90], ['piedra', 120], ['gramaSeca', 700]],
+  ciudad: [['ficus', 60], ['jardin', 110], ['palmera', 30], ['grama', 700]],
+  noche: [['ichuNoche', 1300], ['piedra', 150], ['puya', 14]],
+  selva: [['arbol', 70], ['platano', 130], ['helecho', 700]]
+};
+
+/* el viento: mueve lo de arriba de cada plano según su altura (lo de abajo queda quieto), cada planta en su fase */
+function mecer(mat, viento, fuerza) {
+  var uF = { value: fuerza };
+  mat.onBeforeCompile = function (sh) {
+    sh.uniforms.uViento = viento; sh.uniforms.uFuerza = uF;
+    sh.vertexShader = 'uniform float uViento;\nuniform float uFuerza;\n' + sh.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\n#ifdef USE_INSTANCING\n  float fase = instanceMatrix[3].x * .37 + instanceMatrix[3].z * .23;\n#else\n  float fase = 0.;\n#endif\n' +
+      '  float alt = max(0., position.y);\n  transformed.x += sin(uViento * 1.7 + fase) * uFuerza * alt * alt;\n  transformed.z += cos(uViento * 1.3 + fase * 1.3) * uFuerza * .6 * alt * alt;');
+  };
+}
+
+M.flora = function (E, mundo, o) {
+  var plan = PLAN[mundo.id]; if (!plan) return null;
+  var sem = 0; for (var ci = 0; ci < mundo.id.length; ci++) sem = sem * 31 + mundo.id.charCodeAt(ci);
+  var t0 = performance.now(), r = M.azar(sem + 7), baja = !!o.baja, W2 = o.W / 2, R = o.R || 74, viento = { value: 0 }, tipos = {}, mallas = [];
+  var mGrano = M.texGrano(57, .35), ob = new THREE.Object3D(), cI = new THREE.Color();
+  /* dónde: fuera de las vallas, más denso cerca de la pista, nunca en la largada (tribunas, banderas, globos) ni en el mar */
+  function sembrar(n, dMin, dMax, sep) {
+    var out = [], grid = {}, intentos = 0;
+    while (out.length < n && intentos < n * 30) { intentos++;
+      var x = (r() * 2 - 1) * R, z = (r() * 2 - 1) * R; if (x * x + z * z > R * R) continue;
+      if (o.fuera && o.fuera(x, z)) continue;
+      var q = o.sitio(x, z), d = q[0]; if (d < dMin || d > dMax) continue;
+      if (d < 19 && o.largada && o.largada(x, z)) continue;
+      if (r() > 1 - .7 * M.suave(dMin, dMax, d)) continue;
+      if (sep) { var k = Math.floor(x / sep) + ',' + Math.floor(z / sep); if (grid[k]) continue; grid[k] = 1; }
+      out.push([x, z]); }
+    return out;
+  }
+  plan.forEach(function (fila) {
+    var nombre = fila[0], n = baja ? Math.round(fila[1] * .42) : fila[1], esp = ESPECIES[nombre](r, mundo), alto = esp.alto;
+    var bajo = alto < 1.6, lugares = sembrar(n, W2 + (bajo ? 3.2 : 7) + (nombre === 'puya' ? 1 : 0), bajo ? 42 : 58, bajo ? 0 : (alto > 6 ? 4.5 : 3));
+    if (!lugares.length) return;
+    var partes = [];
+    if (esp.solido) partes.push(new THREE.InstancedMesh(esp.solido, new THREE.MeshStandardMaterial({ vertexColors: true, map: mGrano, roughness: .95, flatShading: !!esp.plano }), lugares.length));
+    if (esp.cartas) { var mc = new THREE.MeshStandardMaterial({ vertexColors: true, map: esp.tex, alphaTest: esp.tex === texPasto() ? .35 : .5, side: THREE.DoubleSide, roughness: .85 }); mecer(mc, viento, esp.mece || 0);
+      partes.push(new THREE.InstancedMesh(esp.cartas, mc, lugares.length)); }
+    lugares.forEach(function (p, i) {
+      var y = o.alto(p[0], p[1]), s = bajo ? .75 + r() * .6 : .8 + r() * .55;
+      ob.position.set(p[0], y - (bajo ? .03 : .12), p[1]); ob.rotation.set(bajo ? (r() - .5) * .15 : 0, r() * 6.283, bajo ? (r() - .5) * .15 : 0); ob.scale.set(s, s * (.85 + r() * .3), s); ob.updateMatrix();
+      var k = .86 + r() * .28; cI.setRGB(k, k * (.96 + r() * .08), k * (.94 + r() * .06));
+      partes.forEach(function (im) { im.setMatrixAt(i, ob.matrix); im.setColorAt(i, cI); });
+    });
+    partes.forEach(function (im) { im.userData.alto = alto; im.userData.especie = nombre; im.frustumCulled = false;
+      im.castShadow = !baja && !!esp.sombra; im.receiveShadow = !baja; if (im.instanceColor) im.instanceColor.needsUpdate = true; E.add(im); mallas.push(im); });
+    tipos[nombre] = lugares.length;
+  });
+  return { tipos: tipos, mallas: mallas, viento: viento, ms: Math.round(performance.now() - t0), actualizar: function (t) { viento.value = t; } };   /* ms: lo que tardó en armarse */
+};
+})();
+
+;
+/* Ruway — LOS MUNDOS. lugares.js: lo emblemático de cada lugar en La gran carrera (3c, parte 3, 7-nov-2026).
+   Lo que vive en lejos.js (el mar y el muelle de Huanchaco, la catedral, los nevados) se agranda allí con opciones que solo
+   pasa la carrera. Aquí va lo que es solo de la carrera:
+     ciudad ... el Monumento a la Libertad en el centro de la Plaza de Armas: gradas, pedestal, la columna y la figura
+                alada con su antorcha (blanco, como el de Trujillo; hecho aquí, sin modelos de nadie)
+     noche .... estrellas que titilan (una capa de las más brillantes, sobre las de cielo.js)
+   M.lugares(E, mundo, { cielo, alto(x,z), baja }) → { monumento?, titilan?, actualizar(t) } */
+(function () {
+'use strict';
+var M = window.Mundos, M4 = THREE.Matrix4;
+
+function monumento(E, o) {
+  var J = new M.Junta(), BL = M.col('#efe9dd'), PI = M.col('#d9d3c7'), y0 = o.alto ? o.alto(0, 0) : 0;
+  [[4.4, .45], [3.7, .45], [3, .45]].forEach(function (g, i) { var c = new THREE.CylinderGeometry(g[0], g[0] + .1, g[1], 32); c.translate(0, g[1] / 2 + i * g[1], 0); J.pieza(c, PI); });   /* las gradas */
+  J.caja(2.6, 2.6, 2.6, 0, 1.35 + 1.3, 0, BL);                                       /* el pedestal */
+  J.caja(3, .3, 3, 0, 1.35 + 2.75, 0, PI); J.caja(2.8, .25, 2.8, 0, 1.5, 0, PI);
+  [0, 1, 2, 3].forEach(function (k) { var a = k * Math.PI / 2;                        /* los relieves del pedestal (placas) */
+    J.caja(1.6, 1.4, .06, 0, 2.6, 1.33, M.col('#cfc6b6'), new M4().makeRotationY(a)); });
+  var col = new THREE.CylinderGeometry(.48, .62, 8.6, 20, 6); col.translate(0, 4.2 + 4.3, 0);
+  M.torcer(col, function (v) { var a = Math.atan2(v.z, v.x), k = 1 + .035 * Math.cos(a * 12); v.x *= k; v.z *= k; });   /* estrías */
+  J.pieza(col, BL);
+  J.caja(1.3, .35, 1.3, 0, 12.95, 0, PI); J.caja(1.1, .2, 1.1, 0, 13.22, 0, BL);   /* el capitel */
+  /* la figura de la Libertad: cuerpo con túnica, cabeza, el brazo en alto con la antorcha y las alas */
+  var cu = new THREE.CylinderGeometry(.22, .42, 1.5, 12); cu.translate(0, 13.3 + .75, 0); J.pieza(cu, BL);
+  var ca = new THREE.SphereGeometry(.2, 14, 10); ca.translate(0, 15.25, 0); J.pieza(ca, BL);
+  var br = new THREE.CylinderGeometry(.06, .07, .9, 8); br.translate(0, .45, 0); br.applyMatrix4(new M4().makeRotationZ(-.35)); br.translate(.18, 14.6, 0); J.pieza(br, BL);
+  var an = new THREE.CylinderGeometry(.07, .04, .35, 8); an.translate(.5, 15.55, 0); J.pieza(an, M.col('#c9b98f'));
+  var JF = new M.Junta(), fl = new THREE.ConeGeometry(.12, .32, 8); fl.translate(.5, 15.88, 0); JF.pieza(fl, M.col('#ffb347'));
+  [-1, 1].forEach(function (l) { var al = new THREE.PlaneGeometry(1.1, 1.5, 3, 3); al.translate(.55, .2, 0);
+    M.torcer(al, function (v) { v.z += Math.sin(v.x * 2.2) * .18; v.y += v.x * v.x * .25; });
+    al.applyMatrix4(new M4().makeRotationY(l > 0 ? -2.6 : -.54)); al.translate(0, 14.6, -.15); J.pieza(al, BL); });
+  var m = new THREE.Mesh(J.geometria({ oscuroAbajo: [.82, 1.4] }), new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(61, .18), roughness: .55, side: THREE.DoubleSide }));
+  m.position.set(0, y0 - .05, 0); m.castShadow = !o.baja; m.receiveShadow = true; m.userData.lugar = 'monumento';
+  var llama = new THREE.Mesh(JF.geometria(), new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false })); m.add(llama);
+  E.add(m); return m;
+}
+
+/* las estrellas que titilan: las más brillantes, cada una con su ritmo */
+function titilan(cielo, n) {
+  var pos = new Float32Array(n * 3), fase = new Float32Array(n), tam = new Float32Array(n), r = M.azar(91);
+  for (var i = 0; i < n; i++) { var u = r() * .9 + .08, a = r() * 6.283, h = Math.sqrt(1 - u * u);
+    pos[i * 3] = Math.cos(a) * h * 84; pos[i * 3 + 1] = u * 84; pos[i * 3 + 2] = Math.sin(a) * h * 84; fase[i] = r() * 6.283; tam[i] = 2 + r() * 3.5; }
+  var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('fase', new THREE.BufferAttribute(fase, 1)); g.setAttribute('tam', new THREE.BufferAttribute(tam, 1));
+  /* uPx: el tamaño en píxeles de pantalla (en celulares de mucha densidad salían de 1 px) */
+  var mat = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uMapa: { value: M.texBrillo() }, uPx: { value: M._R ? M._R.getPixelRatio() : 1 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'attribute float fase; attribute float tam; uniform float uT; uniform float uPx; varying float vB;\n' +
+      'void main() { vB = .55 + .45 * sin(uT * (1.3 + fract(fase * 3.7) * 2.2) + fase); gl_PointSize = tam * uPx * (.7 + .5 * vB); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }',
+    fragmentShader: 'uniform sampler2D uMapa; varying float vB;\nvoid main() { vec4 c = texture2D(uMapa, gl_PointCoord); gl_FragColor = vec4(vec3(1., .97, .9) * c.a * vB, c.a * vB); }' });
+  var p = new THREE.Points(g, mat); p.renderOrder = -8; p.frustumCulled = false; cielo.g.add(p); return p;
+}
+
+M.lugares = function (E, mundo, o) {
+  var out = { actualizar: function () {} }, tit = null;
+  if (mundo.id === 'ciudad') out.monumento = monumento(E, o);
+  if (mundo.id === 'noche' && o.cielo && o.cielo.g) { tit = titilan(o.cielo, o.baja ? 160 : 320); out.titilan = tit; }
+  out.actualizar = function (t) { if (tit) tit.material.uniforms.uT.value = t; };
+  return out;
+};
 })();
 
 ;
@@ -1406,6 +1758,7 @@ var M = window.Mundos, V3 = THREE.Vector3, M4 = THREE.Matrix4;
 /* el trazado: una recta de largada, una horquilla, eses y una curva larga. Cada mundo lo gira o lo refleja. */
 var TRAZO = [[-20, -24], [0, -26], [20, -24], [34, -16], [38, -2], [32, 10], [20, 12], [12, 20], [16, 30], [6, 36], [-8, 32],
   [-14, 20], [-26, 22], [-36, 12], [-38, -4], [-32, -18]];
+var TX_SUELO = { puna: 12, arena: 12, tierra: 2.4, losas: 1.8, escarcha: 24, hojarasca: 3 }, TX_MURO = { adobe: 1, casona: 1 };
 var GIRO = { sierra: [0, 1], costa: [0, -1], desierto: [Math.PI / 2, 1], ciudad: [Math.PI, 1], noche: [-Math.PI / 2, -1], selva: [Math.PI, -1] };
 
 function lienzo(w, h, f) { var c = M.lienzo(w, h); f(c.getContext('2d'), w, h); return c; }
@@ -1431,6 +1784,26 @@ function texLetrero(txt, fondo, letra) {
 function texFlecha(izq) { var c = lienzo(64, 32, function (g, w, h) { g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h); g.fillStyle = '#e23b3b';
   for (var k = 0; k < 3; k++) { var x = 6 + k * 19; g.beginPath(); if (izq) { g.moveTo(x + 14, 3); g.lineTo(x, 16); g.lineTo(x + 14, 29); g.lineTo(x + 19, 29); g.lineTo(x + 6, 16); g.lineTo(x + 19, 3); }
     else { g.moveTo(x, 3); g.lineTo(x + 14, 16); g.lineTo(x, 29); g.lineTo(x + 5, 29); g.lineTo(x + 19, 16); g.lineTo(x + 5, 3); } g.closePath(); g.fill(); } }); return M.tex(c, true, false); }
+/* ---------- 3c: las texturas reales ----------
+   El asfalto: la foto de asfalto de pista repetida 5 × 4 en un lienzo que cubre 7,5 m de ancho y 7 de largo (la foto mide
+   2 m), con la goma de las ruedas y las líneas pintadas encima (las mismas de antes). Su relieve igual, con las líneas lisas.
+   Se arma una sola vez y la usan las seis pistas. Los bordillos: rojo y blanco gastados con la misma foto. */
+var ASF = null;
+function componerAsfalto(c0, n0, N) {
+  function tiles(g, img, nx, ny, W, H) { for (var i = 0; i < nx; i++) for (var j = 0; j < ny; j++) g.drawImage(img, i * W / nx, j * H / ny, W / nx, H / ny); }
+  function lineas(g, col, col2) { var sx = N / 128, sy = N / 256; g.fillStyle = col; g.fillRect(5 * sx, 0, 4 * sx, N); g.fillRect(N - 9 * sx, 0, 4 * sx, N);
+    g.fillStyle = col2; [N / 3, 2 * N / 3].forEach(function (x) { g.fillRect(x - 2 * sx, 0, 4 * sx, N / 2 - 20 * sy); }); }
+  var cv = M.lienzo(N, N), g = cv.getContext('2d'); tiles(g, c0.image, 5, 4, N, N);
+  [.3, .7].forEach(function (u) { var gr = g.createLinearGradient((u - .1) * N, 0, (u + .1) * N, 0); gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(.5, 'rgba(8,8,10,.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect((u - .1) * N, 0, .2 * N, N); });   /* la goma de las ruedas */
+  lineas(g, 'rgba(244,244,240,.9)', 'rgba(255,255,255,.8)');
+  var map = M.tex(cv, true, true), nor = null; map.userData.fuente = 'tx-asfalto.webp';
+  if (n0) { var cn = M.lienzo(N, N), h = cn.getContext('2d'); tiles(h, n0.image, 5, 4, N, N); lineas(h, 'rgb(128,128,255)', 'rgb(128,128,255)'); nor = M.tex(cn, false, true); nor.userData.fuente = 'tx-asfalto-n.webp'; }
+  /* el bordillo: los bloques rojo y blanco de siempre, con el grano de la foto encima */
+  var cb = M.lienzo(64, 256), gb = cb.getContext('2d'); gb.fillStyle = '#e23b3b'; gb.fillRect(0, 0, 64, 128); gb.fillStyle = '#f4f2ee'; gb.fillRect(0, 128, 64, 128);
+  gb.globalCompositeOperation = 'multiply'; gb.globalAlpha = .45; tiles(gb, c0.image, 1, 4, 64, 256); gb.globalCompositeOperation = 'source-over'; gb.globalAlpha = 1;
+  var bor = M.tex(cb, true, true); bor.userData.fuente = 'tx-asfalto.webp';
+  return { map: map, nor: nor, bor: bor };
+}
 function texBandera() { var c = lienzo(48, 32, function (g) { g.fillStyle = '#d91023'; g.fillRect(0, 0, 16, 32); g.fillStyle = '#ffffff'; g.fillRect(16, 0, 16, 32); g.fillStyle = '#d91023'; g.fillRect(32, 0, 16, 32); }); return M.tex(c, true, false); }
 
 M.pista = function (E, mundo, o) {
@@ -1473,8 +1846,11 @@ M.pista = function (E, mundo, o) {
     for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) { var l = grilla[clave(kx + a, kz + b)]; if (!l) continue;
       for (var j = 0; j < l.length; j++) { var P = PS[l[j]], dx = P.x - x, dz = P.z - z, d = dx * dx + dz * dz; if (d < m) { m = d; mejor = l[j]; } } }
     return mejor; }
-  var ondas = M.ruido(8, M.azar(mundo.id.length * 41 + 3));
-  function campo(x, z) { return (ondas(x / 30 + 11, z / 30 + 5) - .5) * 3.2 * (1 - M.suave(48, 68, Math.hypot(x, z))); }
+  var ondas = M.ruido(8, M.azar(mundo.id.length * 41 + 3)), INFO = {}, ORILLA = null;   /* INFO: lo emblemático de este lugar (CI.lugares) */
+  if (mundo.id === 'costa') { var zMinP = 1e9; for (i = 0; i < K; i++) zMinP = Math.min(zMinP, PS[i].z); ORILLA = zMinP - 13.5; }   /* 3c: el mar de Huanchaco al lado de la largada */
+  function campo(x, z) { var y = (ondas(x / 30 + 11, z / 30 + 5) - .5) * 3.2 * (1 - M.suave(48, 68, Math.hypot(x, z)));
+    if (ORILLA != null) { var wb = M.suave(ORILLA + 12, ORILLA + 3, z); y = y * (1 - wb) + ((z - ORILLA) * .05 - .06) * wb; }   /* la playa: baja suave y se mete bajo el agua */
+    return y; }
   function altoSuelo(x, z) { var j = cercano(x, z), yn = campo(x, z); if (j < 0) return yn;
     var P = PS[j], r = R[j], tj = T[j], l = (x - P.x) * r.x + (z - P.z) * r.z, d = Math.abs(l), lim = W / 2 + .6, sp = j * ds + (x - P.x) * tj.x + (z - P.z) * tj.z;
     var ys = alto(sp) + peralte(sp) * Math.max(-lim, Math.min(lim, l));
@@ -1487,12 +1863,22 @@ M.pista = function (E, mundo, o) {
 
   /* ---------- el mundo alrededor ---------- */
   var cielo = M.cielo(E, mundo), luces = M.luces(E, mundo);
+  if (!baja) { var scs = luces.sol.shadow.camera; scs.left = -15; scs.right = 15; scs.top = 15; scs.bottom = -15; scs.near = 1; scs.far = 75; scs.updateProjectionMatrix();
+    luces.sol.shadow.mapSize.set(2048, 2048); luces.sol.shadow.bias = -0.0005; luces.sol.shadow.normalBias = .03; }   /* 3c: 30 × 30 m, centrada en lo que viene (antes 12 × 12 alrededor del auto) */
   E.fog.near = mundo.niebla.cerca * 2.2; E.fog.far = mundo.niebla.lejos * 2.5;   /* en la carrera se mira más lejos (y ahora es más grande) */
-  M.suelo(E, mundo, { cx: 0, cz: 0, r: 80, tam: 230, seg: baja ? 80 : 115, alto: altoSuelo, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
+  var TAM = 230, sueloR = M.suelo(E, mundo, { cx: 0, cz: 0, r: 80, tam: TAM, seg: baja ? 80 : 115, alto: altoSuelo, libre: function (x, z) { return lejosDePista(x, z) > W / 2 + 1.4; } });
   /* lo lejano se hizo para el laberinto (14 × 14): acá se le dice qué tan grande es esto y dónde no poner nada */
   function libre(x, z, margen) { return lejosDePista(x, z) > W / 2 + .55 + (margen || 0); }
-  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 86 : 70, medioZ: mundo.id === 'selva' ? 86 : 67, libre: libre, copasDesde: 77, hundir: 9 });   /* los árboles gigantes, lejos de la cámara */
+  var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 86 : 70, medioZ: mundo.id === 'selva' ? 86 : 67, libre: libre, copasDesde: 77, hundir: 9,
+    orilla: ORILLA, olas: mundo.id === 'costa', baja: baja, muelle: 1.6, faroles: true, escalaCatedral: 2, info: INFO });   /* 3c: el mar con olas, el muelle grande y la catedral grande (solo la carrera los pide) */   /* los árboles gigantes, lejos de la cámara */
   var vidaG = new THREE.Group(), vida = M.vida ? M.vida(vidaG, mundo, { cx: 0, cz: 0, w: 14, h: 14 }) : null; E.add(vidaG);
+  /* 3c: la vegetación de cada lugar, fuera de las vallas (flora.js). sitio: qué tan lejos del centro de la pista y en qué parte de la vuelta */
+  function sitioPista(x, z) { var j = cercano(x, z); if (j < 0) return [lejosDePista(x, z), -1]; var P = PS[j]; return [Math.hypot(P.x - x, P.z - z), j * ds]; }
+  var vLg = new V3(); function enLargada(x, z) { for (var sl = -52; sl <= 40; sl += 4) { pos(sl, 0, vLg); if ((vLg.x - x) * (vLg.x - x) + (vLg.z - z) * (vLg.z - z) < 361) return true; } return false; }
+  var flora = M.flora ? M.flora(E, mundo, { alto: altoSuelo, sitio: sitioPista, largada: enLargada, L: L, W: W, baja: baja, R: mundo.id === 'ciudad' ? 72 : 74,   /* en Trujillo, las casonas empiezan a 76 */
+    fuera: mundo.id === 'costa' ? function (x, z) { return z < ORILLA + 6; } : mundo.id === 'ciudad' ? function (x, z) { return x * x + z * z < 100; } : null }) : null;   /* en Huanchaco, el mar y la playa; en Trujillo, el monumento */
+  var emblemas = M.lugares ? M.lugares(E, mundo, { cielo: cielo, alto: altoSuelo, baja: baja }) : null;   /* «lugares» ya es el nombre de los asientos de las tribunas */
+  if (emblemas) { if (emblemas.monumento) INFO.monumento = emblemas.monumento; if (emblemas.titilan) INFO.titilan = emblemas.titilan; }
 
   /* ---------- el asfalto y los bordillos ---------- */
   function cinta(x0, x1, y, mat, vPor) {
@@ -1503,7 +1889,7 @@ M.pista = function (E, mundo, o) {
     var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos3, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setIndex(idx); g.computeVertexNormals(); var m = new THREE.Mesh(g, mat); m.receiveShadow = true; m.userData.pista = true; E.add(m); return m; }   /* el asfalto y los bordillos: son la pista misma */
   var tA = texAsfalto(); tA.repeat.set(1, 1);
-  cinta(-W / 2, W / 2, .03, new THREE.MeshStandardMaterial({ map: tA, roughness: .85 }), 7);
+  var matA = new THREE.MeshStandardMaterial({ map: tA, roughness: .85 }); cinta(-W / 2, W / 2, .03, matA, 7);
   var tB = texBordillo(), mB = new THREE.MeshStandardMaterial({ map: tB, roughness: .6 });
   cinta(-W / 2 - .55, -W / 2, .045, mB, 2.4); cinta(W / 2, W / 2 + .55, .045, mB, 2.4);
   /* la línea de largada a cuadros */
@@ -1517,16 +1903,32 @@ M.pista = function (E, mundo, o) {
 
   /* ---------- en las curvas, las paredes del mundo (por fuera); en las rectas, vallas ---------- */
   var muro = null; try { muro = M.muros(mundo.id === 'ciudad' ? { muro: 'casona', id: 'casona' } : mundo); } catch (e) { muro = null; }   /* Trujillo: casonas de colores */
-  var ESM = 1.35, enMuro = [], enValla = [];
+  var ESM = 1.35, enMuro = [], enValla = [], muroId = mundo.id === 'ciudad' ? 'casona' : mundo.muro, murosReal = [], clones = {};
   for (var s = 0; s < L; s += ESM) { var c = curva(s); if (Math.abs(c) > .045 / ES) enMuro.push([s, c > 0 ? 1 : -1]); else if (Math.floor(s / ESM) % 2 === 0) enValla.push(s); }
   if (muro) {
     var porVar = {}; enMuro.forEach(function (q, j) { var v = j % muro.variantes.length; (porVar[v] = porVar[v] || []).push(q); });
     var ob = new THREE.Object3D();
     Object.keys(porVar).forEach(function (v) { var lista = porVar[v];
-      muro.variantes[v].forEach(function (parte) { var im = new THREE.InstancedMesh(parte.geo, parte.mat, lista.length);
+      muro.variantes[v].forEach(function (parte, pi) { var mat = parte.mat;
+        if (pi === 0 && TX_MURO[muroId]) { if (!clones[mat.uuid]) { clones[mat.uuid] = mat.clone(); murosReal.push(clones[mat.uuid]); } mat = clones[mat.uuid]; }   /* el cuerpo del muro: aquí recibe su foto */
+        var im = new THREE.InstancedMesh(parte.geo, mat, lista.length);
         lista.forEach(function (q, j) { var lado = q[1], pm = pos(q[0], lado * (1 + (2.7 + muro.grosor * ESM / 2) / (W / 2))), d = dir(q[0]);
           ob.position.set(pm.x, altoSuelo(pm.x, pm.z), pm.z); ob.rotation.set(0, Math.atan2(-d.z, d.x), 0); ob.scale.set(ESM, ESM, ESM); ob.updateMatrix(); im.setMatrixAt(j, ob.matrix); });
-        im.castShadow = false; im.receiveShadow = true; E.add(im); }); });
+        im.castShadow = false; im.receiveShadow = true; im.frustumCulled = false; E.add(im); }); });
+  }
+  /* 3c: Chan Chan, las murallas de adobe con sus frisos, a escala de muralla, alrededor del circuito (con dos puertas) */
+  var murallas = [];
+  if (muro && muroId === 'adobe') {
+    var EM = 5.2, HW = 72, tramosM = [], obM = new THREE.Object3D();
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(function (sd) { for (var u = -HW; u < HW - .1; u += EM) { var uc = u + EM / 2;
+      if (sd[1] !== 0 && Math.abs(uc) < 8) continue;
+      var xm = sd[0] ? sd[0] * HW : uc, zm = sd[1] ? sd[1] * HW : uc; if (lejosDePista(xm, zm) < W / 2 + 6) continue; tramosM.push([xm, zm, sd[0] ? Math.PI / 2 : 0]); } });
+    var porVM = {}; tramosM.forEach(function (q, j) { var v = j % muro.variantes.length; (porVM[v] = porVM[v] || []).push(q); });
+    Object.keys(porVM).forEach(function (v) { var lista = porVM[v];
+      muro.variantes[v].forEach(function (parte, pi) { var mat = pi === 0 && clones[parte.mat.uuid] ? clones[parte.mat.uuid] : parte.mat, im = new THREE.InstancedMesh(parte.geo, mat, lista.length);
+        lista.forEach(function (q, j) { obM.position.set(q[0], altoSuelo(q[0], q[1]) - .35, q[1]); obM.rotation.set(0, q[2], 0); obM.scale.set(EM, EM, EM); obM.updateMatrix(); im.setMatrixAt(j, obM.matrix); });
+        im.userData.alto = muro.alto; im.castShadow = !baja; im.receiveShadow = true; im.frustumCulled = false; E.add(im); if (pi === 0) murallas.push(im); }); });
+    INFO.murallas = murallas;
   }
   /* vallas blancas y rojas de las rectas (una sola malla) */
   var JV = new M.Junta(), blanco = M.col('#f3f3f0'), rojo = M.col('#d8343a');
@@ -1603,9 +2005,49 @@ M.pista = function (E, mundo, o) {
   /* el minimapa (puntos del trazado) */
   var mini = []; for (i = 0; i < K; i += 10) mini.push([PS[i].x, PS[i].z]);
 
+  /* ---------- 3c: las texturas reales. Se piden ahora y se ponen cuando llegan; si no llegan, queda lo dibujado ---------- */
+  var REAL = { pedidas: [], cargadas: 0, fallos: 0, listo: false, asfalto: matA, bordillo: mB, suelo: sueloR.piso.material, muros: murosReal }, vivo = true, propias = [];
+  function contar(ok) { if (ok) REAL.cargadas++; else REAL.fallos++; REAL.listo = REAL.cargadas + REAL.fallos === REAL.pedidas.length; }
+  function pedir(nombre, ok, mal) { REAL.pedidas.push('tx-' + nombre + '.webp');
+    M.texReal(nombre, function (t) { contar(true); if (vivo) ok(t); else M.soltarReal(nombre); }, function () { contar(false); if (vivo && mal) mal(); }); }
+  var conRelieve = !baja, NA = baja ? 512 : 1024, asfC = null, asfN = null, asfSinN = !conRelieve;
+  function asfaltoListo() { if (!ASF) { if (!asfC || !(asfN || asfSinN)) return; ASF = componerAsfalto(asfC, asfN, NA);
+      M.soltarReal('asfalto'); if (asfN) M.soltarReal('asfalto-n'); }   /* ya compuesto: las fotos sueltas no hacen falta */
+    matA.map = ASF.map; if (mundo.id === 'noche') matA.color.setScalar(.6);   /* de noche el asfalto no brilla como de día */
+    if (conRelieve && ASF.nor) { matA.normalMap = ASF.nor; matA.normalScale.set(.9, .9); } matA.roughness = .86; matA.needsUpdate = true;
+    mB.map = ASF.bor; if (conRelieve && ASF.nor) { mB.normalMap = ASF.nor; mB.normalScale.set(.5, .5); } mB.needsUpdate = true; }
+  if (ASF) asfaltoListo();   /* el asfalto ya se compuso en otra pista: no se baja de nuevo */
+  else { pedir('asfalto', function (t) { asfC = t; asfaltoListo(); });
+    if (conRelieve) pedir('asfalto-n', function (t) { asfN = t; asfaltoListo(); }, function () { asfSinN = true; asfaltoListo(); }); }
+  var tipoS = mundo.suelo, cubre = TX_SUELO[tipoS], pm = sueloR.piso.material;
+  var sC = null, sN = null;
+  function sueloListo() { if (!sC) return; sC.repeat.set(TAM / cubre, TAM / cubre); pm.map = sC;
+    if (sN) { sN.repeat.set(TAM / cubre, TAM / cubre); pm.normalMap = sN; pm.normalScale.set(.8, .8); } pm.needsUpdate = true; }
+  if (cubre) { pedir(tipoS, function (t) { sC = t; sueloListo(); }); if (conRelieve) pedir(tipoS + '-n', function (t) { sN = t; sueloListo(); }); }
+  var mC = null, mN = null;
+  if (TX_MURO[muroId] && murosReal.length) {
+    pedir(muroId, function (t) { murosReal.forEach(function (m) {
+      if (muroId === 'adobe' && m.map && m.map.image) {   /* el adobe guarda sus frisos dibujados: se le pone el grano de la foto encima */
+        var img = m.map.image, cv = M.lienzo(img.width, img.height), g = cv.getContext('2d'); g.drawImage(img, 0, 0);
+        g.globalCompositeOperation = 'soft-light'; g.globalAlpha = .85; for (var i = 0; i < 2; i++) for (var j = 0; j < 2; j++) g.drawImage(t.image, i * img.width / 2, j * img.height / 2, img.width / 2, img.height / 2);
+        var tc = M.tex(cv, true, false), mo = m.map; tc.wrapS = mo.wrapS; tc.wrapT = mo.wrapT; tc.repeat.copy(mo.repeat); tc.offset.copy(mo.offset);
+        tc.userData.fuente = 'tx-adobe.webp'; propias.push(tc); m.map = tc;
+      } else { t.repeat.set(.5, .5); m.map = t; mC = t; murosRelieve(); }
+      m.needsUpdate = true; }); });
+    if (conRelieve && muroId !== 'adobe') pedir(muroId + '-n', function (t) { mN = t; murosRelieve(); }); }
+  function murosRelieve() { if (!mC || !mN) return; mN.repeat.set(.5, .5); murosReal.forEach(function (m) { m.normalMap = mN; m.normalScale.set(.6, .6); m.needsUpdate = true; }); }
+  if (INFO.nevados && conRelieve) pedir('nieve-n', function (t) { var vie = INFO.nevados.material;   /* el repeat lo pone el color (en r128 todos usan el del map) */   /* 3c: los nevados, con el relieve de la nieve */
+    var mn = new THREE.MeshStandardMaterial({ vertexColors: true, map: vie.map, normalMap: t, roughness: .8, metalness: 0, fog: false, envMap: M.envCielo ? M.envCielo(mundo) : null, envMapIntensity: .55 });
+    mn.normalScale.set(.9, .9); INFO.nevados.material = mn; vie.dispose(); });
+  if (!REAL.pedidas.length) REAL.listo = true;   /* nada que bajar (el asfalto ya estaba) */
+  /* al cambiar de pista: se suelta lo de esta (el asfalto compuesto queda: lo usan todas) */
+  function soltar() { vivo = false; propias.forEach(function (t) { t.dispose(); });
+    [tipoS, tipoS + '-n', muroId, muroId + '-n', 'nieve-n'].forEach(function (n) { M.soltarReal(n); }); }
+  var vSol = new V3();
+
   var mo = new M4(), q4 = new THREE.Quaternion(), e3 = new V3(), vT = new V3(1, 1, 1), vAl = new V3();
   return {
-    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG,
+    L: L, W: W, K: K, pos: pos, dir: dir, curva: curva, mini: mini, semaforo: semaforo, luces: luces, vida: vidaG, real: REAL, soltar: soltar, flora: flora, distPista: lejosDePista, lugares: INFO,
     alto: alto, peralte: peralte, altoSuelo: altoSuelo, relieve: yMax - yMin, salto: { s: sJ, pendiente: HJ / SUBE },
     bordes: { pasto: 1 + .55 / (W / 2), valla: 1 + 2.25 / (W / 2) },   /* en unidades de la pista (1 = el borde del asfalto); la valla está a 2,6 m del borde */
     altoEn: function (s, x) { var q = pos(s, x, vAl), d = Math.abs(x) * W / 2; if (d <= W / 2 + .55) return q.y;
@@ -1613,7 +2055,9 @@ M.pista = function (E, mundo, o) {
     actualizar: function (dt, t, x, z, cam, y) {
       if (cielo) cielo.actualizar(t, cam || { x: x, z: z });
       if (lejos) lejos.actualizar(dt, t);
-      luces.seguir(x, z); vidaG.position.set(x, y || 0, z); if (vida) vida(dt, t, cam);
+      var ax = x, az = z, yb = y || 0; if (cam) { var dxs = x - cam.x, dzs = z - cam.z, dls = Math.hypot(dxs, dzs) || 1; ax += dxs / dls * 8; az += dzs / dls * 8; }
+      vSol.copy(luces.sol.userData.dir); luces.sol.position.set(ax + vSol.x * 30, yb + vSol.y * 30, az + vSol.z * 30); luces.sol.target.position.set(ax, yb, az);   /* 3c: la sombra cubre lo que viene */
+      vidaG.position.set(x, y || 0, z); if (vida) vida(dt, t, cam); if (flora) flora.actualizar(t); if (emblemas) emblemas.actualizar(t);
       /* lo que vuela se hizo para el laberinto y acá sigue al auto: lo que pasa pegado a la cámara se esconde
          (una mariposa a un metro llenaba la pantalla). Solo se esconde y se vuelve a mostrar lo escondido aquí:
          la estrella fugaz maneja su propio «visible». */
