@@ -205,6 +205,79 @@ M.preparar = function (R, mundo) {
   R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = mundo.luz.exp || 1;
   R.shadowMap.enabled = M.calidad() === 'alta'; R.shadowMap.type = THREE.PCFSoftShadowMap;
 };
+/* ---------- el acabado de cine (9-nov, La gran carrera): brillo suave, color por lugar y viñeta ----------
+   La escena se dibuja como siempre (en la pantalla, con su antialias y su tono de cine ACES) y después se toma esa imagen:
+     · el brillo: lo que pasa del umbral se baja a 1/4 de la pantalla, se borronea (dos vueltas de dos pasadas) y se suma:
+       se derrama alrededor de lo que brilla (el sol, las chispas, las ventanas y los faroles de la noche);
+     · el color de cada lugar: contraste suave en S, saturación, sombras frías y luces cálidas;
+     · la viñeta: las esquinas apenas más oscuras.
+   Es un retoque de pantalla (sobre la imagen ya en sRGB, como en el cine) y queda en el mismo lienzo: va a la foto y al
+   video. Si el celular no deja copiar la pantalla, se marca roto y no se usa (la escena queda como siempre). Sin descargas.
+   crudo: el dibujo del renderizador antes de que el núcleo lo envuelva (N.fluido cuenta los dibujos para bajar la
+   resolución y toma la foto del recuerdo después de dibujar): la escena y las pasadas van por crudo y solo la última,
+   la que queda en la pantalla, por el envoltorio. Así cuenta un dibujo por cuadro y la foto sale con el acabado.
+   M.cine(R, crudo) → { escala, roto, mundo(m), dibujar(E, C) (en vez de R.render), probar(), soltar() } */
+var LOOKS = {   /* umbral y fuerza del brillo, saturación, contraste, tinte de las sombras y de las luces, viñeta */
+  sierra:   { umbral: .82, brillo: .35, sat: 1.06, contraste: .18, frio: [-.012, 0, .022], calido: [.018, .010, -.010], vineta: .26 },
+  costa:    { umbral: .80, brillo: .40, sat: 1.10, contraste: .14, frio: [-.015, .010, .025], calido: [.035, .020, -.020], vineta: .24 },
+  desierto: { umbral: .82, brillo: .38, sat: .98, contraste: .16, frio: [0, 0, .015], calido: [.040, .020, -.025], vineta: .26 },
+  ciudad:   { umbral: .78, brillo: .45, sat: 1.08, contraste: .16, frio: [.010, -.010, .030], calido: [.045, .015, -.015], vineta: .28 },
+  noche:    { umbral: .55, brillo: .95, sat: 1.05, contraste: .20, frio: [-.010, .005, .045], calido: [.020, .010, -.010], vineta: .32 },   /* las ventanas y los faroles, con su halo */
+  selva:    { umbral: .80, brillo: .40, sat: 1.06, contraste: .14, frio: [-.010, .020, .010], calido: [.025, .025, -.015], vineta: .28 }
+};
+var VERT_CINE = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }';
+M.cine = function (R, crudo) {
+  crudo = crudo || R.render;
+  var K = .25, w = 0, h = 0, nuevo = false, tEsc = null, rtA = null, rtB = null, cam = new THREE.Camera(), esc = new THREE.Scene(), vT = new THREE.Vector2(), vPx = new THREE.Vector2(), v0 = new THREE.Vector2();
+  var quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2)); quad.frustumCulled = false; esc.add(quad);
+  function mat(frag, u) { return new THREE.ShaderMaterial({ uniforms: u, vertexShader: VERT_CINE, fragmentShader: frag, depthTest: false, depthWrite: false }); }
+  var mBrillo = mat('uniform sampler2D tE; uniform vec2 uPx; uniform float uUmbral; varying vec2 vUv;\n' +
+      'vec3 t(vec2 o) { vec3 c = texture2D(tE, vUv + o * uPx).rgb; float l = max(c.r, max(c.g, c.b)), k = clamp((l - uUmbral) / (1. - uUmbral), 0., 1.); return c * k * k; }\n' +
+      'void main() { gl_FragColor = vec4((t(vec2(-1., -1.)) + t(vec2(1., -1.)) + t(vec2(-1., 1.)) + t(vec2(1., 1.))) * .25, 1.); }',
+    { tE: { value: null }, uPx: { value: new THREE.Vector2() }, uUmbral: { value: .8 } });
+  var mBorron = mat('uniform sampler2D tE; uniform vec2 uDir; varying vec2 vUv;\n' +   /* gaussiana de 9 puntos en 5 lecturas */
+      'void main() { vec3 c = texture2D(tE, vUv).rgb * .227027 + (texture2D(tE, vUv + uDir * 1.384615).rgb + texture2D(tE, vUv - uDir * 1.384615).rgb) * .316216\n' +
+      '  + (texture2D(tE, vUv + uDir * 3.230769).rgb + texture2D(tE, vUv - uDir * 3.230769).rgb) * .07027; gl_FragColor = vec4(c, 1.); }',
+    { tE: { value: null }, uDir: { value: new THREE.Vector2() } });
+  var mFinal = mat('uniform sampler2D tE, tB; uniform float uBrillo, uSat, uContraste, uVineta; uniform vec3 uFrio, uCalido; varying vec2 vUv;\n' +
+      'void main() { vec3 c = clamp(texture2D(tE, vUv).rgb + texture2D(tB, vUv).rgb * uBrillo, 0., 1.);\n' +
+      '  float l = dot(c, vec3(.2126, .7152, .0722)); c = clamp(mix(vec3(l), c, uSat), 0., 1.); c = mix(c, c * c * (3. - 2. * c), uContraste);\n' +
+      '  c += uFrio * (1. - l) * (1. - l) + uCalido * l * l;\n' +
+      '  c *= mix(1. - uVineta, 1., 1. - smoothstep(.45, 1.45, length((vUv - .5) * 2.)));\n' +
+      '  gl_FragColor = vec4(clamp(c, 0., 1.), 1.); }',
+    { tE: { value: null }, tB: { value: null }, uBrillo: { value: .4 }, uSat: { value: 1 }, uContraste: { value: 0 }, uVineta: { value: 0 }, uFrio: { value: new THREE.Vector3() }, uCalido: { value: new THREE.Vector3() } });
+  var L = LOOKS.sierra, OPC = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, stencilBuffer: false };
+  function pasada(m, rt, ultima) { quad.material = m; R.setRenderTarget(rt); if (ultima) R.render(esc, cam); else crudo.call(R, esc, cam); }
+  function soltarImg() { if (tEsc) tEsc.dispose(); if (rtA) rtA.dispose(); if (rtB) rtB.dispose(); tEsc = rtA = rtB = null; w = h = 0; }
+  function medir() { R.getDrawingBufferSize(vT); if (tEsc && vT.x === w && vT.y === h) return; soltarImg(); w = vT.x; h = vT.y; nuevo = true;
+    tEsc = new THREE.DataTexture(null, w, h, THREE.RGBFormat); tEsc.minFilter = tEsc.magFilter = THREE.LinearFilter;   /* sin alfa: la pantalla no lo tiene */
+    rtA = new THREE.WebGLRenderTarget(Math.max(1, Math.round(w * K)), Math.max(1, Math.round(h * K)), OPC); rtB = rtA.clone(); }
+  function brillo(fuente, A, B, px, umbral) {   /* lo que brilla, en chico y borroneado: queda en A */
+    mBrillo.uniforms.tE.value = fuente; mBrillo.uniforms.uPx.value.copy(px); mBrillo.uniforms.uUmbral.value = umbral; pasada(mBrillo, A);
+    for (var i = 0; i < 2; i++) { mBorron.uniforms.tE.value = A.texture; mBorron.uniforms.uDir.value.set(1 / A.width, 0); pasada(mBorron, B);
+      mBorron.uniforms.tE.value = B.texture; mBorron.uniforms.uDir.value.set(0, 1 / A.height); pasada(mBorron, A); } }
+  var api = { escala: K, roto: false,
+    mundo: function (m) { L = LOOKS[m && m.id] || LOOKS.sierra; var u = mFinal.uniforms;
+      u.uBrillo.value = L.brillo; u.uSat.value = L.sat; u.uContraste.value = L.contraste; u.uVineta.value = L.vineta; u.uFrio.value.fromArray(L.frio); u.uCalido.value.fromArray(L.calido); },
+    /* en vez de R.render(E, C): la escena en la pantalla, su copia, el brillo y la pasada final */
+    dibujar: function (E, C) { if (api.roto) { R.render(E, C); return false; }
+      crudo.call(R, E, C); medir(); var gl = R.getContext();
+      if (nuevo) while (gl.getError() !== gl.NO_ERROR) {}   /* solo cuentan los errores de la copia (se mira en el primer cuadro de cada tamaño) */
+      R.copyFramebufferToTexture(v0, tEsc);
+      if (nuevo) { nuevo = false; if (gl.getError() !== gl.NO_ERROR) { api.roto = true; soltarImg(); R.render(E, C); return false; } }   /* no se pudo copiar: desde ahora, como siempre */
+      brillo(tEsc, rtA, rtB, vPx.set(1 / w, 1 / h), L.umbral);
+      mFinal.uniforms.tE.value = tEsc; mFinal.uniforms.tB.value = rtA.texture; pasada(mFinal, null, true); return true; },
+    /* para las pruebas: un punto blanco en negro pasa por el brillo; cuánto queda en el punto, cerca y más lejos */
+    probar: function () { var N = 64, d = new Uint8Array(N * N * 3); for (var y = 28; y < 36; y++) for (var x = 28; x < 36; x++) d[(y * N + x) * 3] = d[(y * N + x) * 3 + 1] = d[(y * N + x) * 3 + 2] = 255;
+      var t = new THREE.DataTexture(d, N, N, THREE.RGBFormat); t.minFilter = t.magFilter = THREE.LinearFilter; t.needsUpdate = true;
+      var A = new THREE.WebGLRenderTarget(N * K, N * K, OPC), B = A.clone(), px = new Uint8Array(4), c = N * K / 2;
+      function leer(x) { R.readRenderTargetPixels(A, x, c, 1, 1, px); return px[0] / 255; }
+      try { brillo(t, A, B, new THREE.Vector2(1 / N, 1 / N), .5); return { centro: leer(c), cerca: leer(c + 3), lejos: leer(c + 7) }; }
+      finally { R.setRenderTarget(null); t.dispose(); A.dispose(); B.dispose(); } },
+    soltar: function () { soltarImg(); [mBrillo, mBorron, mFinal].forEach(function (m) { m.dispose(); }); quad.geometry.dispose(); } };
+  api.mundo(null);
+  return api;
+};
 /* las luces del mundo: hemisférica + sol con sombra que sigue al personaje */
 M.luces = function (E, mundo) {
   var L = mundo.luz, hemi = new THREE.HemisphereLight(L.cielo, L.suelo, L.hemi); E.add(hemi);
