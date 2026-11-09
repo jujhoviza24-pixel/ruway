@@ -1537,6 +1537,8 @@ M.lugares = function (E, mundo, o) {
    puertas y ventanas de madera pintada, balcón corrido, techo de teja a dos aguas con alero y, en algunas, la cruz con sus
    toritos. Y lo de alrededor: M.iglesiaAndina (nave, torre campanario, portada y atrio con su cruz), M.pileta (la plaza),
    M.pircas (muros de piedra suelta en el campo) y M.andenes (un cerro con terrazas de cultivo).
+   9-nov: la noche andina, el mismo pueblo de noche (o.noche): ventanas y puertas encendidas, faroles con su charco de luz en
+   la vereda, la iglesia iluminada y faroles en la plaza. Sin luces de verdad (cuestan en el celular): lo que brilla, brilla solo.
 
    M.ciudad(E, mundo, { pos, dir, L, W, alto(x,z), dist(x,z), baja, env, sIni, sFin, plantilla?, semilla?, saltar? })
      plantilla: 'casona' (Trujillo, la de siempre), 'playa' (Huanchaco), 'muralla' (Chan Chan) o 'andina' (Los Andes)
@@ -1698,6 +1700,25 @@ function audiencia(baja) {
   return J.geometria({ oscuroAbajo: [.72, .9] });
 }
 
+/* ---------- la noche andina: la luz cálida y el charco que deja en el suelo ---------- */
+var CALIDAS = ['#ffd59a', '#ffcf8a', '#ffe2ad', '#f8c47c', '#ffdca0'];
+var CHARCO = null, CHARCO_R = null, LAVADO = null;
+function texCharco() {   /* medio óvalo de luz: fuerte junto a la pared (abajo de la imagen), se apaga hacia la calle */
+  if (CHARCO) return CHARCO; var c = M.lienzo(128, 64), g = c.getContext('2d'), gr = g.createRadialGradient(64, 64, 2, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(255,214,150,.75)'); gr.addColorStop(.45, 'rgba(255,196,120,.32)'); gr.addColorStop(1, 'rgba(255,180,100,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 64);
+  return (CHARCO = M.tex(c, true, false)); }
+function texCharcoRedondo() {   /* el charco de un farol de poste: redondo */
+  if (CHARCO_R) return CHARCO_R; var c = M.lienzo(64, 64), g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 1, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,214,150,.7)'); gr.addColorStop(.5, 'rgba(255,196,120,.25)'); gr.addColorStop(1, 'rgba(255,180,100,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+  return (CHARCO_R = M.tex(c, true, false)); }
+function texLavado() {   /* la luz que sube por una fachada desde los reflectores: fuerte abajo, se apaga arriba */
+  if (LAVADO) return LAVADO; var c = M.lienzo(16, 128), g = c.getContext('2d'), gr = g.createLinearGradient(0, 128, 0, 0);
+  gr.addColorStop(0, 'rgba(255,205,140,.6)'); gr.addColorStop(.55, 'rgba(255,190,120,.22)'); gr.addColorStop(1, 'rgba(255,180,110,0)'); g.fillStyle = gr; g.fillRect(0, 0, 16, 128);
+  return (LAVADO = M.tex(c, true, false)); }
+function matLuzAditiva(tex, op) { return new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, transparent: true, opacity: op || 1, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }); }
+function brilloPuntos(pos, tam) { var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return new THREE.Points(g, new THREE.PointsMaterial({ color: '#ffcf7a', size: tam || 1.5, map: M.texBrillo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); }
+
 /* ---------- Los Andes: la casa de adobe encalada con techo de teja ---------- */
 var COLORES_ANDINA = ['#f7f3eb', '#f2ead9', '#efe2c6', '#f8f6f1', '#ead8b2', '#f3ecdf', '#e7d0a6', '#faf7f2'];   /* blanco de cal, crema y ocre */
 var ZOCALOS = ['#2f5f9e', '#3b7d4f', '#a33a2f', '#c9862f', '#3f6fa8', '#2e7a6e'], MADERA_PINTADA = ['#2f5f9e', '#3b7d4f', '#7a4a2c', '#2e7a6e', '#5a3a22', '#8a2f2a'];
@@ -1711,10 +1732,11 @@ function faldon(J, largo, ancho, giroX, x, y, z, giroY) {
 /* el hastial: el triángulo de pared bajo el techo, en una punta de la casa (fondo D, alto h) */
 function hastial(J, x, y, D, h, col) { var g = new THREE.BoxGeometry(.2, h, D); M.torcer(g, function (q) { if (q.y > 0) q.z = 0; }); g.translate(x, y + h / 2, D / 2); J.pieza(g, col || [1, 1, 1]); }
 /* v: 0 un piso · 1 dos pisos con balcón corrido · 2 dos pisos con ventanas · 3 un piso con zócalo de piedra */
-function casaAndina(len, v, baja, fondo) {
-  var r = M.azar(Math.round(len * 10) * 17 + v * 211 + (baja ? 11 : 0) + (fondo || 6) * 5), P = {};
-  ['color', 'blanco', 'madera', 'tejas', 'piedra', 'vidrio', 'fierro'].forEach(function (k) { P[k] = new M.Junta(); });
-  var cuenta = { puerta: 0, balcon: 0, cruz: 0 }, dos = v === 1 || v === 2, H = dos ? 5.9 : 3.3, D = fondo || 6, B = [1, 1, 1];
+function casaAndina(len, v, baja, fondo, noche) {
+  var r = M.azar(Math.round(len * 10) * 17 + v * 211 + (baja ? 11 : 0) + (fondo || 6) * 5), rn = M.azar(Math.round(len * 10) * 29 + v * 97 + (fondo || 6) * 13 + 7777), P = {};
+  ['color', 'blanco', 'madera', 'tejas', 'piedra', 'vidrio', 'fierro', 'luz'].forEach(function (k) { P[k] = new M.Junta(); });
+  function calida() { return M.col(CALIDAS[rn() * CALIDAS.length | 0]); }
+  var cuenta = { puerta: 0, balcon: 0, cruz: 0, ventanaLuz: 0 }, dos = v === 1 || v === 2, H = dos ? 5.9 : 3.3, D = fondo || 6, B = [1, 1, 1];
   var zoc = M.col(ZOCALOS[r() * ZOCALOS.length | 0]), mad = M.col(MADERA_PINTADA[r() * MADERA_PINTADA.length | 0]), deP = v === 3 || r() < .2;
   function caja(J, w, h, d, x, y, z, col) { var g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); J.pieza(g, col || B); }
   caja(P.color, len, H + 1, D, len / 2, (H + 1) / 2 - 1, D / 2);                       /* el cuerpo de adobe encalado */
@@ -1724,15 +1746,19 @@ function casaAndina(len, v, baja, fondo) {
   var nb = Math.max(2, Math.round(len / 2.4)), bw = len / nb, pu = r() * nb | 0;
   for (var i = 0; i < nb; i++) { var xc = bw * (i + .5);
     if (i === pu) { caja(P.blanco, 1.5, .16, .1, xc, 2.42, -.05); [-1, 1].forEach(function (l) { caja(P.blanco, .14, 2.4, .1, xc + l * .68, 1.2, -.05); });
-      caja(P.madera, 1.22, 2.3, .06, xc, 1.15, -.02, mad); if (!baja) { caja(P.madera, .05, 2.2, .04, xc, 1.12, -.06, M.mezclaCol(mad, [0, 0, 0], .35)); caja(P.fierro, .08, .08, .06, xc + .35, 1.2, -.07); }
+      var entre = noche && rn() < .3;   /* de noche, alguna puerta entreabierta deja salir la luz */
+      if (entre) { caja(P.madera, .9, 2.3, .06, xc - .16, 1.15, -.02, mad); caja(P.luz, .3, 2.2, .03, xc + .45, 1.12, -.01, calida()); cuenta.ventanaLuz++; }
+      else caja(P.madera, 1.22, 2.3, .06, xc, 1.15, -.02, mad);
+      if (!baja && !entre) { caja(P.madera, .05, 2.2, .04, xc, 1.12, -.06, M.mezclaCol(mad, [0, 0, 0], .35)); caja(P.fierro, .08, .08, .06, xc + .35, 1.2, -.07); }
       caja(P.piedra, 1.6, .14, .4, xc, .05, -.2); cuenta.puerta++; }
-    else { caja(P.vidrio, .8, 1.0, .04, xc, 1.65, -.02); caja(P.madera, .96, .08, .08, xc, 2.2, -.04, mad); caja(P.blanco, 1.1, .1, .16, xc, 1.1, -.08);
+    else { var enc = noche && rn() < .5; caja(enc ? P.luz : P.vidrio, .8, 1.0, .04, xc, 1.65, -.02, enc ? calida() : null); if (enc) cuenta.ventanaLuz++; caja(P.madera, .96, .08, .08, xc, 2.2, -.04, mad); caja(P.blanco, 1.1, .1, .16, xc, 1.1, -.08);
       if (!baja) [-1, 1].forEach(function (l) { caja(P.madera, .4, 1.0, .04, xc + l * .64, 1.65, -.04, mad); }); }   /* los postigos, abiertos */
   }
   /* arriba (dos pisos): el balcón corrido de madera, o ventanas */
   if (dos) { var y1 = 3.05;
     for (i = 0; i < nb; i++) { xc = bw * (i + .5); var alto2 = v === 1 ? 2.0 : 1.1, yv = v === 1 ? y1 + 1.05 : y1 + 1.4;
-      caja(v === 1 ? P.madera : P.vidrio, v === 1 ? 1.0 : .8, alto2, .05, xc, yv, -.02, v === 1 ? mad : null);
+      var enc2 = noche && rn() < (v === 1 ? .45 : .5);   /* de noche, la puerta del balcón o la ventana de arriba encendida */
+      caja(enc2 ? P.luz : v === 1 ? P.madera : P.vidrio, v === 1 ? 1.0 : .8, alto2, .05, xc, yv, -.02, enc2 ? calida() : v === 1 ? mad : null); if (enc2) cuenta.ventanaLuz++;
       if (v === 2) { caja(P.madera, .96, .08, .08, xc, yv + .58, -.04, mad); if (!baja) [-1, 1].forEach(function (l) { caja(P.madera, .4, 1.1, .04, xc + l * .64, yv, -.04, mad); }); } }
     if (v === 1) { var bl = len - .4;
       caja(P.madera, bl, .12, .9, len / 2, y1, -.45, mad);                                          /* el piso del balcón */
@@ -1891,7 +1917,7 @@ function farolPared() {
 }
 
 M.ciudad = function (E, mundo, o) {
-  var t0 = performance.now(), r = M.azar(o.semilla || 777), baja = !!o.baja, L = o.L, W2 = o.W / 2, playa = o.plantilla === 'playa', muro = o.plantilla === 'muralla', andina = o.plantilla === 'andina', N = playa || andina ? 6 : 7;   /* tramos de la vuelta: lo que no se ve se recorta (la playa tiene dos materiales más: caña y letreros) */
+  var t0 = performance.now(), r = M.azar(o.semilla || 777), baja = !!o.baja, L = o.L, W2 = o.W / 2, playa = o.plantilla === 'playa', muro = o.plantilla === 'muralla', andina = o.plantilla === 'andina', noche = !!o.noche, N = andina && noche ? 4 : playa || andina ? 6 : 7;   /* de noche, el pueblo andino lleva más mallas (luz y charcos): 4 tramos */   /* tramos de la vuelta: lo que no se ve se recorta (la playa tiene dos materiales más: caña y letreros) */
   var PLANT = andina ? casaAndina : muro ? muralla : playa ? casaPlaya : plantilla, PALETA = andina ? COLORES_ANDINA : muro ? COLORES_BARRO : playa ? COLORES_PLAYA : COLORES, LG = muro ? LARGOS_M : LARGOS;
   var FONDOS = muro ? [2.6, 1.6] : [6, 3], DETRAS_T = muro ? 2.6 : DETRAS, FONDO_T = muro ? 2.6 + 14 : FONDO;   /* la muralla: 2,6 m de grueso; los costados del patio empiezan detrás de la esquina */
   function cadaBoca() { return muro ? 5 + (r() * 4 | 0) : andina ? 4 + (r() * 3 | 0) : 3 + (r() * 3 | 0); }   /* en Chan Chan, las entradas son pocas */
@@ -1916,12 +1942,13 @@ M.ciudad = function (E, mundo, o) {
       if (ordenL[0] === ant) ordenL.push(ordenL.shift()); }
     return ordenL.shift(); }
   if (andina) { mats.madera.userData.conMapa = function (m) { m.color.setScalar(2.0); };   /* la madera pintada se ve pintada (la foto de la madera es oscura): se aclara cuando llega */
-    mats.piedra = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 }); }
-  var MAT_DE = { color: 'muro', blanco: 'muro', madera: 'madera', fierro: 'fierro', tejas: 'tejas', vidrio: 'vidrio', luz: 'luz', cana: 'cana', letrero: 'letrero', friso: 'friso', piedra: 'piedra' };
+    mats.piedra = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .95 });
+    if (noche) mats.charco = matLuzAditiva(texCharco(), .9); }   /* el charco de luz de cada farol */
+  var MAT_DE = { color: 'muro', blanco: 'muro', madera: 'madera', fierro: 'fierro', tejas: 'tejas', vidrio: 'vidrio', luz: 'luz', cana: 'cana', letrero: 'letrero', friso: 'friso', piedra: 'piedra', charco: 'charco' };
   var TR = []; for (var c = 0; c < N; c++) { TR.push({}); }
   function junta(ch, m) { return TR[ch][m] || (TR[ch][m] = new M.Junta()); }
   var PL = {}, farol = farolPared(), lado = 1, AUD = muro ? audiencia(baja) : null;
-  function plant(len, v, fondo) { var k = len + ':' + v + ':' + fondo; return PL[k] || (PL[k] = PLANT(len, v, baja, fondo)); }
+  function plant(len, v, fondo) { var k = len + ':' + v + ':' + fondo; return PL[k] || (PL[k] = PLANT(len, v, baja, fondo, noche)); }
   /* dónde hay casas (cuadros de 2 m): para no sembrar plantas adentro */
   var OC = {}; function marcar(x, z) { OC[Math.floor(x / 2) + ',' + Math.floor(z / 2)] = 1; }
   /* ¿cabe una casa de este fondo sin pisar otro tramo de la pista? (en las curvas cerradas, el otro lado de la curva queda cerca) */
@@ -1960,6 +1987,10 @@ M.ciudad = function (E, mundo, o) {
     vX.set(Z.z, 0, -Z.x); mt.makeBasis(vX, vY, Z).setPosition(p.x, y, p.z);
     junta(ch, 'fierro').pieza(farol.fierro.clone(), [1, 1, 1], mt); junta(ch, 'luz').pieza(farol.luz.clone(), [1, 1, 1], mt);
     brillos.push(p.x - Z.x * .62, y + 3.6, p.z - Z.z * .62); cuenta.farol++;
+    if (andina && noche) {   /* su charco de luz en la vereda, junto a la pared; en las curvas se acorta (o no va) si se asomaría a la pista */
+      var hondo = [2.0, 1.2].filter(function (h) { for (var u = -1.8; u <= 1.8; u += 1.8) for (var w = 0; w <= h; w += h / 2) if (o.dist(p.x + vX.x * u - Z.x * w, p.z + vX.z * u - Z.z * w) < W2 + .75) return false; return true; })[0];
+      if (hondo) { var gch = new THREE.PlaneGeometry(3.6, hondo); gch.rotateX(-Math.PI / 2); gch.translate(0, 0, -hondo / 2); gch.userData.uvPropio = true;
+        var qx = p.x - Z.x, qz = p.z - Z.z; mt.makeBasis(vX, vY, Z).setPosition(p.x, o.alto(qx, qz) + .2, p.z); junta(ch, 'charco').pieza(gch, M.col('#ffd29a'), mt); cuenta.charco = (cuenta.charco || 0) + 1; } }
   }
   var tmp = new V3(), prev = new V3(), dirT = new V3();
   [1, -1].forEach(function (l) {
@@ -1998,14 +2029,14 @@ M.ciudad = function (E, mundo, o) {
   /* juntar: una malla por tramo y material (lo que no se ve se recorta solo) */
   var mallas = [];
   TR.forEach(function (tr) { Object.keys(tr).forEach(function (mk) { var m = new THREE.Mesh(tr[mk].geometria(), mats[mk]);
-    m.castShadow = muro && !baja && mk === 'muro';   /* las casas no echan sombra: costaba entre 7 y 9 % del cuadro y casi no se nota (8-nov, lag en Trujillo y Huanchaco); las murallas sí (son pocas caras y la sombra hace el corredor) */ m.receiveShadow = mk !== 'luz'; m.userData.ciudad = true; E.add(m); mallas.push(m); }); });
+    m.castShadow = muro && !baja && mk === 'muro';   /* las casas no echan sombra: costaba entre 7 y 9 % del cuadro y casi no se nota (8-nov, lag en Trujillo y Huanchaco); las murallas sí (son pocas caras y la sombra hace el corredor) */ m.receiveShadow = mk !== 'luz' && mk !== 'charco'; m.userData.ciudad = true; E.add(m); mallas.push(m); }); });
   if (brillos.length) { var gB = new THREE.BufferGeometry(); gB.setAttribute('position', new THREE.Float32BufferAttribute(brillos, 3));
     var pb = new THREE.Points(gB, new THREE.PointsMaterial({ color: '#ffcf7a', size: 1.5, map: M.texBrillo(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); pb.userData.ciudad = true; E.add(pb); mallas.push(pb); }
-  return { tipo: andina ? 'andina' : muro ? 'muralla' : playa ? 'playa' : 'casona', modulos: modulos, cuenta: cuenta, mallas: mallas, mats: mats, letreros: letreros.map(function (n) { return n[0] + ' ' + n[1]; }), ocupa: function (x, z) { return !!OC[Math.floor(x / 2) + ',' + Math.floor(z / 2)]; }, ms: Math.round(performance.now() - t0) };
+  return { tipo: andina ? 'andina' : muro ? 'muralla' : playa ? 'playa' : 'casona', noche: noche, modulos: modulos, cuenta: cuenta, mallas: mallas, mats: mats, letreros: letreros.map(function (n) { return n[0] + ' ' + n[1]; }), ocupa: function (x, z) { return !!OC[Math.floor(x / 2) + ',' + Math.floor(z / 2)]; }, ms: Math.round(performance.now() - t0) };
 };
 
 /* al cambiar de pista: se suelta la imagen de los letreros (se vuelve a pintar si se vuelve a Huanchaco) */
-M.ciudad.soltar = function () { if (ATLAS) { ATLAS.dispose(); ATLAS = null; } if (FRISOS) { FRISOS.color.dispose(); FRISOS.relieve.dispose(); FRISOS = null; } if (CHACRA) { CHACRA.dispose(); CHACRA = null; } };
+M.ciudad.soltar = function () { if (ATLAS) { ATLAS.dispose(); ATLAS = null; } if (FRISOS) { FRISOS.color.dispose(); FRISOS.relieve.dispose(); FRISOS = null; } if (CHACRA) { CHACRA.dispose(); CHACRA = null; } [CHARCO, CHARCO_R, LAVADO].forEach(function (t) { if (t) t.dispose(); }); CHARCO = CHARCO_R = LAVADO = null; };
 
 /* ---------- el malecón de Huanchaco: del lado del mar, donde la pista corre junto a la playa ----------
    Sobre el borde de la vereda: un murete, la baranda blanca (pilares, balaustres y pasamanos) y postes de luz que miran a
@@ -2109,7 +2140,7 @@ M.iglesiaAndina = function (E, o) {
     return { p: p0, n: n, xa: xa, ok: ok }; }
   var A = sitio(o.lado || 1); if (!A.ok) { var A2 = sitio(-(o.lado || 1)); if (A2.ok) A = A2; }
   if (!A.ok) return null;   /* si no cabe sin pisar la pista, no va */
-  var J = { muro: new M.Junta(), piedra: new M.Junta(), tejas: new M.Junta(), madera: new M.Junta(), fierro: new M.Junta() };
+  var noche = !!o.noche, J = { muro: new M.Junta(), piedra: new M.Junta(), tejas: new M.Junta(), madera: new M.Junta(), fierro: new M.Junta(), luz: new M.Junta(), lavado: new M.Junta() }, brillos = [], C1 = M.col('#ffd59a');
   function caja(k, w, h, d, x, y, z, col) { var g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); J[k].pieza(g, col || Bc, null, UVK[k === 'muro' ? 'muro' : k] || .5); }
   /* el atrio: plataforma de piedra, su muro (abierto al frente) y la cruz */
   caja('piedra', 22, .9, 32, 0, 0, 11); caja('piedra', 21.9, 3, 31.9, 0, -1.9, 11);   /* el faldón de piedra: no flota donde el terreno baja */
@@ -2126,8 +2157,10 @@ M.iglesiaAndina = function (E, o) {
   /* la portada: pilastras y arco de piedra, la puerta de madera y el óculo */
   [-1, 1].forEach(function (l) { caja('piedra', .7, 5.0, .5, l * 2.1, 2.5, -.25); });
   var arco = new THREE.TorusGeometry(2.1, .35, 6, baja ? 8 : 14, Math.PI); arco.translate(0, 5.0, -.25); J.piedra.pieza(arco, Bc, null, .5);
-  caja('madera', 3.0, 4.6, .1, 0, 2.3, -.05, [.42, .28, .18]); if (!baja) caja('madera', .06, 4.5, .06, 0, 2.3, -.12, [.3, .2, .12]);
-  var ocu = new THREE.CylinderGeometry(.6, .6, .1, baja ? 10 : 18); ocu.rotateX(Math.PI / 2); ocu.translate(0, 8.2, -.05);   /* entre el arco (llega a 7,45) y el hastial (8,95) */ J.fierro.pieza(ocu, [.25, .24, .26]);
+  if (noche) {   /* de noche, la puerta abierta con la luz de adentro */
+    [-1, 1].forEach(function (l) { caja('madera', .7, 4.5, .1, l * 1.15, 2.3, -.05, [.42, .28, .18]); }); caja('luz', 1.6, 4.4, .02, 0, 2.25, -.02, C1); brillos.push(0, 2.0, -.6);
+  } else { caja('madera', 3.0, 4.6, .1, 0, 2.3, -.05, [.42, .28, .18]); if (!baja) caja('madera', .06, 4.5, .06, 0, 2.3, -.12, [.3, .2, .12]); }
+  var ocu = new THREE.CylinderGeometry(.6, .6, .1, baja ? 10 : 18); ocu.rotateX(Math.PI / 2); ocu.translate(0, 8.2, -.05);   /* entre el arco (llega a 7,45) y el hastial (8,95) */ if (noche) { J.luz.pieza(ocu, C1); brillos.push(0, 8.2, -.4); } else J.fierro.pieza(ocu, [.25, .24, .26]);
   var aro = new THREE.TorusGeometry(.65, .12, 6, baja ? 10 : 18); aro.translate(0, 8.2, -.08); J.piedra.pieza(aro, Bc, null, .5);
   /* la torre: piedra abajo, cal arriba, el campanario abierto, sus campanas, el cupulín y la cruz */
   var tx = -7.2, tz = 2.6;   /* pegada a la nave */
@@ -2138,13 +2171,19 @@ M.iglesiaAndina = function (E, o) {
   caja('madera', 3.6, .2, .2, tx, 15.1, tz, [.4, .28, .18]); caja('madera', .2, .2, 3.6, tx, 15.1, tz, [.4, .28, .18]);   /* el travesaño del que cuelgan */
   [[-.7, 0], [.7, 0]].forEach(function (q) { var cb = new THREE.CylinderGeometry(.3, .5, .75, baja ? 8 : 12); cb.translate(tx + q[0], 14.6, tz + q[1]); J.fierro.pieza(cb, [.55, .42, .22]); });   /* las campanas, de bronce */
   var cup = new THREE.SphereGeometry(1.7, baja ? 10 : 16, baja ? 5 : 8, 0, Math.PI * 2, 0, Math.PI / 2); cup.translate(tx, 16.6, tz); J.muro.pieza(cup, Bc, null, UVK.muro);
+  if (noche) { caja('luz', 2.2, .12, 2.2, tx, 15.8, tz, C1); brillos.push(tx, 14.4, tz);   /* el campanario encendido */
+    var lv = new THREE.PlaneGeometry(10.4, 9.2); lv.rotateY(Math.PI); lv.translate(0, 4.6, -.22); lv.userData.uvPropio = true; J.lavado.pieza(lv, C1);   /* la fachada bañada de luz desde abajo */
+    if (!baja) { var lt = new THREE.PlaneGeometry(4.6, 12.4); lt.rotateY(Math.PI); lt.translate(tx, 6.2, tz - 2.45); lt.userData.uvPropio = true; J.lavado.pieza(lt, C1); }   /* y la torre (en los celulares flojos, no: es mucho relleno) */
+    [-3.5, 3.5].forEach(function (x) { caja('fierro', .5, .35, .4, x, .7, -3.6, [.2, .2, .22]); caja('luz', .38, .22, .04, x, .74, -3.38, C1); brillos.push(x, .8, -3.2); }); }   /* los reflectores del atrio */
   caja('muro', .6, 1.0, .6, tx, 18.7, tz); caja('fierro', .12, 1.4, .12, tx, 19.9, tz, [.25, .23, .22]); caja('fierro', .7, .12, .12, tx, 20.15, tz, [.25, .23, .22]);
   var y = Math.min(o.alto(A.p.x, A.p.z), o.alto(A.p.x + A.n.x * 12, A.p.z + A.n.z * 12)) - .3, mt = new M4().makeBasis(A.xa, new V3(0, 1, 0), A.n).setPosition(A.p.x, y, A.p.z);
   var mallas = [];
   Object.keys(J).forEach(function (k) { if (!J[k].base) return; var g = J[k].geometria(k === 'muro' ? { oscuroAbajo: [.8, 1.0] } : null); g.applyMatrix4(mt); if (k === 'tejas') g.userData.uvPropio = true;
-    var m = new THREE.Mesh(g, mats[k]); m.castShadow = !baja && k !== 'fierro'; m.receiveShadow = true; m.userData.iglesia = true; E.add(m); mallas.push(m); });
+    var mat = k === 'lavado' ? matLuzAditiva(texLavado(), .8) : mats[k], m = new THREE.Mesh(g, mat); m.castShadow = !baja && k !== 'fierro' && k !== 'luz' && k !== 'lavado'; m.receiveShadow = k !== 'luz' && k !== 'lavado'; m.userData.iglesia = true; E.add(m); mallas.push(m); });
+  if (brillos.length) { var vb = new V3(), wb = []; for (var ib = 0; ib < brillos.length; ib += 3) { vb.set(brillos[ib], brillos[ib + 1], brillos[ib + 2]).applyMatrix4(mt); wb.push(vb.x, vb.y, vb.z); }
+    var pb = brilloPuntos(wb, baja ? 2.0 : 3.2); pb.userData.iglesia = true; E.add(pb); mallas.push(pb); }
   var cx = A.p.x + A.n.x * 12, cz = A.p.z + A.n.z * 12;
-  return { x: cx, z: cz, alto: 20.2, torre: true, lado: A.n.x * -o.dir(o.s).z + A.n.z * o.dir(o.s).x > 0 ? 1 : -1, mallas: mallas,
+  return { x: cx, z: cz, alto: 20.2, torre: true, iluminada: noche, lado: A.n.x * -o.dir(o.s).z + A.n.z * o.dir(o.s).x > 0 ? 1 : -1, mallas: mallas,
     ocupa: function (x, z) { var dx = x - A.p.x, dz = z - A.p.z, u = dx * A.xa.x + dz * A.xa.z, w = dx * A.n.x + dz * A.n.z; return Math.abs(u) < 12.5 && w > -6.5 && w < 28.5; } };
 };
 
@@ -2161,12 +2200,21 @@ M.pileta = function (E, o) {
   [.785, 2.356, 3.927, 5.498].forEach(function (a) { var m = new M4().makeRotationY(-a).setPosition(Math.cos(a) * 4.6, 0, Math.sin(a) * 4.6);
     var gb = new THREE.BoxGeometry(.45, .1, 1.8); gb.translate(0, .5, 0); gb.applyMatrix4(m); JM.pieza(gb, [.62, .42, .26], null, .55);
     [-.65, .65].forEach(function (zz) { var gp = new THREE.BoxGeometry(.4, .45, .2); gp.translate(0, .25, zz); gp.applyMatrix4(m); JP.pieza(gp, Bc, null, .5); }); });
+  var JF = new M.Junta(), JL = new M.Junta(), JC = new M.Junta(), brillos = [], faroles = 0;
+  if (o.noche) [0, 1.571, 3.142, 4.712].forEach(function (a) { var fx = Math.cos(a) * 6.4, fz = Math.sin(a) * 6.4;   /* los faroles de poste de la plaza */
+    var gp = new THREE.CylinderGeometry(.06, .09, 3.0, 8); gp.translate(fx, 1.5, fz); JF.pieza(gp, [.18, .18, .2]);
+    var gt = new THREE.ConeGeometry(.3, .25, 4); gt.rotateY(Math.PI / 4); gt.translate(fx, 3.42, fz); JF.pieza(gt, [.18, .18, .2]);
+    var gl = new THREE.BoxGeometry(.3, .4, .3); gl.translate(fx, 3.12, fz); JL.pieza(gl, M.col('#ffd59a'));
+    var gc = new THREE.PlaneGeometry(3.6, 3.6);   /* dentro de la plaza: no se asoma hacia la pista */ gc.rotateX(-Math.PI / 2); gc.translate(fx, .14, fz); gc.userData.uvPropio = true; JC.pieza(gc, M.col('#ffd29a'));
+    brillos.push(fx, 3.12, fz); faroles++; });
   var y = o.alto(p0.x, p0.z) - .05, mt = new M4().makeTranslation(p0.x, y, p0.z), mallas = [];
   var agua = new THREE.MeshStandardMaterial({ color: '#4f86a6', roughness: .08, metalness: .2, envMap: o.env || null, envMapIntensity: 1 });
   var ga = new THREE.CylinderGeometry(1.82, 1.82, .05, 8); ga.translate(p0.x, y + .725, p0.z);   /* sobre la taza (que llega a 0,70): se ve el agua y el borde de piedra */
   [[JP, mats.piedra], [JM, mats.madera]].forEach(function (q) { var g = q[0].geometria(); g.applyMatrix4(mt); var m = new THREE.Mesh(g, q[1]); m.receiveShadow = true; m.castShadow = !baja; m.userData.pileta = true; E.add(m); mallas.push(m); });
   var ma = new THREE.Mesh(ga, agua); ma.userData.pileta = true; E.add(ma); mallas.push(ma);
-  return { x: p0.x, z: p0.z, mallas: mallas, ocupa: function (x, z) { return Math.hypot(x - p0.x, z - p0.z) < 7.6; } };
+  if (faroles) { [[JF, mats.fierro], [JL, mats.luz], [JC, matLuzAditiva(texCharcoRedondo(), .9)]].forEach(function (q) { var g = q[0].geometria(); g.applyMatrix4(mt); var m = new THREE.Mesh(g, q[1]); m.userData.pileta = true; E.add(m); mallas.push(m); });
+    var wb = []; for (var ib = 0; ib < brillos.length; ib += 3) wb.push(brillos[ib] + p0.x, brillos[ib + 1] + y, brillos[ib + 2] + p0.z); var pb = brilloPuntos(wb, 2.2); pb.userData.pileta = true; E.add(pb); mallas.push(pb); }
+  return { x: p0.x, z: p0.z, faroles: faroles, mallas: mallas, ocupa: function (x, z) { return Math.hypot(x - p0.x, z - p0.z) < 7.6; } };
 };
 
 /* ---------- Los Andes: las pircas del campo, muros bajos de piedra suelta a los dos lados (con sus aberturas) ---------- */
@@ -2563,7 +2611,8 @@ M.pista = function (E, mundo, o) {
     for (var a = -2; a <= 2; a++) for (var b = -2; b <= 2; b++) { var l = grilla[clave(kx + a, kz + b)]; if (!l) continue;
       for (var j = 0; j < l.length; j++) { var P = PS[l[j]], dx = P.x - x, dz = P.z - z, d = dx * dx + dz * dz; if (d < m) { m = d; mejor = l[j]; } } }
     return mejor; }
-  var URB = mundo.id === 'ciudad' || mundo.id === 'costa' || mundo.id === 'desierto' || mundo.id === 'sierra';   /* circuito urbano: casas (o murallas) en vez de muros de curva, vallas y flores del borde */
+  var ANDES = mundo.id === 'sierra' || mundo.id === 'noche';   /* Los Andes y la noche andina: el mismo pueblo (de noche, iluminado) */
+  var URB = mundo.id === 'ciudad' || mundo.id === 'costa' || mundo.id === 'desierto' || ANDES;   /* circuito urbano: casas (o murallas) en vez de muros de curva, vallas y flores del borde */
   var ondas = M.ruido(8, M.azar(mundo.id.length * 41 + 3)), INFO = {}, ORILLA = null;   /* INFO: lo emblemático de este lugar (CI.lugares) */
   if (mundo.id === 'costa') { var zMinP = 1e9; for (i = 0; i < K; i++) zMinP = Math.min(zMinP, PS[i].z); ORILLA = zMinP - 13.5; }   /* 3c: el mar de Huanchaco al lado de la largada */
   function campo(x, z) { var y = (ondas(x / 30 + 11, z / 30 + 5) - .5) * 3.2 * (1 - M.suave(48, 68, Math.hypot(x, z)));
@@ -2598,7 +2647,7 @@ M.pista = function (E, mundo, o) {
   var vLg = new V3();   /* (enLargada lo usa, y los andenes la llaman antes de la flora) */
   var CIUDAD = null, mVer = null, MALECON = null, PLAZA = null, IGLESIA = null, PILETA = null, PIRCAS = null, ANDENES = null, SP = L * .52;   /* SP: en Los Andes, hasta dónde llega el pueblo */
   if (URB && M.ciudad) {
-    var enPueblo = mundo.id === 'sierra' ? function (s) { return s < SP + 3 || s > L - 45; } : null;   /* en Los Andes, la vereda solo en el pueblo */
+    var enPueblo = ANDES ? function (s) { return s < SP + 3 || s > L - 45; } : null;   /* en Los Andes, la vereda solo en el pueblo */
     if (mundo.id !== 'desierto') { mVer = new THREE.MeshStandardMaterial({ color: mundo.id === 'costa' ? '#ddd7cb' : '#cfc7ba', roughness: .9 }); cinta(-W / 2 - 2.62, -W / 2 - .55, .14, mVer, 1.6, enPueblo); cinta(W / 2 + .55, W / 2 + 2.62, .14, mVer, 1.6, enPueblo); }
     var opC = { pos: pos, dir: dir, curva: curva, L: L, W: W, alto: altoSuelo, dist: lejosDePista, baja: baja, env: baja || !M.envCielo ? null : M.envCielo(mundo), sIni: 30, sFin: L - 40 };
     if (mundo.id === 'costa') {   /* Huanchaco: del lado del mar no hay casas sino el malecón */
@@ -2608,13 +2657,13 @@ M.pista = function (E, mundo, o) {
         return Math.min(q.a.z, q.b.z, q.a.z + q.Z.z * q.fondo, q.b.z + q.Z.z * q.fondo) < ORILLA + 16; };
     }
     if (mundo.id === 'desierto') { opC.plantilla = 'muralla'; opC.semilla = 515; }   /* Chan Chan: por dentro de la ciudadela */
-    if (mundo.id === 'sierra') { opC.plantilla = 'andina'; opC.semilla = 313; opC.sFin = SP; }   /* Los Andes: el pueblo hasta media vuelta; después, el campo */
+    if (ANDES) { opC.plantilla = 'andina'; opC.semilla = 313; opC.sFin = SP; opC.noche = mundo.id === 'noche'; }   /* Los Andes: el pueblo hasta media vuelta; después, el campo */
     CIUDAD = M.ciudad(E, mundo, opC);
     if (mundo.id === 'desierto' && M.plazaCeremonial) {   /* la plaza ceremonial con su rampa, del lado de afuera de la largada */
       var sPz = 12, lPz = Math.hypot(pos(sPz, 1).x, pos(sPz, 1).z) > Math.hypot(pos(sPz, -1).x, pos(sPz, -1).z) ? 1 : -1;
       PLAZA = M.plazaCeremonial(E, { pos: pos, dir: dir, W: W, alto: altoSuelo, dist: lejosDePista, baja: baja, mats: CIUDAD.mats, s: sPz, lado: lPz }); INFO.plaza = PLAZA; }
-    if (mundo.id === 'sierra' && M.iglesiaAndina) {   /* la iglesia frente a la largada (afuera), la plaza con su pileta enfrente; en el campo, pircas y un cerro con andenes */
-      var sIg = 18, lIg = Math.hypot(pos(sIg, 1).x, pos(sIg, 1).z) > Math.hypot(pos(sIg, -1).x, pos(sIg, -1).z) ? 1 : -1, opA = { pos: pos, dir: dir, W: W, L: L, alto: altoSuelo, dist: lejosDePista, baja: baja, mats: CIUDAD.mats, env: opC.env };
+    if (ANDES && M.iglesiaAndina) {   /* la iglesia frente a la largada (afuera), la plaza con su pileta enfrente; en el campo, pircas y un cerro con andenes */
+      var sIg = 18, lIg = Math.hypot(pos(sIg, 1).x, pos(sIg, 1).z) > Math.hypot(pos(sIg, -1).x, pos(sIg, -1).z) ? 1 : -1, opA = { pos: pos, dir: dir, W: W, L: L, alto: altoSuelo, dist: lejosDePista, baja: baja, mats: CIUDAD.mats, env: opC.env, noche: opC.noche };
       IGLESIA = M.iglesiaAndina(E, Object.assign({ s: sIg, lado: lIg }, opA)); PILETA = M.pileta(E, Object.assign({ s: sIg, lado: -(IGLESIA ? IGLESIA.lado : lIg) }, opA));   /* enfrente de donde quedó la iglesia */
       PIRCAS = M.pircas(E, Object.assign({ desde: SP + 5, hasta: L - 46 }, opA));
       ANDENES = M.andenes(E, Object.assign({ libre: function (x, z) { return !CIUDAD.ocupa(x, z) && !(IGLESIA && IGLESIA.ocupa(x, z)) && !(PILETA && PILETA.ocupa(x, z)) && !PIRCAS.ocupa(x, z) && !enLargada(x, z); } }, opA));
@@ -2633,7 +2682,7 @@ M.pista = function (E, mundo, o) {
     permitido: mundo.id === 'ciudad' ? function (x, z, d, sP) { return x * x + z * z < 576 || (sP >= 0 && (sP < 26 || sP > L - 36) && d > 9 && Math.hypot(x, z) < Math.hypot(PS[Math.floor(sP / ds) % K].x, PS[Math.floor(sP / ds) % K].z)); }
       : mundo.id === 'costa' && CIUDAD ? function (x, z) { return !CIUDAD.ocupa(x, z) && !(MALECON && MALECON.ocupa(x, z)); }
       : mundo.id === 'desierto' && CIUDAD ? function (x, z) { for (var a = -2; a <= 2; a += 2) for (var b = -2; b <= 2; b += 2) if (CIUDAD.ocupa(x + a, z + b)) return false; return !(PLAZA && PLAZA.ocupa(x, z)); }   /* Chan Chan: lejos de los muros (las copas de los algarrobos son anchas) y fuera de la plaza */
-      : mundo.id === 'sierra' && CIUDAD ? function (x, z) { for (var a = -2; a <= 2; a += 2) for (var b = -2; b <= 2; b += 2) if (CIUDAD.ocupa(x + a, z + b)) return false;
+      : ANDES && CIUDAD ? function (x, z) { for (var a = -2; a <= 2; a += 2) for (var b = -2; b <= 2; b += 2) if (CIUDAD.ocupa(x + a, z + b)) return false;
           return !(IGLESIA && IGLESIA.ocupa(x, z)) && !(PILETA && PILETA.ocupa(x, z)) && !(PIRCAS && PIRCAS.ocupa(x, z)) && !(ANDENES && ANDENES.ocupa(x, z)); }   /* Los Andes: fuera de las casas, la iglesia, la plaza, las pircas y los andenes */
       : null }) : null;   /* Huanchaco: fuera de las casas y de la pasarela */   /* Trujillo: la plaza y el lado de adentro de la largada */   /* en Huanchaco, el mar y la playa; en Trujillo, el monumento */
   var emblemas = M.lugares ? M.lugares(E, mundo, { cielo: cielo, alto: altoSuelo, baja: baja }) : null;   /* «lugares» ya es el nombre de los asientos de las tribunas */
@@ -2803,7 +2852,7 @@ M.pista = function (E, mundo, o) {
   function parReal(nombre, lista, sinRelieve) { var cC = null, cN = null;   /* color y relieve juntos (en r128 el relieve usa el repeat del color) */
     function poner() { if (!cC) return; lista.forEach(function (m) { cambiar(m, 'map', cC); if (m.userData.conMapa) m.userData.conMapa(m);   /* el material puede ajustar su color a la foto */ if (cN) { m.normalMap = cN; m.normalScale.set(.7, .7); } m.needsUpdate = true; }); }
     pedir(nombre, function (t) { cC = t; poner(); }); if (conRelieve && !sinRelieve) pedir(nombre + '-n', function (t) { cN = t; poner(); }); }
-  var texCiudad = !CIUDAD ? [] : mundo.id === 'desierto' ? ['adobe'] : mundo.id === 'costa' ? ['estuco', 'madera', 'cana'] : mundo.id === 'sierra' ? ['estuco', 'madera', 'tejas', 'inca'] : ['estuco', 'madera', 'tejas'];   /* Huanchaco: sin tejas, con caña; Chan Chan: el barro; Los Andes: también la piedra */
+  var texCiudad = !CIUDAD ? [] : mundo.id === 'desierto' ? ['adobe'] : mundo.id === 'costa' ? ['estuco', 'madera', 'cana'] : ANDES ? ['estuco', 'madera', 'tejas', 'inca'] : ['estuco', 'madera', 'tejas'];   /* Huanchaco: sin tejas, con caña; Chan Chan: el barro; Los Andes: también la piedra */
   if (CIUDAD) { texCiudad.forEach(function (n) { parReal(n, n === 'estuco' ? [CIUDAD.mats.muro, mVer] : n === 'adobe' ? [CIUDAD.mats.muro] : n === 'inca' ? [CIUDAD.mats.piedra] : [CIUDAD.mats[n]]); });
     if (mundo.id !== 'desierto') murosReal.push(CIUDAD.mats.muro); }   /* en Chan Chan, los muros reales son las murallas (su barro se mezcla con los frisos dibujados) */
   if (INFO.nevados && conRelieve) pedir('nieve-n', function (t) { var vie = INFO.nevados.material;   /* el repeat lo pone el color (en r128 todos usan el del map) */   /* 3c: los nevados, con el relieve de la nieve */
