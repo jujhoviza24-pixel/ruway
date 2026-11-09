@@ -826,7 +826,8 @@ M.suelo = function (E, mundo, o) {
      nevados ..... cordillera con nieve y un cerro con andenes
      mar ......... el mar de Huanchaco con su muelle y caballitos de totora parados en la playa
      dunas ....... dunas, cerros pálidos y algarrobos
-     catedral .... casonas de colores alrededor, la catedral amarilla, palmeras y faroles
+     catedral .... casonas de colores alrededor, la catedral amarilla, palmeras y faroles (en la carrera, la catedral
+                   la arma ciudad.js con su detalle: o.catedralAparte)
      cerrosNoche . cerros oscuros con lucecitas de pueblos
      arboles ..... árboles gigantes con raíces tablares, lianas, neblina y rayos de luz
    Lo que queda más allá de la neblina no la usa: trae el color del horizonte ya mezclado en sus
@@ -1079,7 +1080,8 @@ LEJOS.catedral = function (E, mundo, o) {
       im.receiveShadow = true; E.add(im);
     });
   });
-  /* la catedral: amarilla con blanco, dos torres campanario y la cúpula */
+  /* la catedral: amarilla con blanco, dos torres campanario y la cúpula (en la carrera la arma ciudad.js con su detalle: M.catedral) */
+  if (!o.catedralAparte) {
   var J = new M.Junta(), AM = M.col('#e9b949'), BL = M.col('#f4efe3'), cz = o.cz - o.medioZ - 9, cx = o.cx;
   J.caja(8, 4.6, 4, cx, 2.3, cz - 1, AM, null, .8); J.caja(8.4, .3, 4.2, cx, 4.65, cz - 1, BL, null, .8);
   J.caja(2.4, 3.2, .3, cx, 1.6, cz + 1.05, BL, null, .8); J.caja(1.4, 2.4, .32, cx, 1.2, cz + 1.12, M.col('#6d4528'), null, .8);
@@ -1098,6 +1100,7 @@ LEJOS.catedral = function (E, mundo, o) {
   if (o.catedralEn) { var ce = o.catedralEn; gCat.translate(-cx, 0, -cz).rotateY(ce.giro).translate(ce.x, ce.y || 0, ce.z); }   /* y en Trujillo, frente a la largada */
   var mCat = new THREE.Mesh(gCat, new THREE.MeshStandardMaterial({ vertexColors: true, map: M.texGrano(29, .14), roughness: .9 })); mCat.matrixAutoUpdate = false; mCat.castShadow = kc > 1 && !o.baja; E.add(mCat);
   if (o.info) o.info.catedral = mCat;
+  }
   /* palmeras de la plaza y faroles en las esquinas */
   var JT = new M.Junta(), JH = new M.Junta();
   [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) { palmera(JT, JH, o.cx + s[0] * (o.medioX + 2.2), o.cz + s[1] * (o.medioZ + 2.2), 3 + rnd() * .8, rnd); });
@@ -1520,7 +1523,7 @@ M.lugares = function (E, mundo, o) {
        celosía, sus canes y su techito de tejas), balcones abiertos con baranda y ventanas, alguna encendida;
      · faroles de pared encendidos y, cada tanto, una bocacalle: una calle que entra a la ciudad con sus casonas
        (con bolardos: el auto sigue por la pista);
-     · la largada no lleva casas: de un lado la catedral (lejos.js) y del otro la plaza.
+     · la largada no lleva casas: de un lado la catedral (M.catedral) y del otro la plaza.
    Las casonas salen de plantillas (largo × variante) que se arman una vez; cada tramo de la vuelta junta sus piezas por
    material en una sola malla (pocas llamadas de dibujo, y lo que no se ve se recorta). Hecho aquí, sin modelos de nadie.
 
@@ -1542,6 +1545,8 @@ M.lugares = function (E, mundo, o) {
    tablares y sus copas en bóveda sobre la pista), M.puenteMadera (vigas, barandas, pilotes y cabezales del puente) y M.canoas.
    9-nov: la noche andina, el mismo pueblo de noche (o.noche): ventanas y puertas encendidas, faroles con su charco de luz en
    la vereda, la iglesia iluminada y faroles en la plaza. Sin luces de verdad (cuestan en el celular): lo que brilla, brilla solo.
+   9-nov: la catedral de Trujillo con su detalle (M.catedral): la portada de dos cuerpos, las torres con su campanario abierto
+   y sus campanas, la nave con contrafuertes y la cúpula. Antes la hacía lejos.js con cajas lisas (el laberinto la sigue usando).
 
    M.ciudad(E, mundo, { pos, dir, L, W, alto(x,z), dist(x,z), baja, env, sIni, sFin, plantilla?, semilla?, saltar? })
      plantilla: 'casona' (Trujillo, la de siempre), 'playa' (Huanchaco), 'muralla' (Chan Chan) o 'andina' (Los Andes)
@@ -1549,7 +1554,9 @@ M.lugares = function (E, mundo, o) {
      → { tipo, modulos: [{s, d, alto, tipo, x, z}], cuenta, mallas, mats, ocupa(x,z), ms }
    M.plazaCeremonial(E, { pos, dir, W, alto(x,z), dist(x,z), baja, mats, s, lado }) → { x, z, rampa, mallas, ocupa(x,z) }
    M.malecon(E, { pos, yEn(s, off), L, W, lado, enMar(s), mats, baja, muelleX?, muelleY?, muelleAncho?, orilla? })
-     → { metros, faroles, mallas, ocupa(x,z), ms } */
+     → { metros, faroles, mallas, ocupa(x,z), ms }
+   M.catedral(E, { pos, dir, W, alto(x,z), dist(x,z), baja, mats, s, lado }) → { g, x, z, alto }
+     g: THREE.Group con userData { cuenta, vanos (rayos que cruzan cada campanario), puerta, ancho, ocupa(x,z), ms } */
 (function () {
 'use strict';
 var M = window.Mundos, M4 = THREE.Matrix4, V3 = THREE.Vector3;
@@ -2238,6 +2245,160 @@ M.iglesiaAndina = function (E, o) {
     ocupa: function (x, z) { var dx = x - A.p.x, dz = z - A.p.z, u = dx * A.xa.x + dz * A.xa.z, w = dx * A.n.x + dz * A.n.z; return Math.abs(u) < 12.5 && w > -6.5 && w < 28.5; } };
 };
 
+/* ---------- Trujillo: la catedral frente a la largada (9-nov, pedido del dueño: de cerca se veía simple) ----------
+   Amarilla con blanco, al estilo de la de Trujillo (hecha aquí, sin modelos de nadie). La fachada mira a la pista (-z) y el
+   edificio se va hacia atrás (+z), como la iglesia andina:
+     · la portada de dos cuerpos sobre tres gradas: la puerta de madera en arco (con su tímpano de vidrio y fierro) entre
+       cuatro columnas con pedestal, basa y capitel; el entablamento; la ventana del coro entre pilastras y dos hornacinas;
+       la cornisa y el remate curvo con su óculo, sus pináculos y la cruz;
+     · dos torres: el cuerpo bajo con pilastras en las esquinas y ventanas, la balaustrada, el campanario abierto (cuatro
+       arcos: se ve el cielo) con dos campanas de bronce colgadas de su viga, pináculos y el cupulín con linterna y cruz;
+     · la nave con contrafuertes, ventanas altas y su bóveda; la cúpula sobre su tambor con ventanas y pilastras, sus
+       nervios, la linterna y la cruz.
+   Con los materiales de la ciudad (estuco y madera reales). En los celulares flojos: sin balaustres, rejas ni tableros,
+   y con menos curvas. Si al frente de la largada no cabe, se aleja de la pista hasta que quepa. */
+M.catedral = function (E, o) {
+  var t0 = performance.now(), W2 = o.W / 2, baja = !!o.baja, mats = o.mats, sg = baja ? 5 : 10, sc = baja ? 8 : 14;
+  /* la foto del estuco y la de la madera oscurecen: el amarillo, el blanco y la madera de la puerta se aclaran (es la joya de la plaza) */
+  var AM = M.col('#e9b84a', 1.4), BL = M.col('#f6f2e8', 1.2), PI = M.col('#c4bdb1', 1.1), CAL = M.col('#ece6d8', 1.2), MAD = M.col('#a06a3e', 2.0), MAD2 = M.col('#7e5030', 2.0), BRO = M.col('#a8803e', 1.5), FI = M.col('#3a3632');
+  var J = { muro: new M.Junta(), madera: new M.Junta(), fierro: new M.Junta(), vidrio: new M.Junta() };
+  var cuenta = { columna: 0, puerta: 0, coro: 0, remate: 0, grada: 0, torre: 0, arco: 0, campana: 0, balaustre: 0, pinaculo: 0, cupulin: 0, cruz: 0, contrafuerte: 0, ventana: 0, tambor: 0, nervio: 0, linterna: 0 };
+  var V2 = THREE.Vector2, PERFIL_BAL = [[.075, 0], [.075, .06], [.1, .13], [.115, .24], [.08, .38], [.055, .48], [.075, .58], [.075, .66]].map(function (q) { return new V2(q[0], q[1]); });
+  var PERFIL_CAMP = [[.44, 0], [.39, .08], [.31, .2], [.27, .4], [.25, .6], [.22, .74], [.14, .8], [.001, .82]].map(function (q) { return new V2(q[0], q[1]); });
+  var ESQ = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  function pieza(k, g, col, m) { J[k].pieza(g, col || BL, m || null, UVK[k] || .5); }
+  function caja(k, w, h, d, x, y, z, col, m) { var g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); pieza(k, g, col, m); }
+  function cil(k, rt, rb, h, n, x, y, z, col) { var g = new THREE.CylinderGeometry(rt, rb, h, n); g.translate(x, y, z); pieza(k, g, col); }
+  function media(k, r, n, h, x, y, z, col) { var g = new THREE.SphereGeometry(r, n, h, 0, Math.PI * 2, 0, Math.PI / 2); g.translate(x, y, z); pieza(k, g, col); }
+  function giro(a, x, y, z) { return new M4().makeRotationY(a).setPosition(x, y, z); }
+  function extruir(s, d) { return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: sg }); }
+  /* las formas: el marco en arco (una U con su arco), el vano lleno (el vidrio) y la enjuta (el muro sobre un arco) */
+  function marco(wo, wi, h) { var s = new THREE.Shape(), ro = wo / 2, ri = wi / 2;
+    s.moveTo(-ro, 0); s.lineTo(-ro, h); s.absarc(0, h, ro, Math.PI, 0, true); s.lineTo(ro, 0); s.lineTo(ri, 0); s.lineTo(ri, h); s.absarc(0, h, ri, 0, Math.PI, false); s.lineTo(-ri, 0); return s; }
+  function lleno(w, h) { var s = new THREE.Shape(), r = w / 2; s.moveTo(-r, 0); s.lineTo(r, 0); s.lineTo(r, h); s.absarc(0, h, r, 0, Math.PI, false); s.lineTo(-r, 0); return s; }
+  function enjuta(a, h) { var s = new THREE.Shape(); s.moveTo(-a, 0); s.lineTo(-a, h); s.lineTo(a, h); s.lineTo(a, 0); s.absarc(0, 0, a, 0, Math.PI, false); return s; }
+  function remate(kx, ky) { var s = new THREE.Shape(); s.moveTo(-4.8 * kx, 0); s.lineTo(-4.8 * kx, .5 * ky); s.bezierCurveTo(-3.4 * kx, .5 * ky, -2.6 * kx, 1.1 * ky, -2.1 * kx, 2.0 * ky);
+    s.absellipse(0, 2.0 * ky, 2.1 * kx, 2.1 * ky, Math.PI, 0, true, 0); s.bezierCurveTo(2.6 * kx, 1.1 * ky, 3.4 * kx, .5 * ky, 4.8 * kx, .5 * ky); s.lineTo(4.8 * kx, 0); return s; }
+  /* una ventana en arco que mira a -z (m la lleva a su pared): marco blanco, vidrio, alféizar y (si no es floja) su reja */
+  function ventana(wi, h, mc, m, sinReja) { var f = extruir(marco(wi + mc * 2, wi, h), .2); f.translate(0, 0, -.2); pieza('muro', f, BL, m);
+    var v = new THREE.ShapeGeometry(lleno(wi, h), sg); v.rotateY(Math.PI); v.translate(0, 0, -.05); pieza('vidrio', v, BL, m);
+    caja('muro', wi + mc * 2 + .2, .14, .32, 0, -.07, -.16, BL, m);
+    if (!baja && !sinReja) { caja('fierro', .05, h + wi / 2 - .1, .05, 0, (h + wi / 2) / 2, -.07, FI, m); caja('fierro', wi, .05, .05, 0, h * .55, -.07, FI, m); } }
+  function pinaculo(x, y, z) { caja('muro', .44, .5, .44, x, y + .25, z, BL); var b = new THREE.SphereGeometry(.2, 8, 6); b.translate(x, y + .7, z); pieza('muro', b, BL);
+    var c = new THREE.ConeGeometry(.07, .4, 6); c.translate(x, y + 1.05, z); pieza('muro', c, BL); cuenta.pinaculo++; }
+
+  /* el faldón (no flota donde el suelo baja) y las tres gradas */
+  caja('muro', 20.6, 4.0, 20.0, 0, -2.0, 7.65, PI);
+  [[2.1, .09], [1.65, .27], [1.2, .45]].forEach(function (q) { caja('muro', 11.6, .18, q[0], 0, q[1], -q[0] / 2, PI); cuenta.grada++; });
+  /* la nave (su frente es la fachada del medio), el zócalo, las cornisas y la bóveda */
+  caja('muro', 11.0, 12.12, 17.4, 0, 6.06, 8.7, AM);
+  caja('muro', 11.0, .9, .14, 0, .45, -.07, PI); caja('muro', 11.28, .9, .14, 0, .45, 17.47, PI);
+  caja('muro', 11.8, .28, .5, 0, 11.76, 17.6, BL); caja('muro', 12.0, .2, .7, 0, 12.0, 17.65, BL);
+  var bv = new THREE.CylinderGeometry(5.5, 5.5, 17.0, baja ? 10 : 16, 1, false, Math.PI / 2, Math.PI); bv.rotateX(Math.PI / 2); bv.scale(1, .3, 1); bv.translate(0, 12.12, 8.7); pieza('muro', bv, CAL);
+  [-1, 1].forEach(function (l) {
+    caja('muro', .14, .9, 13.3, l * 5.57, .45, 10.85, PI);
+    caja('muro', .5, .28, 13.7, l * 5.6, 11.76, 10.75, BL); caja('muro', .7, .2, 13.9, l * 5.65, 12.0, 10.75, BL);
+    [5.0, 9.0, 13.0, 16.9].forEach(function (z) {   /* los contrafuertes, escalonados */
+      caja('muro', 1.1, .9, 1.0, l * 6.0, .45, z, PI); caja('muro', 1.0, 8.6, .9, l * 6.0, 4.3, z, AM); caja('muro', 1.12, .16, 1.02, l * 6.0, 8.68, z, BL);
+      caja('muro', .6, 1.8, .7, l * 5.8, 9.66, z, AM); caja('muro', .72, .14, .82, l * 5.8, 10.6, z, BL); cuenta.contrafuerte++; });
+    [7.0, 11.0, 15.0].forEach(function (z) { ventana(1.0, 1.6, .26, giro(-l * Math.PI / 2, l * 5.5, 7.6, z)); cuenta.ventana++; });   /* las ventanas altas */
+  });
+
+  /* la portada, primer cuerpo: la puerta en arco con su marco y su clave, el tímpano y las cuatro columnas */
+  var yP = .54, fP = extruir(marco(3.9, 3.0, 3.6), .32); fP.translate(0, yP, -.32); pieza('muro', fP, BL);
+  caja('muro', .5, .72, .44, 0, yP + 5.35, -.22, BL);
+  [-1, 1].forEach(function (l) { caja('madera', 1.48, 3.58, .08, l * .75, yP + 1.79, -.04, MAD);
+    if (!baja) for (var k = 0; k < 3; k++) caja('madera', 1.02, .9, .05, l * .75, yP + .62 + k * 1.15, -.1, MAD2); });   /* las dos hojas con sus tableros */
+  caja('madera', 3.0, .16, .12, 0, yP + 3.6, -.06, MAD2);   /* el dintel bajo el tímpano */
+  var ti = new THREE.CircleGeometry(1.5, sg * 2, 0, Math.PI); ti.rotateY(Math.PI); ti.translate(0, yP + 3.6, -.05); pieza('vidrio', ti, BL);
+  if (!baja) [-2, -1, 0, 1, 2].forEach(function (k) { var b = new THREE.BoxGeometry(.05, 1.45, .04); b.translate(0, .725, 0); b.rotateZ(k * Math.PI / 6); b.translate(0, yP + 3.6, -.07); pieza('fierro', b, FI); });
+  cuenta.puerta++;
+  [-3.55, -2.45, 2.45, 3.55].forEach(function (x) {
+    caja('muro', .74, 1.5, .74, x, yP + .75, -.55, BL); caja('muro', .84, .12, .84, x, yP + 1.56, -.55, BL);   /* el pedestal */
+    cil('muro', .33, .35, .18, sc, x, yP + 1.71, -.55, BL); cil('muro', .235, .27, 3.85, sc, x, yP + 3.725, -.55, BL);   /* la basa y el fuste */
+    cil('muro', .37, .25, .24, sc, x, yP + 5.77, -.55, BL); caja('muro', .8, .12, .8, x, yP + 5.95, -.55, BL); cuenta.columna++; });   /* el capitel */
+  caja('muro', 8.4, .34, 1.05, 0, 6.72, -.45, BL); caja('muro', 8.2, .42, .9, 0, 7.1, -.38, AM);   /* el entablamento */
+  caja('muro', 9.0, .2, 1.25, 0, 7.41, -.55, BL); caja('muro', 9.3, .12, 1.4, 0, 7.57, -.62, BL);
+  /* el segundo cuerpo: la ventana del coro entre pilastras, dos hornacinas y la cornisa */
+  ventana(1.5, 2.0, .38, giro(0, 0, 8.1, 0)); cuenta.coro++;
+  [-3.0, -1.75, 1.75, 3.0].forEach(function (x) { caja('muro', Math.abs(x) > 2 ? .5 : .38, 3.85, .2, x, 9.56, -.1, BL); });
+  [-1, 1].forEach(function (l) { ventana(.7, 1.0, .18, giro(0, l * 4.35, 8.5, 0), true); });
+  caja('muro', 11.4, .3, .8, 0, 11.75, -.25, BL); caja('muro', 11.8, .22, 1.0, 0, 12.01, -.35, BL);
+  /* el remate: curvo, amarillo con su borde blanco, el óculo, los pináculos y la cruz */
+  var yR = 12.12, fr = extruir(remate(1, 1), .3); fr.translate(0, yR, -.42); pieza('muro', fr, AM);
+  var fb = extruir(remate(1.07, 1.05), .3); fb.translate(0, yR, -.27); pieza('muro', fb, BL);
+  var oc = new THREE.TorusGeometry(.64, .1, 6, sg * 2); oc.translate(0, yR + 2.0, -.45); pieza('muro', oc, BL);
+  var ov = new THREE.CircleGeometry(.62, sg * 2); ov.rotateY(Math.PI); ov.translate(0, yR + 2.0, -.47); pieza('vidrio', ov, BL);   /* a 5 cm de la cara del remate (sin parpadeo de lejos) */
+  caja('muro', .44, .3, .44, 0, yR + 4.46, -.27, BL); caja('fierro', .12, 1.5, .12, 0, yR + 5.36, -.27, FI); caja('fierro', .76, .12, .12, 0, yR + 5.61, -.27, FI);
+  cuenta.cruz++; cuenta.remate++;
+  [-1, 1].forEach(function (l) { pinaculo(l * 4.9, yR, -.3); });
+
+  /* las dos torres */
+  [-1, 1].forEach(function (l) { var tx = l * 7.8, tz = 1.9;
+    caja('muro', 4.6, 12.12, 4.6, tx, 6.06, tz, AM); caja('muro', 4.76, .9, 4.76, tx, .45, tz, PI);
+    ESQ.forEach(function (q) { caja('muro', .6, 11.2, .6, tx + q[0] * 2.05, 6.5, tz + q[1] * 2.05, BL); });   /* las pilastras de las esquinas */
+    caja('muro', 4.8, .42, 4.8, tx, 7.1, tz, BL);
+    ventana(.8, 1.25, .25, giro(0, tx, 8.7, tz - 2.3)); ventana(.8, 1.25, .25, giro(-l * Math.PI / 2, tx + l * 2.3, 8.7, tz));
+    caja('muro', 4.95, .3, 4.95, tx, 11.75, tz, BL); caja('muro', 5.25, .22, 5.25, tx, 12.01, tz, BL);
+    /* la balaustrada (en los celulares flojos, un pretil) */
+    caja('muro', 4.75, .16, 4.75, tx, 12.2, tz, BL);
+    for (var c4 = 0; c4 < 4; c4++) { var mL = giro(c4 * Math.PI / 2, tx, 0, tz);
+      if (baja) caja('muro', 4.4, .7, .22, 0, 12.63, -2.2, BL, mL);
+      else for (var i = 0; i < 8; i++) { var bl = new THREE.LatheGeometry(PERFIL_BAL, 5); bl.translate(-1.75 + i * .5, 12.28, -2.2); pieza('muro', bl, BL, mL); cuenta.balaustre++; }
+      caja('muro', 4.6, .14, .28, 0, 13.01, -2.2, BL, mL); }
+    if (!baja) ESQ.forEach(function (q) { caja('muro', .36, .8, .36, tx + q[0] * 2.2, 12.68, tz + q[1] * 2.2, BL);
+      var b = new THREE.SphereGeometry(.16, 8, 6); b.translate(tx + q[0] * 2.2, 13.22, tz + q[1] * 2.2); pieza('muro', b, BL); cuenta.pinaculo++; });
+    /* el campanario abierto: cuatro pilares, cuatro arcos con su arquivolta, la viga y dos campanas de bronce */
+    caja('muro', 3.6, .15, 3.6, tx, 12.36, tz, CAL);
+    ESQ.forEach(function (q) { caja('muro', .85, 4.47, .85, tx + q[0] * 1.375, 14.515, tz + q[1] * 1.375, AM); caja('muro', .95, .14, .95, tx + q[0] * 1.375, 14.93, tz + q[1] * 1.375, BL); });
+    for (c4 = 0; c4 < 4; c4++) { var mC = giro(c4 * Math.PI / 2, tx, 15.0, tz);
+      var en = extruir(enjuta(.95, 1.75), .5); en.translate(0, 0, -1.8); pieza('muro', en, AM, mC);
+      var av = new THREE.TorusGeometry(1.0, .075, 4, sg + 2, Math.PI); av.translate(0, 0, -1.82); pieza('muro', av, BL, mC); cuenta.arco++; }
+    caja('muro', 3.6, .25, 3.6, tx, 16.63, tz, AM); caja('madera', 3.0, .2, .2, tx, 16.3, tz, MAD2);
+    [-1, 1].forEach(function (k) { var cp = new THREE.LatheGeometry(PERFIL_CAMP, baja ? 7 : 12); cp.translate(tx + k * .72, 15.38, tz); pieza('fierro', cp, BRO);
+      var bo = new THREE.CircleGeometry(.4, 10); bo.rotateX(Math.PI / 2); bo.translate(tx + k * .72, 15.43, tz); pieza('fierro', bo, FI); cuenta.campana++; });
+    /* la cornisa, los pináculos y el cupulín con su linterna y su cruz */
+    caja('muro', 4.0, .26, 4.0, tx, 16.88, tz, BL); caja('muro', 4.3, .2, 4.3, tx, 17.11, tz, BL);
+    ESQ.forEach(function (q) { pinaculo(tx + q[0] * 1.85, 17.21, tz + q[1] * 1.85); });
+    cil('muro', 1.3, 1.36, .8, 8, tx, 17.61, tz, AM); cil('muro', 1.48, 1.48, .14, 8, tx, 18.08, tz, BL);
+    media('muro', 1.38, baja ? 10 : 16, baja ? 4 : 7, tx, 18.15, tz, BL);
+    cil('muro', .3, .3, .62, 8, tx, 19.75, tz, BL); media('muro', .34, 8, 4, tx, 20.06, tz, BL);
+    caja('fierro', .09, 1.0, .09, tx, 20.85, tz, FI); caja('fierro', .5, .09, .09, tx, 21.05, tz, FI);
+    cuenta.cupulin++; cuenta.cruz++; cuenta.torre++; });
+
+  /* la cúpula: su base, el tambor con pilastras y ventanas, la cornisa, la media naranja con sus nervios y la linterna */
+  var zc = 12.4;
+  caja('muro', 7.2, 1.7, 7.2, 0, 12.97, zc, AM); caja('muro', 7.6, .24, 7.6, 0, 13.94, zc, BL);
+  cil('muro', 3.0, 3.0, 2.2, 16, 0, 15.16, zc, AM);   /* 16 caras también en los flojos: las ventanas y pilastras quedan pegadas al tambor */
+  for (var k8 = 0; k8 < 8; k8++) { var a8 = k8 * Math.PI / 4;
+    var pl = new THREE.BoxGeometry(.34, 2.2, .18); pl.translate(0, 0, 3.04); pl.rotateY(a8 + Math.PI / 8); pl.translate(0, 15.16, zc); pieza('muro', pl, BL);
+    var mv = new THREE.BoxGeometry(.72, 1.3, .05); mv.translate(0, 0, 3.02); mv.rotateY(a8); mv.translate(0, 15.1, zc); pieza('muro', mv, BL);
+    var vv = new THREE.BoxGeometry(.5, 1.05, .06); vv.translate(0, 0, 3.05); vv.rotateY(a8); vv.translate(0, 15.1, zc); pieza('vidrio', vv, BL); cuenta.tambor++;
+    var nv = new THREE.TorusGeometry(3.13, .085, 4, baja ? 5 : 10, Math.PI / 2); nv.rotateY(a8); nv.translate(0, 16.56, zc); pieza('muro', nv, BL); cuenta.nervio++; }
+  cil('muro', 3.26, 3.2, .3, 16, 0, 16.41, zc, BL);
+  media('muro', 3.1, baja ? 14 : 24, baja ? 6 : 10, 0, 16.56, zc, AM);
+  cil('muro', .62, .66, 1.2, 8, 0, 20.05, zc, BL); cil('muro', .76, .76, .12, 8, 0, 20.71, zc, BL); media('muro', .66, 10, 4, 0, 20.77, zc, AM);
+  if (!baja) for (var k4 = 0; k4 < 4; k4++) { var lv = new THREE.BoxGeometry(.2, .62, .04); lv.translate(0, 0, .64); lv.rotateY(k4 * Math.PI / 2 + Math.PI / 4); lv.translate(0, 20.05, zc); pieza('vidrio', lv, BL); }
+  caja('fierro', .1, 1.2, .1, 0, 22.0, zc, FI); caja('fierro', .6, .1, .1, 0, 22.2, zc, FI); cuenta.linterna++; cuenta.cruz++;
+
+  /* dónde va: frente a la largada, del lado pedido; si no cabe sin acercarse a la pista, más atrás */
+  function sitio(l, lej) { var p0 = o.pos(o.s, l * (1 + lej / W2)), d = o.dir(o.s), n = new V3(-d.z * l, 0, d.x * l), xa = new V3(n.z, 0, -n.x), ok = true;
+    [[-10.4, -2.3], [10.4, -2.3], [-10.4, 17.7], [10.4, 17.7], [0, 8], [-10.4, 8], [10.4, 8], [0, -2.3]].forEach(function (q) { if (o.dist(p0.x + xa.x * q[0] + n.x * q[1], p0.z + xa.z * q[0] + n.z * q[1]) < W2 + 3.5) ok = false; });
+    return { p: p0, n: n, xa: xa, ok: ok }; }
+  var A = sitio(o.lado || 1, 7.5); [9.5, 11.5, 14].some(function (lj) { if (A.ok) return true; A = sitio(o.lado || 1, lj); return A.ok; });   /* si ninguno cabe, queda el más lejano */
+  var y = o.alto(A.p.x - A.n.x * 2.6, A.p.z - A.n.z * 2.6) - .04, mt = new M4().makeBasis(A.xa, new V3(0, 1, 0), A.n).setPosition(A.p.x, y, A.p.z);
+  var grupo = new THREE.Group();
+  Object.keys(J).forEach(function (k) { if (!J[k].base) return; var g = J[k].geometria(k === 'muro' ? { oscuroAbajo: [.8, 1.3] } : null); g.applyMatrix4(mt);
+    var m = new THREE.Mesh(g, mats[k]); m.castShadow = !baja && k === 'muro'; m.receiveShadow = k !== 'vidrio'; m.matrixAutoUpdate = false; m.userData.parte = k; m.userData.catedral = true; grupo.add(m); });
+  E.add(grupo);
+  function enMundo(x, yy, z) { return new V3(x, yy, z).applyMatrix4(mt); }
+  var vanos = []; [-1, 1].forEach(function (l) { var c = enMundo(l * 7.8, 15.55, 1.9); vanos.push({ x: c.x, y: c.y, z: c.z, dx: A.n.x, dz: A.n.z }, { x: c.x, y: c.y, z: c.z, dx: A.xa.x, dz: A.xa.z }); });
+  var pu = enMundo(0, 2.3, -.1), ce = enMundo(0, 0, 7.6);
+  grupo.userData = { catedral: true, cuenta: cuenta, vanos: vanos, puerta: { x: pu.x, z: pu.z }, ancho: 20.2, ms: Math.round(performance.now() - t0),
+    ocupa: function (x, z) { var dx = x - A.p.x, dz = z - A.p.z, u = dx * A.xa.x + dz * A.xa.z, w = dx * A.n.x + dz * A.n.z; return Math.abs(u) < 10.6 && w > -2.6 && w < 18; } };
+  return { g: grupo, x: ce.x, z: ce.z, alto: 22.6 };
+};
+
 /* ---------- Los Andes: la pileta de la plaza, con sus bancas ---------- */
 M.pileta = function (E, o) {
   var W2 = o.W / 2, baja = !!o.baja, mats = o.mats, l = o.lado || 1;
@@ -2793,7 +2954,8 @@ M.pista = function (E, mundo, o) {
   if (mundo.id === 'ciudad') { var sC = 18, pO = pos(sC, 1), pI = pos(sC, -1), lo = Math.hypot(pO.x, pO.z) > Math.hypot(pI.x, pI.z) ? 1 : -1, pc = pos(sC, lo * (1 + 10 / (W / 2))), dC = dir(sC);
     catEn = { x: pc.x, z: pc.z, y: altoSuelo(pc.x, pc.z) - .2, giro: Math.atan2(dC.z * lo, -dC.x * lo) }; }   /* la catedral mira a la pista, por fuera de la largada */
   var lejos = M.lejos(E, mundo, { cx: 0, cz: 0, medioX: mundo.id === 'selva' ? 86 : 70, medioZ: mundo.id === 'selva' ? 86 : 67, libre: libre, copasDesde: 77, hundir: 9,
-    orilla: ORILLA, olas: mundo.id === 'costa', baja: baja, muelle: 1.6, faroles: true, escalaCatedral: 2, catedralEn: catEn, escalaCasonas: mundo.id === 'ciudad' ? 2.2 : 1, info: INFO });   /* 3c: el mar con olas, el muelle grande y la catedral grande (solo la carrera los pide) */   /* los árboles gigantes, lejos de la cámara */
+    orilla: ORILLA, olas: mundo.id === 'costa', baja: baja, muelle: 1.6, faroles: true, escalaCatedral: 2, catedralEn: catEn, escalaCasonas: mundo.id === 'ciudad' ? 2.2 : 1, info: INFO,   /* 3c: el mar con olas, el muelle grande y la catedral grande (solo la carrera los pide) */   /* los árboles gigantes, lejos de la cámara */
+    catedralAparte: mundo.id === 'ciudad' && !!(M.ciudad && M.catedral) });   /* 9-nov: en Trujillo, la catedral con su detalle la arma ciudad.js (más abajo) */
   var vidaG = new THREE.Group(), vida = M.vida ? M.vida(vidaG, mundo, { cx: 0, cz: 0, w: 14, h: 14 }) : null; E.add(vidaG);
   /* ---------- el circuito urbano (ciudad.js): Trujillo (casonas), Huanchaco (casas de playa y el malecón) y Chan Chan (murallas,
      con la plaza ceremonial). Veredas a los dos lados, menos en Chan Chan (ahí el barro llega a la pista) ---------- */
@@ -2842,6 +3004,8 @@ M.pista = function (E, mundo, o) {
       PIRCAS = M.pircas(E, Object.assign({ desde: SP + 5, hasta: L - 46 }, opA));
       ANDENES = M.andenes(E, Object.assign({ libre: function (x, z) { return !CIUDAD.ocupa(x, z) && !(IGLESIA && IGLESIA.ocupa(x, z)) && !(PILETA && PILETA.ocupa(x, z)) && !PIRCAS.ocupa(x, z) && !enLargada(x, z); } }, opA));
       if (IGLESIA) INFO.iglesia = IGLESIA; if (PILETA) INFO.pileta = PILETA; INFO.pircas = PIRCAS; INFO.andenes = ANDENES; }
+    if (mundo.id === 'ciudad' && M.catedral)   /* Trujillo: la catedral frente a la largada, del lado de afuera (sC y lo, de más arriba; adentro queda la plaza) */
+      INFO.catedral = M.catedral(E, { pos: pos, dir: dir, W: W, alto: altoSuelo, dist: lejosDePista, baja: baja, mats: CIUDAD.mats, s: sC, lado: lo }).g;
     if (mundo.id === 'selva' && RIO && M.puenteMadera) {   /* el puente de tablas sobre el río, el agua, las canoas y, del otro lado de la vuelta, el túnel de selva */
       var s0P = RIO.s - 11, s1P = RIO.s + 11, eP = W / 2 + 2.85;
       matTablas = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: .85 }); matTablas.userData.conMapa = function (m) { m.color.setScalar(1.6); };
