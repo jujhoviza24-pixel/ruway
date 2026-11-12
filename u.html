@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v46">
+<meta name="ruway-version" content="v47">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -1889,11 +1889,21 @@ function traer(par, ok, mal) {
         return true;
       }catch(e){ return false; }
     }
+    /* La película va solo la primera vez que se abre CADA regalo en este teléfono: al volver, directo
+       a la portada. Se anota cuando se vio (entera o saltada), por código; otro regalo la muestra. */
+    var VISTA='ruway:intro:vista';
+    function codigo(){ var m=/[?&](?:c|rcod)=([A-Za-z0-9]{4,10})(?:&|$)/.exec(String(location.search||'')); return m?m[1].toUpperCase():''; }
+    function vistas(){ try{ var v=JSON.parse(localStorage.getItem(VISTA)||'{}'); return v&&typeof v==='object'&&!Array.isArray(v)?v:{}; }catch(e){ return {}; } }
+    function yaLaVio(){ var c=codigo(); return !!(c && vistas()[c]); }
+    function anotar(){ var c=codigo(); if(!c) return; try{ var v=vistas(); v[c]=Date.now(); var k=Object.keys(v);
+        if(k.length>40){ k.sort(function(a,b){ return (+v[a]||0)-(+v[b]||0); }); k.slice(0,k.length-40).forEach(function(x){ delete v[x]; }); }
+        localStorage.setItem(VISTA,JSON.stringify(v)); }catch(e){} }
     function webgl(){ try{ var c=document.createElement('canvas'); return !!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl'))); }catch(e){ return false; } }
     function calma(){ try{ return matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){ return false; } }
     function quitarPre(){ if(!pre) return; var p=pre; pre=null; p.style.opacity='0'; setTimeout(function(){ if(p.parentNode) p.parentNode.removeChild(p); },400); }
     function terminar(i){
       if(estado==='fin') return; estado='fin'; info=i||{como:'nada'}; ctl=null; quitarPre();
+      if(/^(completa|saltada|sencilla)$/.test(String(info.como))) anotar();
       var l=fins; fins=[]; cubres=[]; l.forEach(function(f){ try{ f(info); }catch(e){} });
     }
     function cubrir(d){ var l=cubres; cubres=[]; l.forEach(function(f){ try{ f(d); }catch(e){} }); }
@@ -1939,6 +1949,9 @@ function traer(par, ok, mal) {
       arrancar:function(){
         if(estado!=='nada') return estado!=='fin';
         if(!quiere()){ terminar({como:'apagada'}); return false; }
+        /* si viene de la otra página (u.html ⇄ x.html) a medio ver, sigue aunque ya esté anotada */
+        var sigue=false; try{ var s0=JSON.parse(sessionStorage.getItem(SS)||'null'); sigue=!!(s0 && Date.now()-(+s0.at||0)<20000); }catch(e){}
+        if(!sigue && yaLaVio()){ terminar({como:'vista'}); return false; }
         estado='cargando';
         try{ var s=JSON.parse(sessionStorage.getItem(SS)||'null'); sessionStorage.removeItem(SS);
           if(s && Date.now()-(+s.at||0)<20000) desde=Math.max(0,Math.min(10.5,+s.t||0));   /* como mucho, desde la flor ya abierta */ }catch(e){}
@@ -2024,6 +2037,9 @@ function comoSeAbre(t){
   return 'Este regalo se abre '+(nombre||('el '+fechaBonita(t)));
 }
 
+/* «Tu hijo», escrito como firma, en medio de una frase va en minúscula: «Te lo preparó tu hijo». */
+function enFrase(s){ s=String(s||'').trim(); return /^(Tu|Tus|Su|Sus|Mi|Mis)\s/.test(s)?s.charAt(0).toLowerCase()+s.slice(1):s; }
+
 function esperarApertura(d){
   var t=d.tema||{};
   var r=document.documentElement.style;
@@ -2042,8 +2058,8 @@ function esperarApertura(d){
   document.getElementById('esp-para').textContent=d.para?('Para '+d.para):'Un regalo para ti';
   document.getElementById('esp-txt').textContent=comoSeAbre(d.abre);
   document.getElementById('esp-vuelve').textContent=
-    'Vuelve a este enlace el '+fechaBonita(d.abre)+' desde las 12 de la noche. '
-    +(d.de?'Te lo preparó '+d.de+' con mucho cariño.':'Alguien te lo preparó con mucho cariño.');
+    'Vuelve a este enlace el '+fechaBonita(d.abre)+': se abre apenas empieza ese día, a las 00:00. '
+    +(d.de?'Te lo preparó '+enFrase(d.de)+' con mucho cariño.':'Alguien te lo preparó con mucho cariño.');
 
   var fin=performance.now()+Math.max(0,Number(d.faltan)||0);
   var dos=function(n){return (n<10?'0':'')+n;};
