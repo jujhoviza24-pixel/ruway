@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v47">
+<meta name="ruway-version" content="v48">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -863,7 +863,8 @@ function traer(par, ok, mal) {
   };
   /* la línea de la mochila que dice a quién despierta cada logro (el secreto no se nombra) */
   function amigosDe(logroId,si){ var p=null; PAREJAS.forEach(function(x){ if(x.logro===logroId) p=x; }); if(!p||!p.ids.length) return '';
-    var t=p.secreto&&!si?'Despierta a alguien secreto':(si?'✨ Despertaron: ':'Despierta a: ')+p.nom; return '<small class="rn-am">'+t+'</small>'; }
+    /* «Despierta a: Tika y Sami» no decía quiénes eran: son amigos nuevos para jugar (personajes que se abren) */
+    var t=p.secreto&&!si?'Despierta a alguien secreto para jugar':(si?'✨ Despertaron: '+p.nom+'. Ya puedes jugar con ellos':'Despierta a: '+p.nom+', amigos nuevos para jugar'); return '<small class="rn-am">'+t+'</small>'; }
   /* lo que ya se había ganado en este regalo antes de que existieran los desbloqueos también cuenta */
   function desbAlDia(){ if(P&&!TONO) Object.keys(P.logros).forEach(function(id){ desbloquear(id); }); }
 
@@ -1078,7 +1079,9 @@ function traer(par, ok, mal) {
   function subirM(){ var b=PR.baja; if(!b) return; PR.baja=null; try{ b.m.volume=b.vol; }catch(e){} if(b.paro){ try{ var p=b.m.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){} } }
   function sonarP(musica){ var a=elP(); dice('Preparando su voz…');
     function poner(u){ if(PR.capa==null) return; if(a.src!==u) a.src=u; try{ a.currentTime=0; }catch(e){} var m=typeof musica==='function'?musica():musica; bajarM(m);
-      try{ var p=a.play(); if(p&&p.then) p.then(function(){ ondaP(true); }); if(p&&p.catch) p.catch(function(){ subirM(); dice('Toca ▶ para escucharlo'); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='▶ Escuchar'; }); }catch(e){} }
+      /* el error va en el MISMO then: con un .catch aparte, la cadena del then quedaba sin atender y, si
+         se pausaba enseguida («Seguir» apenas abierto el cofre), salía un error suelto en la página */
+      try{ var p=a.play(); if(p&&p.then) p.then(function(){ ondaP(true); },function(){ subirM(); dice('Toca ▶ para escucharlo'); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='▶ Escuchar'; }); }catch(e){} }
     if(D.vozId) traerA('voz',null,function(r){ poner(r.url); },function(){ PR.cargando=false; dice('Su mensaje no cargó. Toca para intentar otra vez'); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='↻ Intentar otra vez'; });
     else if(D.voz) poner(String(D.voz)); }
   function cerrarP(){ clearTimeout(PR.esc); PR.fin=null; if(PR.el){ try{ PR.el.pause(); }catch(e){} } subirM(); if(PR.capa){ PR.capa.remove(); PR.capa=null; } }
