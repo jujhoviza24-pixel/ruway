@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v48">
+<meta name="ruway-version" content="v49">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -817,7 +817,7 @@ function traer(par, ok, mal) {
   var CALLADOS={primero:1,todos:1,fin:1};
   function logro(id){ if(!P||P.logros[id]) return; var l=LOGROS.filter(function(x){ return x.id===id; })[0]; if(!l) return;
     P.logros[id]=Date.now(); guardar(); var amigos=desbloquear(id);
-    if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',amigos?'¡Despiertan '+amigos+'!':l.txt); }
+    if(CALLADOS[id]||PR.capa){ latir(); return; } toast(l.ic,'¡Desbloqueaste: '+l.nom+'!',amigos?'¡'+amigos+(/ (y|e) /.test(amigos)?' ya pueden':' ya puede')+' jugar contigo!':l.txt); }   /* «¡Despiertan Rumi y Chaska!» no decía qué era; Atuq va solo */
 
   /* ---- los amigos que despiertan (personajes que se desbloquean) ----
      Con quién se juega se elige en el teléfono (ruway:pj), no en el regalo; por eso lo que se
@@ -864,7 +864,14 @@ function traer(par, ok, mal) {
   /* la línea de la mochila que dice a quién despierta cada logro (el secreto no se nombra) */
   function amigosDe(logroId,si){ var p=null; PAREJAS.forEach(function(x){ if(x.logro===logroId) p=x; }); if(!p||!p.ids.length) return '';
     /* «Despierta a: Tika y Sami» no decía quiénes eran: son amigos nuevos para jugar (personajes que se abren) */
-    var t=p.secreto&&!si?'Despierta a alguien secreto para jugar':(si?'✨ Despertaron: '+p.nom+'. Ya puedes jugar con ellos':'Despierta a: '+p.nom+', amigos nuevos para jugar'); return '<small class="rn-am">'+t+'</small>'; }
+    var t=p.secreto&&!si?'Despierta a alguien secreto para jugar':(si?'✨ Despertaron: '+p.nom+'. Ya puedes jugar con ellos':'Despierta a: '+p.nom+', amigos nuevos para jugar');
+    return '<small class="rn-am">'+(p.secreto&&!si?'':caras(p.ids))+t+'</small>'; }
+  /* sus caritas, si la página las tiene (x.html da window.__retratoRuway: la tira av-retratos.webp); los nombres solos
+     no decían quiénes eran (cliente de prueba, ronda 2) */
+  function caras(ids){ var f=window.__retratoRuway; if(typeof f!=='function') return ''; var h='';
+    ids.forEach(function(id){ var r=null; try{ r=f(id); }catch(e){} if(!r||!r.url) return;
+      var pos=r.n>1?r.k/(r.n-1)*100:0; h+='<i class="rn-cara" style="background-image:url(\''+String(r.url).replace(/['"()\\\s<>]/g,function(c){ return '%'+c.charCodeAt(0).toString(16).toUpperCase(); })+'\');background-size:'+(r.n*100)+'% 100%;background-position:'+pos+'% 0"></i>'; });
+    return h?'<span class="rn-caras">'+h+'</span>':''; }
   /* lo que ya se había ganado en este regalo antes de que existieran los desbloqueos también cuenta */
   function desbAlDia(){ if(P&&!TONO) Object.keys(P.logros).forEach(function(id){ desbloquear(id); }); }
 
@@ -1073,7 +1080,7 @@ function traer(par, ok, mal) {
     a.addEventListener('ended',function(){ if(a.src===SILENCIO) return; ondaP(false); subirM(); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b) b.textContent='▶ Escuchar otra vez'; dice('Escúchalo otra vez cuando quieras'); });
     return a; }
   function dice(t){ var e=PR.capa&&PR.capa.querySelector('.rn-pr-est'); if(e) e.textContent=t; }
-  function ondaP(si){ var o=PR.capa&&PR.capa.querySelector('.rn-onda'); if(o) o.classList.toggle('suena',!!si); var ob=PR.capa&&PR.capa.querySelector('.rn-orbe'); if(ob) ob.classList.toggle('suena',!!si); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b&&si) b.textContent='⏸ Pausar'; if(si) dice('Escuchando su voz'); }
+  function ondaP(si){ var o=PR.capa&&PR.capa.querySelector('.rn-onda'); if(o) o.classList.toggle('suena',!!si); var ob=PR.capa&&PR.capa.querySelector('.rn-orbe'); if(ob) ob.classList.toggle('suena',!!si); var b=PR.capa&&PR.capa.querySelector('#rn-otra'); if(b&&si) b.textContent='⏸ Pausar'; if(si) dice('🔊 ¿No la oyes? Sube el volumen'); }   /* con el celular en silencio solo se veían las rayitas moverse (las rayitas ya dicen que suena) */
   /* la canción baja mientras habla la voz; donde el volumen no se deja tocar (iPhone), se pausa */
   function bajarM(m){ if(!m||m.paused||PR.baja) return; PR.baja={m:m,vol:m.volume}; try{ m.volume=.18; }catch(e){} if(Math.abs(m.volume-.18)>.02){ PR.baja.paro=true; m.pause(); } }
   function subirM(){ var b=PR.baja; if(!b) return; PR.baja=null; try{ b.m.volume=b.vol; }catch(e){} if(b.paro){ try{ var p=b.m.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){} } }
@@ -1695,6 +1702,7 @@ function traer(par, ok, mal) {
    +'.rn-barra{height:10px;border-radius:9px;background:#EADBC6;overflow:hidden;margin:12px 0 4px}.rn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--rn-sol),var(--rn-rojo))}'
    +'.rn-log{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:#fff;margin-bottom:7px}.rn-log i{font-style:normal;font-size:24px}.rn-log.no{opacity:.45;filter:grayscale(1)}'
    +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}.rn-log small.rn-am{display:block;margin-top:3px;font-weight:800;color:#B25C84}'
+   +'.rn-caras{display:inline-flex;gap:3px;vertical-align:middle;margin-right:6px}.rn-cara{display:inline-block;width:28px;height:28px;border-radius:50%;background-color:#FFF1DA;background-repeat:no-repeat;box-shadow:0 0 0 1.5px #EBC7D9}'
    +'.rn-cerrar{display:block;width:100%;margin-top:12px;border:none;border-radius:999px;padding:13px;background:var(--rn-verde);color:#fff;font:800 15px "Baloo 2",sans-serif}'
    +'.rn-pie{text-align:center;color:#B3A58F;font-size:11px;margin-top:10px;letter-spacing:.2em}'
    +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
