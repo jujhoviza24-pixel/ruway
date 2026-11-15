@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v49">
+<meta name="ruway-version" content="v50">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -810,6 +810,8 @@ function traer(par, ok, mal) {
       o.type='sine'; o.frequency.value=f; v.gain.setValueAtTime(.06,t); v.gain.exponentialRampToValueAtTime(.0001,t+.35); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t+.36); }); }catch(e){} }
   function toast(ic,t,sub){ if(TONO) return; estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
     d.querySelector('i').textContent=ic; d.querySelector('b').textContent=t; d.querySelector('small').textContent=sub||''; document.body.appendChild(d);
+    /* en los juegos con ♪ y 🔊 arriba a la izquierda, el aviso sale debajo de ellos y sin llegar a los costados (tapaba 🔊; rondas 2 y 3) */
+    var so=document.querySelector('.sonidos'); if(so && !so.hidden){ var rs=so.getBoundingClientRect(); if(rs.height){ d.style.top=Math.round(rs.bottom+8)+'px'; d.style.maxWidth='calc(100vw - 150px)'; } }
     requestAnimationFrame(function(){ d.classList.add('on'); }); setTimeout(function(){ d.classList.remove('on'); setTimeout(function(){ d.remove(); },500); },3200); tin(); }
   /* Los logros se anotan siempre (la mochila los muestra), pero el aviso nunca sale encima de una
      foto ni del final: el primer recuerdo, el último y el final son momentos de la foto y de sus
@@ -1649,7 +1651,7 @@ function traer(par, ok, mal) {
         ui.txt('Grabando tu video · déjalo terminar'); var ini=0;
         (function cuadro(ahora){ if(fallo){ try{ rec.stop(); }catch(e){} return; } if(!ini) ini=ahora; var t=(ahora-ini)/1000;
           try{ comp.cuadro(t); }catch(e){ try{ rec.stop(); }catch(e2){} return; } if(pista) pista.requestFrame();
-          var pc=Math.min(100,Math.floor(t*100/G.total)); ui.pc(pc); if(pc%5===0) ui.ver(comp.lienzo); ui.txt('Grabando tu video · '+Math.max(1,Math.ceil(G.total-t))+' s');
+          var pc=Math.min(100,Math.floor(t*100/G.total)); ui.pc(pc); if(pc%5===0) ui.ver(comp.lienzo); ui.txt('Grabando tu video · faltan '+Math.max(1,Math.ceil(G.total-t))+' s');   /* «· 27 s» no decía si era lo que faltaba */
           if(t>=G.total){ try{ rec.stop(); }catch(e){} return; } raf=requestAnimationFrame(cuadro); })(performance.now());
         rec.start(); }
       /* el sonido para el grabado en vivo se decodifica con el mezclador despierto */
@@ -1702,10 +1704,18 @@ function traer(par, ok, mal) {
    +'.rn-barra{height:10px;border-radius:9px;background:#EADBC6;overflow:hidden;margin:12px 0 4px}.rn-barra i{display:block;height:100%;background:linear-gradient(90deg,var(--rn-sol),var(--rn-rojo))}'
    +'.rn-log{display:flex;gap:10px;align-items:center;padding:10px;border-radius:14px;background:#fff;margin-bottom:7px}.rn-log i{font-style:normal;font-size:24px}.rn-log.no{opacity:.45;filter:grayscale(1)}'
    +'.rn-log b{display:block;font:800 14px "Baloo 2",sans-serif}.rn-log small{color:#8A7A66;font-size:12px}.rn-log small.rn-am{display:block;margin-top:3px;font-weight:800;color:#B25C84}'
+   /* «Seguir» de la mochila siempre a la vista: con Logros largo quedaba al fondo y el primer toque no cerraba (rondas 3 de carrera y árbol) */
+   +'#rn-mochila .rn-hoja>.rn-cerrar{position:sticky;bottom:0;z-index:2;box-shadow:0 0 0 10px var(--rn-crema)}'
+   /* con una ventana abierta (mochila, premio, final) la 🎒 de arriba no responde: mejor que no se vea (ronda 3: la mamá la tocaba) */
+   /* (con «body:has(.rn-capa)» el navegador revisaba toda la página en cada cambio y los juegos pesados se trababan al
+      tocar: la clase la pone un vigilante que solo mira lo que se agrega o se quita directo en <body>) */
+   +'body.rn-hay-capa .rn-bot{visibility:hidden}'
    +'.rn-caras{display:inline-flex;gap:3px;vertical-align:middle;margin-right:6px}.rn-cara{display:inline-block;width:28px;height:28px;border-radius:50%;background-color:#FFF1DA;background-repeat:no-repeat;box-shadow:0 0 0 1.5px #EBC7D9}'
    +'.rn-cerrar{display:block;width:100%;margin-top:12px;border:none;border-radius:999px;padding:13px;background:var(--rn-verde);color:#fff;font:800 15px "Baloo 2",sans-serif}'
    +'.rn-pie{text-align:center;color:#B3A58F;font-size:11px;margin-top:10px;letter-spacing:.2em}'
-   +'.rn-video video{display:block;width:100%;max-height:50vh;border-radius:16px;background:#000;margin:2px 0 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
+   /* el video (vertical, para los estados) ocupa su lugar desde el principio: al cargar cambiaba de alto, los botones
+      se corrían y el primer toque en «Cerrar» caía donde ya no estaba (rondas 3 de árbol y carrera) */
+   +'.rn-video video{display:block;height:min(50vh,420px);width:auto;max-width:100%;aspect-ratio:9/16;object-fit:contain;border-radius:16px;background:#000;margin:2px auto 4px}.rn-cerrar.rn-suave{background:#F1E8DA;color:var(--rn-tinta)}.rn-video .rn-cerrar{margin-top:8px}'
    +'.rn-ver{position:fixed;inset:0;z-index:70;background:rgba(10,8,6,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}.rn-ver img{max-width:100%;max-height:70vh;border-radius:16px}.rn-ver p{color:#FFF1DA;font:600 22px "Dancing Script",cursive;text-align:center}'
    +'.rn-toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translate(-50%,-120%);z-index:80;display:flex;gap:10px;align-items:center;background:var(--rn-crema);border-radius:18px;padding:10px 14px;box-shadow:0 12px 30px rgba(0,0,0,.35);transition:transform .45s cubic-bezier(.2,.9,.3,1.3);max-width:calc(100vw - 24px);font-family:Nunito,sans-serif;color:var(--rn-tinta)}'
    +'.rn-sello{display:inline-block;margin:0 auto 8px;padding:5px 14px;border-radius:99px;font:800 12px "Baloo 2",Nunito,sans-serif;letter-spacing:.02em;color:#fff;background:linear-gradient(120deg,#C2476B,#E8285A);box-shadow:0 6px 16px rgba(0,0,0,.18);animation:rnS .5s}'
@@ -1729,6 +1739,7 @@ function traer(par, ok, mal) {
    +'.rn-mini{margin:0 0 2px;font:800 11px Nunito,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#A08E78;min-height:13px}'
    +'.rn-premio .rn-carta{margin-top:12px;text-align:left}.rn-premio .rn-carta p{font-size:22px}.rn-escribe{cursor:pointer}.rn-escribe .rn-falta{opacity:0}'
    +'@media (prefers-reduced-motion:reduce){.rn-cofre,.rn-onda.suena i{animation:none}.rn-onda.suena i{height:30px}}'
+   +'.rn-toast{opacity:0;transition:transform .45s cubic-bezier(.2,.9,.3,1.3),opacity .25s}.rn-toast.on{opacity:1}'
    +'.rn-toast.on{transform:translate(-50%,0)}.rn-toast i{font-style:normal;font-size:28px}.rn-toast b{display:block;font:800 14px "Baloo 2",sans-serif;color:var(--rn-verde)}.rn-toast small{font-size:12px;color:#8A7A66}'
    +'.rn-nota-m{font-size:13px;color:#8A7A66;margin:0 0 6px}.rn-memoria .rn-hoja h2{font-weight:700}'
    /* Las ventanas del final (el premio, su voz, el cierre y el video), iguales en las 12 experiencias:
@@ -1820,7 +1831,11 @@ function traer(par, ok, mal) {
    +'.rn-dedi-m .rn-dedi-para,.rn-dedi-m .rn-dedi-tit,.rn-dedi-m .rn-dedi-de{color:#E1D5FF}.rn-dedi-m #rn-ded-seguir{background:linear-gradient(180deg,#E9E1FF,#C3B1F0);color:#241C3A;box-shadow:0 10px 26px rgba(157,138,214,.4)}'
    +'@media (prefers-reduced-motion:reduce){.rn-dedi{transition:none}}'
    +'.rn-luego{position:fixed;left:50%;bottom:calc(152px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:60;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis;border:0;border-radius:999px;padding:11px 18px;background:rgba(255,251,244,.94);color:#4A3F5C;font:700 14px/1.1 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.28);cursor:pointer}';
-  function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); }
+  function estilos(){ if(document.getElementById('rn-css')) return; var s=document.createElement('style'); s.id='rn-css'; s.textContent=CSS; document.head.appendChild(s); vigilarCapas(); }
+  /* body.rn-hay-capa mientras haya una ventana del núcleo abierta (mochila, premio, final, video): la 🎒 de arriba se esconde */
+  function vigilarCapas(){ if(!window.MutationObserver) return; if(!document.body){ document.addEventListener('DOMContentLoaded',vigilarCapas); return; }
+    var ver=function(){ document.body.classList.toggle('rn-hay-capa',!!document.querySelector('body > .rn-capa')); };
+    try{ new MutationObserver(ver).observe(document.body,{childList:true}); ver(); }catch(e){} }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function pintarBoton(){ if(cuentaEl) cuentaEl.textContent=objetos()?String(objetos()):(vistos()+'/'+totalFotos());
     if(paseEl){ var l=N.pase.lista(); paseEl.querySelector('span').textContent=l.filter(function(x){ return x.hecha; }).length+'/'+l.length; } }
@@ -1837,7 +1852,7 @@ function traer(par, ok, mal) {
       paseEl.innerHTML='<i>🎟️</i><span></span>'; paseEl.onclick=function(e){ e.stopPropagation(); N.mochila('pase'); };
       if(dentro) (dentro).appendChild(paseEl); else document.body.appendChild(paseEl); }
     pintarBoton(); return boton; };
-  N.mochila=function(pestana){ if(TONO) return; estilos(); if(!P) return; var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
+  N.mochila=function(pestana){ if(TONO) return; estilos(); if(!P) return; if(document.getElementById('rn-mochila')) return;   /* una sola a la vez (la carrera se pausa mientras exista) */ var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
     var para=String(D.para||'').trim(), de=String(D.de||'').trim();
     c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Mi mochila"><h2>🎒 Mi mochila</h2><p class="rn-sub"></p>'
       +'<div class="rn-tabs">'+(PASE.length?'<button data-p="pase">🎟️ Pase</button>':'')+'<button data-p="rec">Recuerdos</button><button data-p="col">Colección</button><button data-p="log">Logros</button></div><div class="rn-cuerpo"></div>'
