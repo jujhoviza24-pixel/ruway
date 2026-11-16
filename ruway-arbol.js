@@ -2968,7 +2968,8 @@ A.armarRuway = function (escena3d, op) {
   });
   mallas.forEach(function (o) {
     var viejo = o.material, esCara = o === cara;
-    var m = new THREE.MeshLambertMaterial({ map: viejo.map, alphaTest: .5, skinning: !!o.isSkinnedMesh, morphTargets: !!o.morphTargetInfluences,
+    /* Uku, Puyu, Qori y otros no llevan textura: su color viene en los vértices (COLOR_0). Sin esto salen blancos. */
+    var m = new THREE.MeshLambertMaterial({ map: viejo.map, vertexColors: !!(o.geometry && o.geometry.attributes && o.geometry.attributes.color), alphaTest: .5, skinning: !!o.isSkinnedMesh, morphTargets: !!o.morphTargetInfluences,
       color: esCara ? '#FFE6DA' : '#FFFFFF', emissive: esCara ? '#FFC6A8' : '#E8D6CC', emissiveMap: viejo.map, emissiveIntensity: esCara ? .1 : .07 });
     if (viejo.map) viejo.map.anisotropy = 4;
     o.material = m; viejo.dispose();
@@ -3187,6 +3188,8 @@ A.armarFuegos = function (escena, aj, sonar) {
   var cohetes = [], libres = [];
   for (i = 0; i < 12; i++) libres.push({});
   var mult = N >= 3000 ? 1 : N >= 2000 ? .75 : .42, red = A.reducido;
+  /* con 1,2 la iglesia se ponía naranja fosforescente con cada estallido (5.ª ronda) */
+  var LUZ_MAX = red ? .3 : .6;
   function lanzar(x, z, alto, tipo, color) {
     var c = libres.pop(); if (!c) return;
     c.x = x; c.y = 0; c.z = z; c.vy = 24 + alto * .28; c.ap = alto; c.tipo = tipo; c.col = color; c.t = 0; c.deriva = (Math.random() - .5) * 2;
@@ -3197,7 +3200,7 @@ A.armarFuegos = function (escena, aj, sonar) {
   }
   function estallar(c) {
     var col = COLORES[c.col], esc = .8 + Math.random() * .3, i;
-    luz.p.set(c.x, c.y, c.z); luz.col.setRGB(col[0], col[1], col[2]); luzI = red ? .5 : 1.2;
+    luz.p.set(c.x, c.y, c.z); luz.col.setRGB(col[0], col[1], col[2]); luzI = LUZ_MAX;
     flashCol.setRGB(col[0], col[1], col[2]).multiplyScalar(red ? .015 : .04); flash.add(flashCol);
     chispa({ x: c.x, y: c.y, z: c.z, vx: 0, vy: 0, vz: 0, d: .25, tam: red ? 30 : 60, r: 1, g: .95, b: .85, gr: 0, drag: 0, rastro: 0 });
     if (cam) { cam.getWorldDirection(vf); vr.crossVectors(vf, cam.up).normalize(); vu.crossVectors(vr, vf).normalize(); }
@@ -3226,7 +3229,8 @@ A.armarFuegos = function (escena, aj, sonar) {
     flash: flash,
     medir: S.medir,
     /* centro: dónde se ven (detrás del árbol, sobre la plaza) */
-    empezar: function (c, an, camara) { activo = true; prox = .1; centro.copy(c); ancho = an || 40; cam = camara; S.p.visible = true; },
+    luzMax: LUZ_MAX,
+    empezar: function (c, an, camara, demora) { activo = true; prox = demora || .1; centro.copy(c); ancho = an || 40; cam = camara; S.p.visible = true; },
     parar: function () { activo = false; },
     cuadro: function (dt) {
       flash.multiplyScalar(Math.exp(-dt * 6));
@@ -3298,21 +3302,25 @@ A.armarNieve = function (escena, n) {
 A.armarVapor = function (escena) {
   var c = A.lienzo(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
   g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(.5, 'rgba(255,255,255,.18)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64);
-  var tex = new THREE.CanvasTexture(c), lista = [], fuentes = [];
+  var tex = new THREE.CanvasTexture(c), lista = [], fuentes = [], activas = [];
   for (var i = 0; i < 18; i++) { var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: '#D8D0C8', transparent: true, depthWrite: false, opacity: 0 })); s.visible = false; escena.add(s); lista.push({ s: s, t: Math.random(), f: 0 }); }
   return {
     /* fuentes: [{p: Vector3, k: 0..1 (cuánto humea)}] */
     fuente: function (p, k) { var f = { p: p, k: k }; fuentes.push(f); return f; },
+    /* las volutas se reparten solo entre las fuentes que humean: las del final (la taza, el retablo)
+       se arman antes y quedan apagadas, y se quedaban con su parte (la olla echaba 4 de 18) */
     cuadro: function (dt) {
+      activas.length = 0; for (var j = 0; j < fuentes.length; j++) if (fuentes[j].k > 0) activas.push(fuentes[j]);
       for (var i = 0; i < lista.length; i++) {
-        var o = lista[i], fu = fuentes[i % Math.max(1, fuentes.length)];
+        var o = lista[i], fu = activas[i % Math.max(1, activas.length)];
         if (!fu || fu.k <= 0) { o.s.visible = false; continue; }
         o.t += dt * .45; if (o.t > 1) o.t -= 1;
         var t = o.t; o.s.visible = true;
         o.s.position.set(fu.p.x + Math.sin(t * 6 + i) * .05 * t, fu.p.y + t * .55, fu.p.z + Math.cos(t * 5 + i) * .05 * t);
         o.s.scale.setScalar(.06 + t * .26); o.s.material.opacity = Math.sin(t * Math.PI) * .45 * fu.k;
       }
-    }
+    },
+    contar: function () { var v = 0; for (var i = 0; i < lista.length; i++) if (lista[i].s.visible) v++; return { fuentes: fuentes.length, visibles: v }; }
   };
 };
 
@@ -3802,8 +3810,10 @@ var CAM = [
      y se aleja un poco, para que entren enteros; antes miraba a la izquierda y quedaban cortados */
   [16.0, [2.37, 1.1, -2.32], [.16, .76, -4.62]],
   [19.0, [2.37, 1.14, -2.32], [.18, .82, -4.66]],
-  [20.0, [.8, 1.75, -4.6], [1.0, 1.75, -7.1]],
-  [23.0, [.75, 1.8, -4.8], [1.0, 1.85, -7.1]],
+  /* las esferas con sus fotos: a ~3,5 m (a 2,5 m, con el celular parado, la cámara quedaba entre
+     las ramas y todo se veía borroso; la mamá de prueba, 4.ª ronda) */
+  [20.0, [.71, 1.75, -3.48], [1.0, 1.75, -7.1]],
+  [23.0, [.64, 1.78, -3.77], [1.0, 1.85, -7.1]],
   [24.0, [0, 1.35, -1.2], [0, 4.0, -9.0]],
   [27.0, [0, 1.6, .6], [0, 5.6, -9.0]],
   [30.0, [5.2, 2.2, 3.0], [0, 4.4, -9.5]],
@@ -3826,8 +3836,12 @@ A.armarFinal = function (o) {
   /* el encuentro va a 4–5 m del tronco: más cerca, las ramas de abajo los tapan */
   var pR = new THREE.Vector3(-.6, 0, -4.0), pG0 = new THREE.Vector3(-3.3, 0, -6.4), pG = new THREE.Vector3(.35, 0, -4.8);
   var flota = new THREE.Vector3(-.1, 1.55, -4.45), colgar = new THREE.Vector3(), estIni = new THREE.Vector3(), estPos = new THREE.Vector3();
-  function preparar() {
-    var R = o.ruway(), G = o.grunon;
+  /* Lo pesado del final (la taza, los corazones, el retablo) se arma antes, detrás de la tarjeta de
+     una esfera: armarlo al empezar la película dejaba la pantalla en negro un rato (la mamá de
+     prueba, 4.ª ronda: «se puso toda negra un segundito»). */
+  var creado = false;
+  function crear() {
+    if (creado) return; creado = true;
     /* la taza de chocolate (la de las tazas del puesto) con su chocolate y su vapor */
     taza = new THREE.Group();
     var mt = new THREE.Mesh(A.geoTaza, new THREE.MeshLambertMaterial({ vertexColors: true, emissive: '#2a2a2a' })); mt.scale.setScalar(1.6); taza.add(mt);
@@ -3839,6 +3853,11 @@ A.armarFinal = function (o) {
     o.arbol.lugarGrunon(colgar);
     ret = A.armarRetablo(o.escena, new THREE.Vector3(RET_P[0], A.alturaPiso(RET_P[0], RET_P[2]), RET_P[2]), RET_RUMBO);
     ret.tazas.forEach(function () { vRet.push(o.vapor.fuente(new THREE.Vector3(), 0)); });
+    ret.mostrar(false);   /* sale a los 43,5 s del final */
+  }
+  function preparar() {
+    crear();
+    var R = o.ruway(), G = o.grunon;
     if (R) { R.raiz.position.copy(pR); R.raiz.rotation.set(0, Math.PI - .25, 0); R.modo = 'quieto'; R.vel = 0; R.pose = null; }
     G.raiz.visible = true; G.raiz.scale.setScalar(1); G.raiz.position.copy(pG0); G.raiz.rotation.set(0, Math.atan2(pG.x - pG0.x, pG.z - pG0.z), 0);
     o.arbol.estrella.visible = true; o.arbol.estrellaOn(.25);
@@ -3943,7 +3962,7 @@ A.armarFinal = function (o) {
     }
     una('feliz', 39.2, function () {
       o.cuenta(null); o.feliz(true); A.Audio.campanadas(); if (o.torre) o.torre.reloj.dibujar(12, 0, 0);
-      o.fuegos.empezar(new THREE.Vector3(0, 0, -30), 48, o.cam);
+      o.fuegos.empezar(new THREE.Vector3(0, 0, -30), 48, o.cam, 2.2);   /* el primero, cuando ya se leyó el saludo (el corazón lo cruzaba) */
       o.chispas.estallido(AR.punta, 80, 3, [1, .7, .5]);
     });
     una('nieve', 41.5, function () { o.nieve.caer(1, new THREE.Vector3(0, 0, -4)); });
@@ -3978,6 +3997,7 @@ A.armarFinal = function (o) {
       /* volver a empezar desde antes del retablo: se esconde y se cierra */
       if (ret && t < 43.5) { ret.mostrar(false); ret.abrir(0); ret.luz(0); vRet.forEach(function (f) { f.k = 0; }); } },
     cuadro: cuadro,
+    armar: crear,
     activo: function () { return activo; },
     tiempo: function () { return t; },
     subio: function () { return estrellaSubio; },
@@ -4024,9 +4044,14 @@ var CSS = [
 '#aj .aj-pill{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;background:var(--vidrio);border:1px solid var(--borde);',
 '  font-size:13.5px;font-weight:650;color:#FFF1DA;text-shadow:0 1px 2px rgba(0,0,0,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}',
 '#aj-esferas.aj-brilla{box-shadow:0 0 16px rgba(255,200,110,.6)}',
-'#aj-rumbo{margin-left:auto;transition:background .3s}',
+'#aj-rumbo{margin-left:auto;transition:background .3s;pointer-events:auto;cursor:pointer;font-size:16px;padding:9px 14px}',
+'#aj-guia{position:absolute;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);width:min(86%,340px);box-sizing:border-box;text-align:center;',
+'  padding:14px 18px;border-radius:18px;background:linear-gradient(180deg,rgba(255,214,140,.96),rgba(242,170,80,.96));color:#3A2410;border:1px solid #FFE3A3;',
+'  display:flex;flex-direction:column;gap:5px;line-height:1.35;box-shadow:0 6px 24px rgba(0,0,0,.4)}',
+'#aj-guia[hidden]{display:none}',
+'#aj-guia b{font-size:17px}#aj-guia span{font-size:14px;font-weight:600}',
 '#aj-rumbo.aj-caza{background:rgba(150,30,40,.62);border-color:rgba(255,170,170,.5)}',
-'#aj-flecha{display:inline-block;color:var(--oro);font-size:15px;transform-origin:50% 50%;transition:transform .15s linear}',
+'#aj-flecha{display:inline-flex;width:34px;height:34px;filter:drop-shadow(0 0 5px rgba(255,200,110,.85));transform-origin:50% 50%;transition:transform .15s linear}',
 '#aj-sonido{pointer-events:auto;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--vidrio);border:1px solid var(--borde);cursor:pointer;padding:0}',
 '#aj-sonido svg{width:20px;height:20px}',
 '#aj-sonido[aria-pressed=true] .aj-onda{display:none}',
@@ -4041,6 +4066,14 @@ var CSS = [
 '#aj-mirar,#aj-saltar{position:absolute;bottom:calc(22px + env(safe-area-inset-bottom));pointer-events:auto;border:1px solid var(--borde);border-radius:999px;padding:12px 17px;',
 '  background:var(--vidrio);color:#FFF1DA;font-weight:700;font-size:14.5px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}',
 '#aj-mirar{right:16px}',
+/* en el paseo: a la izquierda, encima de la fila de Compartir */
+'#aj-carta-otra{position:absolute;left:16px;bottom:calc(112px + env(safe-area-inset-bottom));pointer-events:auto;border:1px solid var(--borde);border-radius:999px;padding:12px 17px;',
+'  background:var(--vidrio);color:#FFF1DA;font-weight:700;font-size:14.5px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}',
+/* «Llévame»: sale a quien lleva un rato sin encontrar nada; al centro, encima de Mirar (en su lugar estaba la guía) */
+'#aj-llevame{position:absolute;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));transform:translateX(-50%);white-space:nowrap;pointer-events:auto;border:1px solid #FFE3A3;border-radius:999px;padding:14px 22px;',
+'  background:linear-gradient(180deg,rgba(255,214,140,.97),rgba(242,170,80,.97));color:#3A2410;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.35);animation:aj-llama 1.8s ease-in-out infinite}',
+'#aj-llevame[hidden]{display:none}',
+'@keyframes aj-llama{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.06)}}',
 '#aj-mirar[aria-pressed=true]{background:linear-gradient(180deg,rgba(255,214,140,.94),rgba(242,170,80,.94));color:#3A2410}',
 '#aj-saltar{left:16px;z-index:8}',
 '#aj-palanca{position:absolute;left:0;top:0;width:116px;height:116px;margin:-58px 0 0 -58px;border-radius:50%;border:2px solid rgba(255,241,218,.4);',
@@ -4075,12 +4108,14 @@ var CSS = [
 '#aj-cuenta.aj-late{animation:aj-late .9s ease-out}',
 '@keyframes aj-late{from{transform:translate(-50%,-50%) scale(1.5);opacity:.2}30%{opacity:1}to{transform:translate(-50%,-50%) scale(1);opacity:.85}}',
 '#aj-cuenta-rot{display:block;font-size:13px;letter-spacing:.3em;text-transform:uppercase;font-family:var(--sans);font-weight:700;color:var(--oro2);text-align:center;margin-top:6px;text-shadow:0 1px 4px rgba(0,0,0,.6)}',
-'#aj-feliz{position:absolute;left:0;right:0;top:22%;text-align:center;font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.08;color:#FFF3D6;padding:0 18px;',
+'#aj-feliz{position:absolute;left:0;right:0;top:12%;text-align:center;font-family:var(--serif);font-weight:600;font-size:44px;line-height:1.08;color:#FFF3D6;padding:0 18px;',
+/* un velo suave detrás del saludo: los fuegos de corazón lo cruzaban y no se leía el comienzo (5.ª ronda) */
+'  background:radial-gradient(ellipse 75% 70% at 50% 50%,rgba(6,7,22,.55),rgba(6,7,22,0) 74%);',
 '  text-shadow:0 0 26px rgba(255,190,100,.95),0 0 60px rgba(255,120,80,.55),0 2px 4px rgba(0,0,0,.45);pointer-events:none;z-index:5;opacity:0;transition:opacity 1.2s;overflow-wrap:anywhere}',
 '#aj-feliz.aj-ver{opacity:1}',
 '#aj-feliz small{display:block;font-size:.5em;font-style:italic;font-weight:400;color:var(--oro2);margin-top:8px}',
-'#aj-velo{position:absolute;inset:0;background:#05060d;opacity:0;transition:opacity .7s ease;pointer-events:none;z-index:7}',
-'#aj-velo.aj-ver{opacity:1}',
+'#aj-velo{position:absolute;inset:0;background:#05060d;opacity:0;transition:opacity .3s ease;pointer-events:none;z-index:7}',
+'#aj-velo.aj-ver{opacity:.6}',   /* oscurece sin dejar todo negro (la mamá de prueba: «se puso toda negra un segundito») */
 /* la galería */
 /* la galería empieza debajo de la mochila del núcleo; "Seguir" queda siempre a la vista */
 '#aj #aj-galeria{padding-top:calc(112px + env(safe-area-inset-top));padding-bottom:calc(12px + env(safe-area-inset-bottom))}',
@@ -4089,9 +4124,10 @@ var CSS = [
 '#aj .aj-mini{letter-spacing:.3em;text-transform:uppercase;font-size:11px;color:var(--oro2);opacity:.92;margin:0 0 10px}',
 '#aj .aj-sub{margin:0 0 16px;font-size:14px;opacity:.85}',
 '#aj-gal-lista{display:grid;grid-template-columns:1fr 1fr;gap:10px}',
-'#aj-gal-credito{margin:10px 0 0;font-size:10px;line-height:1.4;opacity:.55;text-align:center}',
+'#aj .aj-credito{margin:10px 0 0;font-size:11px;opacity:.6;text-align:center}#aj .aj-credito summary{cursor:pointer;padding:6px}',
+'#aj-gal-credito{margin:4px 0 0;font-size:10px;line-height:1.4;text-align:center}',
 '#aj .aj-foto{appearance:none;border:0;padding:6px 6px 8px;border-radius:12px;background:linear-gradient(180deg,#FFF9EC,#F4E6CB);color:#3A2410;cursor:pointer;text-align:left}',
-'#aj .aj-foto:first-child{grid-column:1/3}',
+'#aj .aj-foto:first-child:nth-last-child(odd){grid-column:1/3}',   /* la grande, solo si quedaría una sola abajo */
 '#aj .aj-foto img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px}',
 '#aj .aj-foto span{display:block;font-family:var(--serif);font-style:italic;font-size:13.5px;line-height:1.3;margin:6px 2px 0;overflow-wrap:anywhere}',
 '#aj .aj-botones{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:14px;position:sticky;bottom:0;padding:14px 0 4px;background:linear-gradient(rgba(8,10,24,0),rgba(8,10,24,.92) 34%)}',
@@ -4128,11 +4164,17 @@ A.armarPantalla = function (caja) {
   var esferas = el('div', 'esferas', 'aj-pill', arriba); esferas.setAttribute('aria-live', 'polite');
   esferas.innerHTML = SVG_ESFERA; el('span', 'esferas-n', null, esferas, '0 de 0');
   var rumbo = el('div', 'rumbo', 'aj-pill', arriba);
-  el('span', 'flecha', null, rumbo, '➤').setAttribute('aria-hidden', 'true'); el('span', 'rumbo-txt', null, rumbo, 'Esfera');
+  rumbo.setAttribute('role', 'button'); rumbo.tabIndex = 0; rumbo.setAttribute('aria-label', 'Hacia dónde ir');
+  /* una flecha de verdad (el ➤ parecía un avioncito de papel): apunta hacia arriba = adelante */
+  var fl = el('span', 'flecha', null, rumbo); fl.setAttribute('aria-hidden', 'true'); fl.innerHTML = '<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"><path d="M12 1.8 21.2 12.6H15.4V22.2H8.6V12.6H2.8Z" fill="#FFD27A" stroke="#3A2410" stroke-width="1.3" stroke-linejoin="round"/></svg>'; el('span', 'rumbo-txt', null, rumbo, 'Esfera');
   var sonido = el('button', 'sonido', null, arriba); sonido.type = 'button'; sonido.setAttribute('aria-label', 'Silenciar'); sonido.setAttribute('aria-pressed', 'false'); sonido.innerHTML = SVG_SONIDO;
   el('div', 'aviso', null, hud).setAttribute('role', 'status');
-  var mirar = el('button', 'mirar', null, hud, '👀 Mirar'); mirar.type = 'button'; mirar.setAttribute('aria-pressed', 'false');
+  var guia = el('div', 'guia', null, hud); guia.hidden = true; guia.setAttribute('role', 'status');
+  el('b', null, null, guia, '👆 Toca el suelo para caminar'); el('span', null, null, guia, 'Busca las esferas brillantes escondidas en la plaza. Sigue la flecha de arriba.');
+  var llevame = el('button', 'llevame', null, hud, '🧭 Llévame a la esfera'); llevame.type = 'button'; llevame.hidden = true;
+  var mirar = el('button', 'mirar', null, hud, '👀 Mirar alrededor'); mirar.type = 'button'; mirar.setAttribute('aria-pressed', 'false');
   var saltar = el('button', 'saltar', null, raiz, 'Saltar ⏭'); saltar.type = 'button'; saltar.hidden = true;
+  var cartaOtra = el('button', 'carta-otra', null, raiz, '💌 Ver otra vez la carta'); cartaOtra.type = 'button'; cartaOtra.hidden = true;
   var globo = el('div', 'globo', 'aj-oculto', raiz); globo.setAttribute('aria-live', 'polite');
   el('b', 'globo-quien', null, globo); el('span', 'globo-txt', null, globo);
   el('div', 'destino', null, raiz).setAttribute('aria-hidden', 'true');
@@ -4156,7 +4198,10 @@ A.armarPantalla = function (caja) {
   el('button', 'gal-seguir', 'aj-boton', bts, 'Seguir').type = 'button';
   el('button', 'gal-otra', 'aj-otra', bts, 'Jugar otra vez').type = 'button';
   /* el crédito que pide la licencia del modelo del muki (CC BY 4.0) */
-  el('p', 'gal-credito', 'aj-credito', gg, 'El muki está hecho a partir de «Gnomo - Libel Academy», de ElPinguinoCoyosaurio, y el trineo de la plaza a partir de «Santa\'s sleigh», de Brian Seoane (los dos en Sketchfab, con licencia CC BY 4.0, y modificados).');
+  /* plegado bajo «Créditos», como en la elección de personaje: la mamá de prueba veía «Sketchfab» y
+     «CC BY 4.0» debajo de sus recuerdos y no lo entendía; la licencia sigue a un toque */
+  var cred = el('details', null, 'aj-credito', gg); el('summary', null, null, cred, 'Créditos');
+  el('p', 'gal-credito', null, cred, 'El muki está hecho a partir de «Gnomo - Libel Academy», de ElPinguinoCoyosaurio, y el trineo de la plaza a partir de «Santa\'s sleigh», de Brian Seoane (los dos en Sketchfab, con licencia CC BY 4.0, y modificados).');
   var grande = el('div', 'grande', 'aj-capa aj-ver', raiz); grande.hidden = true;
   var fig = el('figure', null, null, grande); var gi = el('img', 'grande-img', null, fig); gi.alt = ''; el('figcaption', 'grande-txt', null, fig);
   var fps = el('div', 'fps', null, raiz); fps.hidden = true;
@@ -4267,7 +4312,7 @@ if (!R) {
   luego(function () { var f = al.fallo; cerrar(); if (f) f('sin3d'); }, 0);
   return { cerrar: cerrar, pausar: function () {}, estado: function () { return { fallo: true }; }, fallo: true };
 }
-R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.05;
+R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.3;
 R.outputEncoding = THREE.sRGBEncoding;
 A.webgl2 = R.capabilities.isWebGL2;
 var prMax = Math.min(window.devicePixelRatio || 1, AJ.pr), pr = prMax, prMin = Math.min(prMax, .75);
@@ -4278,7 +4323,7 @@ cam.position.set(6, 2.4, -1); cam.lookAt(0, 3, -9);
 
 A.prepararLuces(AJ.luces);
 A.armarLuces(escena, AJ.luces);
-escena.add(new THREE.HemisphereLight(A.U.uCieloCol.value, A.U.uSueloCol.value, 1));
+escena.add(new THREE.HemisphereLight(A.U.uCieloCol.value, A.U.uSueloCol.value, 1.7));
 var luna = new THREE.DirectionalLight(A.U.uLunaCol.value, 1); luna.position.copy(A.U.uLuna.value).multiplyScalar(50); escena.add(luna);
 
 var cielo = A.armarCielo(escena, R, AJ);
@@ -4363,8 +4408,10 @@ function ponerFoto(f) {
   e.estado = 'escondida'; e.visible = true; e.escala = .55; e.on = .3; e.foto = .12; e.hilo = 0;
   e.p.set(e.esc.p[0], e.esc.p[1], e.esc.p[2]);
   recontar();
-  /* lo ya visto en una visita anterior cuenta como encontrado: empieza colgada en el árbol */
-  if (VISTAS[f.j]) colgarYa(e);
+  /* lo ya visto en una visita anterior cuenta como encontrado: empieza colgada en el árbol. Al ver
+     el árbol ya encendido se cuelgan todas, también las que no vio (una foto que se agregó después,
+     o una que la otra vez no cargó): si no, quedaban escondidas en la plaza en pleno paseo. */
+  if (VISTAS[f.j] || o.encendido) colgarYa(e);
 }
 function colgarYa(e) {
   e.estado = 'colgada'; e.orden = encontradas; arbol.lugar(e.orden, Math.max(1, totalValidas), e.p); arbol.encender(e.orden, 1);
@@ -4405,7 +4452,10 @@ function revisarFotos() {
 
 /* ---------- estado del juego ---------- */
 var estado = 'portada', t = 0, tEstado = 0, cargaRuway = 'esperando', listo = false, mukiGLB = false;
-function cambiar(e) { estado = e; tEstado = 0; pintarSaltar(); }
+/* «Llévame» (más abajo): segundos buscando sin encontrar nada (cambiar() lo reinicia: al hallar una
+   esfera, en el robo, en la persecución…) y si el personaje va solo */
+var sinAvance = 0, llevando = false, llevaFija = null;
+function cambiar(e) { estado = e; tEstado = 0; pintarSaltar(); $('carta-otra').hidden = e !== 'libre'; if (e === 'persecucion') guiaVer(false); sinAvance = 0; llevando = false; llevaFija = null; }
 var RW = { x: 0, z: 6.5, rumbo: Math.PI, v: 0, y: 0 }, vRw = new V3(), mano = new V3();
 var GR = { x: .9, z: -6.3, rumbo: 0, v: 0, ang: 0, dir: 1, cansado: 0, sigR: 0, t: 0, esfera: null, burla: false };
 var destino = null, accionEsfera = null;
@@ -4426,7 +4476,8 @@ function globoCuadro(dt) {
   vProy.copy(globo.punto).project(cam);
   if (vProy.z > 1) { globoEl.className = 'aj-oculto'; return; }
   var x = (vProy.x + 1) / 2 * innerWidth, y = (1 - vProy.y) / 2 * innerHeight;
-  x = Math.max(130, Math.min(innerWidth - 130, x)); y = Math.max(110, Math.min(innerHeight - 20, y));
+  /* nunca más abajo que los botones de abajo (tapaba «Volver a caminar» y «Saltar») */
+  x = Math.max(130, Math.min(innerWidth - 130, x)); y = Math.max(110, Math.min(innerHeight - 150, y));
   globoEl.style.left = x.toFixed(1) + 'px'; globoEl.style.top = y.toFixed(1) + 'px';
 }
 function pintarHud() {
@@ -4450,23 +4501,31 @@ escuchar($('sonido'), 'click', function () {
 var palanca = $('palanca'), perilla = $('perilla'), PAL_R = 50;
 var joy = { x: 0, y: 0, id: null, x0: 0, y0: 0, t0: 0, mov: false };
 var dedos = {}, mirando = false, orb = { yaw: 0, pitch: 0, dist: 1, quieto: 9 };
+var tapM = { id: null, x0: 0, y0: 0, t0: 0, mov: false };   /* un toque corto mirando: también lleva ahí */
 function nDedos() { return Object.keys(dedos).length; }
 function separacion() { var k = Object.keys(dedos); if (k.length < 2) return 0; var a = dedos[k[0]], b = dedos[k[1]]; return Math.hypot(a.x - b.x, a.y - b.y); }
 function soltarPalanca() { joy.id = null; joy.x = joy.y = 0; palanca.className = ''; perilla.style.transform = ''; }
 function puedeMover() { return estado === 'juego' || estado === 'persecucion' || estado === 'libre'; }
 function ponerMirar(m) {
-  mirando = m; var b = $('mirar'); b.textContent = m ? '🚶 Caminar' : '👀 Mirar'; b.setAttribute('aria-pressed', m ? 'true' : 'false'); soltarPalanca();
-  if (m) aviso('Arrastra para mirar alrededor · pellizca para acercar', '', 2600); else orb.quieto = 9;
+  tToque = t;
+  /* al volver a caminar, la cámara se queda mirando hacia donde mirabas (antes volvía de golpe detrás
+     del personaje y se perdía lo que habías visto) */
+  if (!m && mirando) { camRumbo += orb.yaw; orb.yaw = 0; }
+  mirando = m; if (m) { guiaVer(false); llevando = false; } var b = $('mirar'); b.textContent = m ? '🚶 Volver a caminar' : '👀 Mirar alrededor'; b.setAttribute('aria-pressed', m ? 'true' : 'false'); soltarPalanca();
+  if (m) aviso('Desliza el dedo para mirar alrededor · con dos dedos te acercas', '', 2600); else orb.quieto = 9;
 }
 escuchar($('mirar'), 'click', function () { ponerMirar(!mirando); });
+/* la guía de la primera vez: se queda hasta el primer paso (tocar el suelo o la palanca) */
+function guiaVer(v) { var g = $('guia'); if (g) g.hidden = !v; }
+escuchar($('rumbo'), 'click', function () { if (puedeMover()) { guiaVer(false); aviso(estado === 'persecucion' ? 'Corre detrás del muki: la flecha te dice dónde está' : 'Camina hacia donde apunta la flecha: ahí está la esfera', 'oro', 3200); } });
 escuchar(lienzo, 'pointerdown', function (e) {
-  A.Audio.iniciar(o.ac);
+  A.Audio.iniciar(o.ac); tToque = t;
   if (estado === 'intro') { saltarIntro(); return; }
   if (!puedeMover()) return;
   e.preventDefault();
   dedos[e.pointerId] = { x: e.clientX, y: e.clientY };
   try { lienzo.setPointerCapture(e.pointerId); } catch (er) {}
-  if (mirando || nDedos() >= 2) { soltarPalanca(); return; }
+  if (mirando || nDedos() >= 2) { soltarPalanca(); if (mirando && nDedos() === 1) { tapM.id = e.pointerId; tapM.x0 = e.clientX; tapM.y0 = e.clientY; tapM.t0 = performance.now(); tapM.mov = false; } else tapM.id = null; return; }
   joy.id = e.pointerId; joy.x0 = e.clientX; joy.y0 = e.clientY; joy.t0 = performance.now(); joy.mov = false;
   palanca.style.left = joy.x0 + 'px'; palanca.style.top = joy.y0 + 'px';
 });
@@ -4474,6 +4533,7 @@ escuchar(lienzo, 'pointermove', function (e) {
   var d = dedos[e.pointerId]; if (!d) return;
   var n = nDedos();
   if (mirando || n >= 2) {
+    if (tapM.id === e.pointerId && Math.hypot(e.clientX - tapM.x0, e.clientY - tapM.y0) > 10) tapM.mov = true;
     var ant = separacion(); orb.yaw -= (e.clientX - d.x) / n * .009; orb.pitch = A.lim(orb.pitch + (e.clientY - d.y) / n * .006, -.35, 1.0); orb.quieto = 0;
     d.x = e.clientX; d.y = e.clientY; var nue = separacion(); if (n >= 2 && ant > 0 && nue > 0) orb.dist = A.lim(orb.dist * ant / nue, .5, 2.2);
     return;
@@ -4481,31 +4541,47 @@ escuchar(lienzo, 'pointermove', function (e) {
   d.x = e.clientX; d.y = e.clientY;
   if (joy.id !== e.pointerId) return;
   var dx = e.clientX - joy.x0, dy = e.clientY - joy.y0, l = Math.hypot(dx, dy), m = Math.min(l, PAL_R);
-  if (l > 10) { joy.mov = true; palanca.className = 'aj-ver'; destino = null; }
+  if (l > 10) { joy.mov = true; palanca.className = 'aj-ver'; destino = null; guiaVer(false); llevando = false; }
   if (l > 0) { dx = dx / l * m; dy = dy / l * m; }
   perilla.style.transform = 'translate(' + dx.toFixed(1) + 'px,' + dy.toFixed(1) + 'px)';
   joy.x = dx / PAL_R; joy.y = -dy / PAL_R;
 });
 var rayo = new THREE.Raycaster(), v2 = new THREE.Vector2(), plano = new THREE.Plane(new V3(0, 1, 0), 0), golpe = new V3(), destinoV = new V3();
-var destinoEl = $('destino');
+var destinoEl = $('destino'), vToque = new V3();
 function soltar(e) {
   var toque = joy.id === e.pointerId && !joy.mov && performance.now() - joy.t0 < 350 && !mirando;
+  var toqueM = mirando && tapM.id === e.pointerId && !tapM.mov && performance.now() - tapM.t0 < 350 && nDedos() === 1;
+  if (tapM.id === e.pointerId) tapM.id = null;
   delete dedos[e.pointerId];
   if (joy.id === e.pointerId) soltarPalanca();
-  if (!toque || !puedeMover()) return;
+  if (!(toque || toqueM) || !puedeMover()) return;
   /* tocar el piso: Ruway va hasta ahí (y si tocaste una esfera, va a ella) */
   v2.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); rayo.setFromCamera(v2, cam);
+  /* tocar al muki: el osito lo persigue solo, como con «Llévame al muki» (ella lo tocaba y él se iba) */
+  if (estado === 'persecucion' && rayo.ray.distanceSqToPoint(vToque.set(GR.x, .7, GR.z)) < 1.2) {
+    llevando = true; llevaMejor = 1e9; llevaT = 0; guiaVer(false); if (mirando) ponerMirar(false); verLlevame(false);
+    aviso('¡Vamos tras el muki!', 'oro', 1800); return;
+  }
+  /* en el paseo, una esfera del árbol abre su foto (la mamá de prueba la tocaba y el osito solo caminaba) */
+  if (estado === 'libre') {
+    var cg = null, dc = 1e9;
+    ES.forEach(function (es) { if (es.estado !== 'colgada' || !fotos[es.i] || !fotos[es.i].img) return; var d = rayo.ray.distanceSqToPoint(es.p); if (d < .3 && d < dc) { dc = d; cg = es; }   /* ~55 cm: fácil de acertar con el dedo; gana la más cercana */ });
+    if (cg) { verGrande(fotos[cg.i]); return; }
+  }
   var mejor = null, dm = 1e9;
   ES.forEach(function (es) { if (es.estado !== 'escondida') return; var d = rayo.ray.distanceSqToPoint(es.p); if (d < 1.2 && d < dm) { dm = d; mejor = es; } });
   if (mejor) destino = destinoV.set(mejor.p.x, 0, mejor.p.z);
   else if (rayo.ray.intersectPlane(plano, golpe)) destino = destinoV.copy(golpe);
-  if (destino) { destinoEl.style.left = e.clientX + 'px'; destinoEl.style.top = e.clientY + 'px'; destinoEl.className = 'aj-ver'; luego(function () { destinoEl.className = ''; }, 900); }
+  if (toqueM && !destino) return;             /* tocó el cielo: sigue mirando */
+  if (toqueM) ponerMirar(false);              /* mirando vio la esfera y la tocó: va a ella */
+  if (destino) { guiaVer(false); llevando = false; destinoEl.style.left = e.clientX + 'px'; destinoEl.style.top = e.clientY + 'px'; destinoEl.className = 'aj-ver'; luego(function () { destinoEl.className = ''; }, 900); }
 }
 escuchar(lienzo, 'pointerup', soltar);
 escuchar(lienzo, 'pointercancel', soltar);
-escuchar(lienzo, 'wheel', function (e) { e.preventDefault(); orb.dist = A.lim(orb.dist * (1 + e.deltaY * .0012), .5, 2.2); orb.quieto = 0; }, { passive: false });
+escuchar(lienzo, 'wheel', function (e) { e.preventDefault(); tToque = t; orb.dist = A.lim(orb.dist * (1 + e.deltaY * .0012), .5, 2.2); orb.quieto = 0; }, { passive: false });
 var teclas = {};
 escuchar(window, 'keydown', function (e) {
+  tToque = t;
   if (/^(Arrow|Space)/.test(e.code) && puedeMover()) e.preventDefault();
   if (e.code === 'KeyM' && puedeMover()) ponerMirar(!mirando);
   teclas[e.code] = 1; if (estado === 'intro' && e.code === 'Space') saltarIntro();
@@ -4517,7 +4593,7 @@ var camRumbo = 0, vMov = new V3(), fw = new V3(), dr = new V3();
 function moverRuway(dt) {
   var jx = joy.x, jy = joy.y;
   var kx = (teclas.ArrowRight || teclas.KeyD ? 1 : 0) - (teclas.ArrowLeft || teclas.KeyA ? 1 : 0), ky = (teclas.ArrowUp || teclas.KeyW ? 1 : 0) - (teclas.ArrowDown || teclas.KeyS ? 1 : 0);
-  if (kx || ky) { jx = kx; jy = ky; destino = null; }
+  if (kx || ky) { jx = kx; jy = ky; destino = null; llevando = false; }
   if (mirando) { jx = jy = 0; destino = null; }
   var objV = 0, objDir = null;
   var mag = Math.min(1, Math.hypot(jx, jy));
@@ -4530,7 +4606,9 @@ function moverRuway(dt) {
   } else if (destino && puedeMover()) {
     var dx = destino.x - RW.x, dz = destino.z - RW.z, d = Math.hypot(dx, dz);
     if (d < .35) destino = null;
-    else { objDir = Math.atan2(dx, dz); objV = d > 5 ? 4.2 : Math.min(1.9, .8 + d * .5); }
+    /* cerca de su destino frena; tras el muki no (la mamá de prueba, 4.ª ronda: a menos de 5 m iba a
+       1,9 m/s y el muki a 3, y se le escapaba «de a poquito») */
+    else { objDir = Math.atan2(dx, dz); objV = d > 5 || estado === 'persecucion' ? 4.2 : Math.min(1.9, .8 + d * .5); }
   }
   if (objDir !== null) RW.rumbo += A.angDif(RW.rumbo, objDir) * Math.min(1, dt * 9);
   RW.v += (objV - RW.v) * Math.min(1, dt * (objV > RW.v ? 5 : 8));
@@ -4592,6 +4670,16 @@ function camaraCuadro(dt) {
 }
 
 /* ---------- la brújula ---------- */
+/* la flecha del piso: plana, dorada, un poco transparente; se arma la primera vez */
+var flechaP = null;
+function flechaPiso() {
+  if (flechaP) return flechaP;
+  var s = new THREE.Shape(); s.moveTo(0, .55); s.lineTo(.34, .12); s.lineTo(.13, .12); s.lineTo(.13, -.3); s.lineTo(-.13, -.3); s.lineTo(-.13, .12); s.lineTo(-.34, .12); s.closePath();
+  var g = new THREE.ShapeGeometry(s); g.rotateX(Math.PI / 2);   /* tendida en el piso, con la punta hacia +z */
+  flechaP = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: '#FFD27A', transparent: true, opacity: .85, depthWrite: false, side: THREE.DoubleSide }));
+  flechaP.renderOrder = 2; flechaP.visible = false; escena.add(flechaP);
+  return flechaP;
+}
 var objetivo = new V3(), rumboEl = $('rumbo'), rumboTxt = $('rumbo-txt'), flecha = $('flecha'), rumboVer = '', rumboClase = '';
 function brujulaCuadro() {
   var hay = false, txt = '', clase = 'aj-pill';
@@ -4604,12 +4692,79 @@ function brujulaCuadro() {
   }
   var ver = hay ? 'visible' : 'hidden';
   if (ver !== rumboVer) { rumboVer = ver; rumboEl.style.visibility = ver; }
+  var fp = flechaPiso(); fp.visible = false;
   if (!hay) return;
   var tb = Math.atan2(objetivo.x - RW.x, objetivo.z - RW.z), rel = A.angDif(camRumbo + orb.yaw, tb);
-  flecha.style.transform = 'rotate(' + (-90 - rel * 180 / Math.PI).toFixed(1) + 'deg)';
+  /* en el piso, junto al personaje: la de arriba es chica y la mamá de prueba se fue al revés */
+  if (Math.hypot(objetivo.x - RW.x, objetivo.z - RW.z) > 2.2) {
+    var fx = RW.x + Math.sin(tb) * 1.15, fz = RW.z + Math.cos(tb) * 1.15;
+    fp.visible = true; fp.rotation.y = tb; fp.position.set(fx, A.alturaPiso(fx, fz) + .06, fz);   /* a la altura del piso ahí (gradas, veredas) */
+    fp.scale.setScalar(1 + .08 * Math.sin(t * 5)); fp.material.color.set(estado === 'persecucion' ? '#FF9A86' : '#FFD27A');
+  }
+  flecha.style.transform = 'rotate(' + (-rel * 180 / Math.PI).toFixed(1) + 'deg)';
   if ((t * 4 | 0) % 2 === 0) rumboTxt.textContent = txt + ' · ' + Math.round(Math.hypot(objetivo.x - RW.x, objetivo.z - RW.z)) + ' m';
   if (clase !== rumboClase) { rumboClase = clase; rumboEl.className = clase; }
 }
+
+/* ---------- «Llévame»: para quien se pierde ----------
+   La mamá de prueba (2.ª ronda, 14-nov) siguió la flecha 2 minutos, encontró 1 de 4 y se rindió.
+   Si pasan LLEVAME_S segundos de juego sin encontrar nada sale un botón; al tocarlo el personaje va
+   solo a la esfera más cercana (o tras el muki). Si se atraca en un poste o una banca, aparece a
+   su lado con unas chispas: lo importante es que llegue al recuerdo. */
+var LLEVAME_S = 20, llevaMejor = 1e9, llevaT = 0, llevaVer = false;
+var vLleva = new V3(), llevaR = 1, llevaE = null;
+function objetivoAyuda() {
+  llevaE = null;
+  /* en la persecución queda a 2 m: el último trecho lo corre él y lo atrapa */
+  if (estado === 'persecucion') { llevaR = 2; return vLleva.set(GR.x, 0, GR.z); }
+  if (estado !== 'juego') return null;
+  var mejor = null, dm = 1e9;
+  if (llevaFija && llevaFija.estado === 'escondida') mejor = llevaFija;
+  else for (var i = 0; i < ES.length; i++) { var e = ES[i]; if (e.estado !== 'escondida') continue; var d = Math.hypot(e.p.x - RW.x, e.p.z - RW.z); if (d < dm) { dm = d; mejor = e; } }
+  /* la que roba Don Gruñón (y aún no la robó): queda a 4 m, dentro de su zona de robo (2,2 a 7,5 m),
+     para que el atajo no se salte el robo */
+  if (mejor) { llevaE = mejor; llevaR = robables.indexOf(mejor.i) >= 0 && robos < robables.length && !mejor.yaRobada ? 4 : Math.min(1, mejor.esc.r * .6); return vLleva.set(mejor.p.x, 0, mejor.p.z); }
+  if (!totalValidas && !estrellaHallada) { llevaR = .9; return vLleva.set(ESTRELLA_ESC.x, 0, ESTRELLA_ESC.z); }
+  return null;
+}
+function verLlevame(v) {
+  if (v === llevaVer) return; llevaVer = v; var b = $('llevame'); b.hidden = !v; if (v) guiaVer(false);
+  if (v) b.textContent = estado === 'persecucion' ? '🧭 Llévame al muki' : totalValidas ? '🧭 Llévame a la esfera' : '🧭 Llévame a la estrella';
+}
+/* Cerca de una esfera y quieto, la vista gira sola, despacio, hasta tenerla al medio (5.ª ronda: la
+   mamá de prueba la tenía a 3 m, pegada al borde, y no la veía). Solo si lleva 3 s sin tocar nada:
+   no le quita la vista a quien está mirando o caminando. */
+var tToque = 0, GIRO_SOLO = true;
+function autoMirar(dt) {
+  if (!GIRO_SOLO || estado !== 'juego' || mirando || llevando || destino || joy.id !== null || nDedos() > 0 || RW.v > .3 || t - tToque < 3) return;
+  var mejor = null, dm = 6;
+  for (var i = 0; i < ES.length; i++) { var e = ES[i]; if (e.estado !== 'escondida') continue; var d = Math.hypot(e.p.x - RW.x, e.p.z - RW.z); if (d < dm) { dm = d; mejor = e; } }
+  if (!mejor) return;
+  /* hasta dejarla a ~7°: con el celular parado, el borde de la pantalla está a ~15° del medio */
+  var dif = A.angDif(camRumbo + orb.yaw, Math.atan2(mejor.p.x - RW.x, mejor.p.z - RW.z));
+  if (Math.abs(dif) > .12) camRumbo += dif * Math.min(1, dt * 1.6);
+}
+function ayudaCuadro(dt) {
+  var ob = objetivoAyuda();
+  if (!ob) { llevando = false; verLlevame(false); return; }
+  var d = Math.hypot(ob.x - RW.x, ob.z - RW.z);
+  /* en la persecución sale enseguida: la mamá de prueba persiguió al muki ~15 toques (3.ª ronda) y
+     ~25 s (4.ª), y el botón le salió tarde */
+  if (!llevando) { sinAvance += dt; verLlevame(sinAvance >= (estado === 'persecucion' ? 1.5 : LLEVAME_S) && d > 2.5); return; }
+  verLlevame(false);
+  destino = destinoV.copy(ob);
+  if (d < llevaMejor - .25) { llevaMejor = d; llevaT = 0; } else llevaT += dt;
+  if (llevaT > 1.6) {
+    if (estado === 'persecucion') { RW.x = GR.x - Math.sin(GR.rumbo) * llevaR; RW.z = GR.z - Math.cos(GR.rumbo) * llevaR; }
+    else { var a = Math.atan2(RW.x - ob.x, RW.z - ob.z); RW.x = ob.x + Math.sin(a) * llevaR; RW.z = ob.z + Math.cos(a) * llevaR; }
+    chispas.estallido(vT.set(RW.x, .6, RW.z), 30, 1.5, [1, .9, .6]); llevaT = 0; llevaMejor = 1e9;
+  }
+}
+escuchar($('llevame'), 'click', function () {
+  if (!puedeMover() || !objetivoAyuda()) return;
+  llevando = true; llevaMejor = 1e9; llevaT = 0; guiaVer(false); if (mirando) ponerMirar(false); verLlevame(false);
+  aviso(estado === 'persecucion' ? '¡Vamos tras el muki!' : '¡Vamos! Te llevo', 'oro', 2200);
+});
 
 /* ---------- encontrar una esfera ---------- */
 var ESTRELLA_ESC = new V3(-13.15, .55, 1.42), estrellaHallada = false;
@@ -4666,8 +4821,13 @@ function vueloCuadro(dt) {
 function esferasCuadro(dt) {
   for (var i = 0; i < ES.length; i++) {
     var e = ES[i];
-    if (e.estado === 'escondida') { e.on = .28 + .12 * Math.sin(t * 2.4 + i); e.foto = .1; e.hilo = e.esc.id === 'balcon' ? 1.0 : 0; }
-    else if (e.estado === 'mano' && ruwayA) { ruwayA.manoDer(mano); e.p.lerp(mano.addScaledVector(fw.set(0, 1, 0), .05), Math.min(1, dt * 14)); e.hilo = 0; }
+    if (e.estado === 'escondida') {
+      /* de cerca crece y brilla más (5.ª ronda: «estaba chiquita, pegada al borde, y no la veía») */
+      var cer = Math.max(0, 1 - Math.hypot(e.p.x - RW.x, e.p.z - RW.z) / 6);
+      e.on = .75 + .2 * Math.sin(t * 2.4 + i) + .25 * cer; e.foto = .1; e.hilo = e.esc.id === 'balcon' ? 1.0 : 0;
+      e.escala += (.55 + .35 * cer - e.escala) * Math.min(1, dt * 3);
+    }
+    else if (e.estado === 'mano' && ruwayA) { e.escala += (.55 - e.escala) * Math.min(1, dt * 6); ruwayA.manoDer(mano); e.p.lerp(mano.addScaledVector(fw.set(0, 1, 0), .05), Math.min(1, dt * 14)); e.hilo = 0; }
     else if (e.estado === 'robada') { grunon.puntoMano(mano); e.p.copy(mano); e.p.y += .02; e.escala = .5; e.hilo = 0; }
     else if (e.estado === 'suelta') { e.vy -= 9.8 * dt; e.p.y += e.vy * dt; if (e.p.y < .2) { e.p.y = .2; e.vy = Math.abs(e.vy) * .45; } }
     else if (e.estado === 'colgada') { e.on += (1 - e.on) * Math.min(1, dt * 2); e.foto += (1 - e.foto) * Math.min(1, dt * 1.5); e.hilo += (.34 - e.hilo) * Math.min(1, dt * 3); e.escala += (1 - e.escala) * Math.min(1, dt * 3); }
@@ -4678,6 +4838,7 @@ function esferasCuadro(dt) {
 /* ---------- la tarjeta con la foto (datos del regalo: siempre como texto) ---------- */
 function abrirCarta(e) {
   cambiar('carta');
+  luego(final.armar, 400);   /* lo pesado del final se arma ahora, detrás de la tarjeta (una sola vez) */
   var f = fotos[e.i];
   $('carta-foto').src = f.img ? f.img.src : ''; $('carta-foto').alt = 'Foto ' + (e.orden + 1);
   $('carta-frase').textContent = f.frase;
@@ -4697,22 +4858,36 @@ escuchar($('carta-seguir'), 'click', function () {
   cambiar('juego');
   if (grunonDespues) { grunonDespues = false; irseGrunon(); }
   var faltan = totalValidas - encontradas, k = avance();
-  aviso(faltan === 1 ? '¡Falta una sola esfera! El muki ya no se ríe tanto…' : 'Faltan ' + faltan + ' esferas' + (k >= .5 ? '. Al muki se le escapa una sonrisa' : '. Sigue la flecha'), 'oro', 2800);
+  aviso(faltan === 1 ? '¡Falta una sola esfera! Don Gruñón ya no se ríe tanto…' : 'Faltan ' + faltan + ' esferas' + (k >= .5 ? '. Al muki se le escapa una sonrisa' : '. Sigue la flecha'), 'oro', 2800);
 });
 
 /* ---------- Don Gruñón: el robo y la persecución ---------- */
 var vG = new V3(), vT = new V3();
+/* La toma del robo: de lado, alta (2,3 m) y desde un sitio libre. Antes iba siempre del mismo lado a
+   1,6 m y podía caer dentro de un arbusto o de una banca (5.ª ronda: «solo se veía pasto y un
+   arbusto»). Se prueba un lado, el otro, más cerca, y si no, desde detrás de Ruway y más alto. */
+var vCamR = new V3(), vCamT = new V3();
+function camaraRobo(rx, rz, gx, gz) {
+  var dx = gx - rx, dz = gz - rz, l = Math.hypot(dx, dz) || 1, ux = dx / l, uz = dz / l, mx = rx + dx * .3, mz = rz + dz * .3;
+  var op = [[-uz, ux, 3.2], [uz, -ux, 3.2], [-uz, ux, 2.2], [uz, -ux, 2.2], [-ux, -uz, 3.6]], y = 2.3;
+  for (var k = 0; k < op.length; k++) {
+    vCamR.set(mx + op[k][0] * op[k][2], 0, mz + op[k][1] * op[k][2]);
+    if (!A.empujar(vCamT.copy(vCamR), .6)) break;
+    if (k === op.length - 1) y = 2.9;      /* todo ocupado: desde atrás y más arriba, por encima de lo que estorbe */
+  }
+  return { p: [vCamR.x, y, vCamR.z], m: [(rx + gx) / 2, .8, (rz + gz) / 2] };
+}
 function empezarRobo(e) {
   cambiar('robo'); robos++; e.yaRobada = true; destino = null; RW.v *= .3;
   /* aparece al otro lado de la esfera, con un puf de chispas, y la agarra */
   var dx = e.p.x - RW.x, dz = e.p.z - RW.z, l = Math.hypot(dx, dz) || 1;
   GR.x = e.p.x + dx / l * 1.4; GR.z = e.p.z + dz / l * 1.4; vG.set(GR.x, 0, GR.z); A.empujar(vG, .3); GR.x = vG.x; GR.z = vG.z;
-  GR.rumbo = Math.atan2(RW.x - GR.x, RW.z - GR.z); GR.v = 0; GR.esfera = e; GR.t = 0; GR.cansado = 0; GR.burla = false;
+  GR.rumbo = Math.atan2(RW.x - GR.x, RW.z - GR.z); GR.v = 0; GR.esfera = e; GR.t = 0; GR.atrapo = null; GR.cansado = 0; GR.burla = false;
   grunon.raiz.visible = true; grunon.raiz.scale.setScalar(1); grunon.estado = 'rie';
   chispas.estallido(vT.set(GR.x, .7, GR.z), 50, 2.2, [.9, .95, 1]);
   e.estado = 'robada';
   A.Audio.risa(); decir('Don Gruñón', robos <= 1 ? '¡Je, je! ¡Esta también brilla!' : robos === 2 ? '¡Esta también es mía! …creo.' : 'Solo quiero mirarla un ratito…', 2200);
-  cine(RW.x + (GR.x - RW.x) * .3 - dz / l * 3.2, 1.6, RW.z + (GR.z - RW.z) * .3 + dx / l * 3.2, (RW.x + GR.x) / 2, .9, (RW.z + GR.z) / 2);
+  var cr = camaraRobo(RW.x, RW.z, GR.x, GR.z); cine(cr.p[0], cr.p[1], cr.p[2], cr.m[0], cr.m[1], cr.m[2]);
   luego(function () {
     if (estado !== 'robo') return;
     camCine = null; cambiar('persecucion'); A.Audio.musica('persecucion');
@@ -4729,7 +4904,7 @@ function persecucionCuadro(dt) {
   vT.set(CX + Math.cos(metaAng) * RADIO_P, 0, CZ + Math.sin(metaAng) * RADIO_P);
   var objRumbo = Math.atan2(vT.x - GR.x, vT.z - GR.z);
   /* fácil: se cansa (para a resoplar), va más lento si Ruway está lejos y a los 22 s se tropieza */
-  var objV = dR > 9 ? 1.7 : dR < 4 ? 3.0 : 2.6;
+  var objV = dR > 9 ? 1.7 : dR < 4 ? 2.3 : 2.6;   /* de cerca, más lento que el osito corriendo (4,2) */
   GR.cansado -= dt;
   if (GR.cansado < -3.6) { GR.cansado = .85; A.Audio.uf(); decir('Don Gruñón', '¡Uf, uf… estas piernas!', 1100); }
   if (GR.cansado > 0) objV = 0;
@@ -4740,10 +4915,10 @@ function persecucionCuadro(dt) {
   GR.x += Math.sin(GR.rumbo) * GR.v * dt; GR.z += Math.cos(GR.rumbo) * GR.v * dt;
   vG.set(GR.x, 0, GR.z); A.empujar(vG, .3); GR.x = vG.x; GR.z = vG.z;
   grunon.estado = GR.v > 1.9 ? 'corre' : GR.v > .3 ? 'anda' : 'quieto';
-  if (dR < 1.35 || GR.t > 22) atrapado();
+  if (dR < 1.6 || GR.t > 22) atrapado();
 }
 function atrapado() {
-  cambiar('atrapado'); GR.v = 0; A.Audio.musica('calma'); ultimoRobo = t;
+  GR.atrapo = GR.t; cambiar('atrapado'); GR.v = 0; A.Audio.musica('calma'); ultimoRobo = t;
   grunon.estado = 'encoge'; A.Audio.ay(); decir('Don Gruñón', avance() < .34 ? '¡Ay, ay! ¡Está bien, está bien!' : '¡Ay! Tómala… brilla más contigo.', 2000);
   var e = GR.esfera; GR.esfera = null;
   e.estado = 'suelta'; e.vy = 2.2; e.escala = .55;
@@ -4784,7 +4959,23 @@ function empezar() {
   GR.x = introP.x; GR.z = introP.z; GR.rumbo = 0; grunon.raiz.visible = true; grunon.estado = 'rie';
   arbol.estrella.visible = true; arbol.estrellaOn(.3);
   cambiar('intro');
-  A.Audio.risa(); decir('Don Gruñón', '¡Je, je! Desde la mina vi brillar sus luces…', 2300);
+  A.Audio.risa(); decir('Don Gruñón, el muki', '¡Je, je! Desde la mina vi brillar sus luces…', 2300);   /* la 1.ª vez se presenta: muki y Don Gruñón son el mismo */
+}
+/* Quien vuelve a un árbol que ya terminó y toca «Ver mi árbol encendido»: sin intro, sin robo y sin
+   buscar. Lo ya visto se cuelga solo (VISTAS) y se entra al final por donde entra «Saltar»: el
+   retablo con su dedicatoria (la carta: lo que más le gustó a la mamá de prueba), el árbol encendido,
+   el álbum y el paseo. */
+function empezarEncendido() {
+  A.Audio.iniciar(o.ac);
+  RW.x = .4; RW.z = 5.8; RW.rumbo = Math.PI; RW.v = 0; camRumbo = Math.PI; sombraR.visible = true;
+  grunon.raiz.visible = false;
+  /* se espera a que lleguen sus fotos (hasta 10 s) para que el árbol salga con todas; mientras, la
+     plaza se ve de lejos, como en la portada */
+  var t0 = Date.now();
+  (function esperar() {
+    if (fotos.some(function (f) { return f.estado === 'pendiente'; }) && Date.now() - t0 < 10000) { aviso('Colgando tus fotos en el árbol…', '', 1200); luego(esperar, 400); return; }
+    empezarFinal(48.35);
+  })();
 }
 function introCuadro(dt) {
   var k = tEstado;
@@ -4802,11 +4993,12 @@ function saltarIntro() {
   camCine = null; kCine = 0;
   $('hud').hidden = false; pintarHud();
   cambiar('juego'); inicioBusqueda = Date.now();
+  guiaVer(true);
   /* un regalo de antes con todo ya visto: directo a encender el árbol */
   if (totalValidas && encontradas >= totalValidas) { aviso('Ya encontraste todas las esferas. ¡A encender el árbol!', 'oro', 2600); cambiar('cine'); luego(empezarFinal, 1800); return; }
   var faltan = totalValidas - encontradas;
-  aviso(totalValidas ? (encontradas ? 'Te faltan ' + faltan + (faltan === 1 ? ' esfera' : ' esferas') : 'El muki se llevó ' + totalValidas + (totalValidas === 1 ? ' esfera' : ' esferas')) + '. Sigue la flecha'
-    : 'El muki se llevó la estrella. Sigue la flecha', 'oro', 3200);
+  aviso(totalValidas ? (encontradas ? 'Te faltan ' + faltan + (faltan === 1 ? ' esfera' : ' esferas') : 'Don Gruñón se llevó ' + totalValidas + (totalValidas === 1 ? ' esfera' : ' esferas')) + '. Sigue la flecha'
+    : 'Don Gruñón se llevó la estrella. Sigue la flecha', 'oro', 3200);
 }
 
 /* ---------- el final ---------- */
@@ -4843,9 +5035,10 @@ function empezarFinal(desde) {
     cambiar('final');
     /* todas las esferas en su lugar (por si se saltó algo) */
     var k = 0; ES.forEach(function (e) { if (e.estado === 'rota' || e.estado === 'pendiente') return; e.estado = 'colgada'; e.orden = k; arbol.lugar(k, Math.max(1, totalValidas), e.p); arbol.encender(k, 1); k++; });
+    encontradas = k;   /* las que cuelgan son las encontradas (una que llegue después se suma tras ellas) */
     final.iniciar(desde || 0); pintarSaltar();
-    luego(function () { velo.classList.remove('aj-ver'); luego(function () { velo.hidden = true; }, 700); }, 200);
-  }, desde ? 50 : 800);
+    luego(function () { velo.classList.remove('aj-ver'); luego(function () { velo.hidden = true; }, 350); }, 100);
+  }, desde ? 50 : 300);   /* un parpadeo: con 800 + 200 ms la mamá de prueba vio «la pantalla toda negra un segundito» */
 }
 /* Saltar en el final: directo al retablo abierto, con el árbol ya encendido detrás, donde se
    escribe la dedicatoria (su "Seguir" lleva a la galería) */
@@ -4855,8 +5048,9 @@ function saltarFinal() {
 }
 /* ---------- la galería ---------- */
 var galeriaAbierta = false;
-function abrirGaleria() {
-  if (galeriaAbierta || estado === 'libre') return;
+/* desdePaseo: lo pide «Ver otra vez la carta»; sin eso, en el paseo no se abre (el final no lo reabre solo) */
+function abrirGaleria(desdePaseo) {
+  if (galeriaAbierta || (estado === 'libre' && !desdePaseo)) return;
   cambiar('galeria'); galeriaAbierta = true;
   var g = $('galeria'), lista = $('gal-lista');
   while (lista.firstChild) lista.removeChild(lista.firstChild);
@@ -4864,20 +5058,32 @@ function abrirGaleria() {
     var b = document.createElement('button'); b.type = 'button'; b.className = 'aj-foto'; b.setAttribute('aria-label', 'Ver foto ' + (i + 1));
     var im = document.createElement('img'); im.src = f.img.src; im.alt = ''; b.appendChild(im);
     var p = document.createElement('span'); p.textContent = f.frase; b.appendChild(p);
-    b.addEventListener('click', function () { $('grande-img').src = f.img.src; $('grande-txt').textContent = f.frase; $('grande').hidden = false; });
+    b.addEventListener('click', function () { verGrande(f); });
     lista.appendChild(b);
   });
   $('gal-sub').textContent = totalValidas ? 'Toca una foto para verla grande' : 'Tu árbol ya brilla en la plaza';
   g.hidden = false; requestAnimationFrame(function () { g.classList.add('aj-ver'); });
 }
+var grandeT = 0;
+function verGrande(f) { $('grande-img').src = f.img.src; $('grande-txt').textContent = f.frase; $('grande').hidden = false; grandeT = performance.now(); }
 function cerrarGaleria() { var g = $('galeria'); g.classList.remove('aj-ver'); luego(function () { g.hidden = true; }, 350); galeriaAbierta = false; }
-escuchar($('grande'), 'click', function () { this.hidden = true; });
+/* se cierra con un toque; no con el clic que el navegador manda justo después del toque que la abrió
+   en el paseo (le caía encima y la cerraba al instante) */
+escuchar($('grande'), 'click', function () { if (performance.now() - grandeT < 450) return; this.hidden = true; });
 /* Seguir: la plaza queda con el árbol encendido para pasear, y la página sigue (el premio con la voz) */
 escuchar($('gal-seguir'), 'click', function () {
   cerrarGaleria(); irLibre();
   if (al.seguir) al.seguir();
 });
 escuchar($('gal-otra'), 'click', function () { if (al.otraVez) al.otraVez(); });
+/* en el paseo, su carta otra vez (5.ª ronda: «no vi cómo volver a ver la carta; tuve que cerrar y
+   abrir»). Su «Seguir» lleva al álbum, y el álbum de vuelta al paseo, como la primera vez */
+escuchar($('carta-otra'), 'click', function () {
+  if (estado !== 'libre' || !window.Nucleo || !Nucleo.dedicatoria) return;
+  $('carta-otra').hidden = true;
+  var mem = !!(DATOS.extra && DATOS.extra.publico === 'memoria');
+  Nucleo.dedicatoria({ titulo: mem ? 'Con todo el cariño, en Navidad' : 'Esta Navidad, para ti', alSeguir: function () { if (estado === 'libre') abrirGaleria(true); } });
+});
 function irLibre() {
   cambiar('libre'); camCine = null; kCine = 0; metaFiesta = .6;
   if (ruwayA) { RW.x = ruwayA.raiz.position.x; RW.z = ruwayA.raiz.position.z; RW.rumbo = ruwayA.raiz.rotation.y; ruwayA.pose = null; ruwayA.sonrisa = .6; ruwayA.boca = 0; }
@@ -4936,6 +5142,8 @@ function bucle(ahora) {
   if (puedeMover() || estado === 'recoger' || estado === 'robo' || estado === 'atrapado' || estado === 'vuelo' || estado === 'carta' || estado === 'cine') moverRuway(dt);
   if (estado !== 'final' && estado !== 'galeria' && estado !== 'portada') posarRuway(dt);
   buscarCerca();
+  ayudaCuadro(dt);
+  autoMirar(dt);
   if (estado === 'vuelo') vueloCuadro(dt);
   grunonCuadro(dt);
   if (estado === 'final' || estado === 'galeria') { final.cuadro(dt); if (estado === 'final') pintarSaltarSiCambia(); }
@@ -4988,7 +5196,7 @@ function plazaLista() {
   if (al.listo) al.listo();
   /* se empieza cuando están los dos: Ruway (sin él no hay juego) y el muki */
   var faltan = 2, empezo = false;
-  function llegoUno() { if (--faltan > 0 || empezo || !vivo) return; empezo = true; c.classList.add('aj-fuera'); luego(function () { c.hidden = true; }, 700); empezar(); }
+  function llegoUno() { if (--faltan > 0 || empezo || !vivo) return; empezo = true; c.classList.add('aj-fuera'); luego(function () { c.hidden = true; }, 700); if (o.encendido) empezarEncendido(); else empezar(); }
   /* el muki de ahora (el gnomo con huesos) baja aparte; si tarda más de 12 s o no llega, sigue el
      de código y, si llega después, se viste ahí mismo */
   var esperaMuki = true; luego(function () { if (esperaMuki) { esperaMuki = false; llegoUno(); } }, 12000);
@@ -5030,8 +5238,10 @@ api = {
   estado: function () { return { listo: listo, ruway: cargaRuway, estado: estado, encontradas: encontradas, total: totalValidas, calidad: calidad, conchas: AJ.conchas, corriendo: corriendo,
     pr: pr, fps: fpsVisto, fpsMin: fpsMin === 999 ? null : fpsMin, final: finalT(), galeria: galeriaAbierta, terminado: terminado, dedicatoria: dedicaVista, retablo: final.retablo(), muki: mukiGLB ? 'gnomo' : 'codigo', desdeRobo: t - ultimoRobo, gpu: A.gpu || '', cuadros: cuadros, pausa: pausaFuera, dib: R ? R.info.render.calls : 0, tri: R ? R.info.render.triangles : 0 }; },
   fotos: function () { return fotos.map(function (f) { return { src: f.img ? f.img.src : '', txt: f.frase, k: f.k, j: f.j, estado: f.estado }; }); },
-  esferas: function () { return ES.map(function (e) { return { estado: e.estado, x: e.p.x, y: e.p.y, z: e.p.z, esc: e.esc && e.esc.id }; }); },
+  esferas: function () { return ES.map(function (e) { return { estado: e.estado, x: e.p.x, y: e.p.y, z: e.p.z, esc: e.esc && e.esc.id, escR: e.esc && e.esc.r, escala: +(+e.escala || 0).toFixed(3) }; }); },
   saltarIntro: saltarIntro,
+  /* el personaje: cuántas mallas traen color en los vértices y cuántas lo usan (Uku, Puyu y Qori no llevan textura) */
+  personaje: function () { return ruwayA ? ruwayA.mallas.map(function (m) { return { colorVertices: !!(m.geometry && m.geometry.attributes && m.geometry.attributes.color), usa: !!(m.material && m.material.vertexColors) }; }) : null; },
   /* recoger la esfera i: Ruway aparece a su lado y la toma */
   recoger: function (i) { var e = ES[i]; if (!e || e.estado !== 'escondida' || estado !== 'juego' || !ruwayA) return false; RW.x = e.p.x + .8; RW.z = e.p.z; RW.v = 0; empezarRecoger(e); return true; },
   robar: function (i) { var e = ES[i === undefined ? robables[0] : i]; if (e && e.estado === 'escondida' && estado === 'juego') { RW.x = e.p.x - 4; RW.z = e.p.z; empezarRobo(e); return true; } return false; },
@@ -5047,7 +5257,25 @@ api = {
   camLibre: function (p, m, f) { camLibre = p ? [p, m] : null; if (f) { cam.fov = f; cam.updateProjectionMatrix(); } },
   mirar: function (m, yaw, pitch, dist) { ponerMirar(m); avisoT = 0; $('aviso').className = ''; orb.yaw = yaw || 0; orb.pitch = pitch || 0; orb.dist = dist || 1; orb.quieto = 0; },
   grunon: function (st, x, z, r) { grunon.raiz.visible = true; grunon.estado = st; if (x !== undefined) { GR.x = x; GR.z = z; } if (r !== undefined) GR.rumbo = r; },
-  fugaz: function () { cielo.fugaz(); }
+  fugaz: function () { cielo.fugaz(); },
+  ruway: function () { var d = new V3(); cam.getWorldDirection(d); return { x: RW.x, z: RW.z, v: RW.v, rumbo: RW.rumbo, vista: Math.atan2(d.x, d.z), llevando: llevando }; },
+  sinAvance: function (s) { sinAvance = s; },
+  limiteLlevame: function (s) { LLEVAME_S = s; },
+  giroSolo: function (si) { GIRO_SOLO = !!si; },
+  muki: function (ocultar) { if (ocultar) grunon.raiz.visible = false; return { x: GR.x, z: GR.z, v: GR.v, rumbo: GR.rumbo, t: GR.t, atrapo: GR.atrapo == null ? null : GR.atrapo }; },
+  decir: function (q, txt, ms) { decir(q, txt, ms); },
+  volutas: function () { return vapor.contar(); },
+  camaraRobo: camaraRobo,
+  choca: function (x, z, r) { return A.empujar(new V3(x, 0, z), r || .3); },
+  luzFuegos: function () { return fuegos.luzMax; },
+  camara: function () { var d = new V3(); cam.getWorldDirection(d); d.y = 0; d.normalize(); var p = cam.position, C = A.ARBOL.C;
+    return { x: p.x, y: p.y, z: p.z, fx: d.x, fz: d.z, final: finalT(), aRamas: Math.hypot(p.x - C.x, p.z - C.z) - A.ARBOL.radio(p.y) }; },
+  flechaPiso: function () { var f = flechaP; if (!f) return { ver: false }; var tb = Math.atan2(objetivo.x - RW.x, objetivo.z - RW.z);
+    return { ver: f.visible, desvio: +Math.abs(A.angDif(f.rotation.y, tb)).toFixed(3), lejos: +Math.hypot(f.position.x - RW.x, f.position.z - RW.z).toFixed(2) }; },
+  rayoA: function (x, y) { v2.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); rayo.setFromCamera(v2, cam); var m = 1e9; ES.forEach(function (es) { if (es.estado === 'colgada') m = Math.min(m, rayo.ray.distanceSqToPoint(es.p)); }); return { d2: +m.toFixed(3), mirando: mirando, dedos: nDedos(), joy: joy.id, mov: joy.mov }; },
+  pantallaDe: function (x, y, z) { var v = new V3(x, y, z).project(cam); return [(v.x + 1) / 2 * innerWidth, (1 - v.y) / 2 * innerHeight, v.z < 1 ? 1 : 0]; },
+  /* «Llévame» hacia la esfera i; atascado: como si se hubiera atracado ya (salta enseguida) */
+  llevar: function (i, atascado) { llevaFija = ES[i] || null; llevando = true; llevaT = atascado ? 2 : 0; llevaMejor = atascado ? -1 : 1e9; }
 };
 if (navigator.webdriver || window.__RUWAY_PRUEBA) window.__arbolJuego = api;
 

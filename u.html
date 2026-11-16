@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v50">
+<meta name="ruway-version" content="v51">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -119,6 +119,36 @@ body.aj-jugando #globo{visibility:hidden!important}
 #aj-caja{position:absolute;inset:0;z-index:5}
 #aj-baja{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 40%,#18214a,#0B1022 70%);
   color:#FFF3DE;font:600 18px Georgia,serif;text-align:center;padding:24px}
+#aj-baja .aj-baja-in{display:flex;flex-direction:column;align-items:center;gap:6px}
+#aj-baja .aj-baja-in p{margin:4px 0 0}
+#aj-baja .aj-baja-in small{font:500 13px 'Baloo 2',sans-serif;color:#CFC7B4}
+#aj-baja .aj-baja-pj{display:block;width:96px;height:96px;border-radius:20px;background-repeat:no-repeat;background-color:#26305f;animation:ajSalta 1s ease-in-out infinite}
+@keyframes ajSalta{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@media (prefers-reduced-motion:reduce){#aj-baja .aj-baja-pj{animation:none}}
+/* ¿Quién va a buscar las esferas? (antes de entrar a la plaza) */
+#aj-elige{position:fixed;inset:0;z-index:40;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  background:radial-gradient(ellipse at 50% 30%,#1c2554,#0B1022 72%);color:#FFF3DE;text-align:center;padding:22px 16px 96px}   /* abajo cabe el botón fijo: no tapa la última fila */
+#aj-elige h2{margin:6px 0 4px;font:600 26px 'Cormorant Garamond',Georgia,serif}
+#aj-elige .aj-sub{margin:0 auto 14px;max-width:320px;font-size:14px;color:#CFC7B4}
+#aj-elige .aj-pjs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:380px;margin:0 auto}   /* de 4 en 4: todos caben arriba de «Entrar a la plaza» */
+#aj-elige .aj-pj{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 3px 5px;min-height:0;
+  border:2px solid rgba(255,243,222,.16);border-radius:18px;background:rgba(255,255,255,.06);color:inherit;font:600 13px 'Baloo 2',sans-serif;cursor:pointer}
+#aj-elige .aj-pj i{display:block;width:56px;height:56px;border-radius:13px;background-repeat:no-repeat;background-color:#26305f}
+#aj-elige .aj-pj.on{border-color:#FFC95A;background:rgba(255,201,90,.16);box-shadow:0 0 18px rgba(255,201,90,.35)}
+#aj-elige .aj-pj.bloq i{filter:grayscale(1) brightness(.45)}
+#aj-elige .aj-pj.bloq:after{content:'🔒';position:absolute;top:22px;left:50%;transform:translateX(-50%);font-size:20px}
+#aj-elige .aj-pista{min-height:40px;margin:12px auto 8px;max-width:330px;font-size:14px;color:#FFD98A}
+#aj-elige #aj-elige-ok{display:block;position:sticky;bottom:14px;z-index:2;margin:6px auto 12px;min-width:220px;padding:14px 26px;border:0;border-radius:30px;
+  background:linear-gradient(90deg,#FFB347,#FF7A5C);color:#2A1408;font:700 17px 'Baloo 2',sans-serif;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+#aj-elige details{max-width:340px;margin:8px auto 0;font-size:12px;color:#9C97A8;text-align:left}
+/* plegado: el elegido grande y «Elegir otro personaje»; abierto: la lista de siempre */
+#aj-elige.plegado .aj-pjs,#aj-elige.plegado .aj-pista,#aj-elige.plegado .aj-sub,#aj-elige:not(.plegado) #aj-elige-yo,#aj-elige:not(.plegado) #aj-elige-otro{display:none}
+#aj-elige-yo{display:flex;flex-direction:column;align-items:center;gap:4px;margin:18px auto 14px}
+#aj-elige-yo i{display:block;width:104px;height:104px;border-radius:24px;background-repeat:no-repeat;background-color:#26305f;box-shadow:0 0 0 3px #FFC95A,0 0 26px rgba(255,201,90,.4)}
+#aj-elige-yo span{margin-top:8px;font-size:13px;color:#CFC7B4}
+#aj-elige-yo b{font:700 24px 'Baloo 2',sans-serif;color:#FFF1DA}
+#aj-elige-otro{display:block;margin:0 auto 10px;min-height:44px;padding:10px 20px;border:0;background:none;color:#E9DCC2;font:600 15px 'Baloo 2',sans-serif;text-decoration:underline;cursor:pointer}
+#aj-elige summary{cursor:pointer;text-align:center}
 /* En memoria: el final lo abre quien recibe, cuando quiera (no se abre solo) */
 #despedida{position:absolute;bottom:42px;left:50%;transform:translateX(-50%);z-index:8;max-width:calc(100% - 32px);
   padding:13px 22px;border:1px solid color-mix(in srgb,var(--c1) 45%,transparent);border-radius:26px;
@@ -175,9 +205,16 @@ body.aj-jugando #globo{visibility:hidden!important}
   animation:corvuela 1.8s ease-out forwards}
 @keyframes corvuela{0%{transform:translate(0,0) scale(.6);opacity:0}15%{opacity:1}
   100%{transform:translate(var(--dx),-340px) scale(1.4);opacity:0}}
+/* la bienvenida de quien vuelve: su mensaje (como el botón grande, pero claro) y «Jugar otra vez» (texto) */
+#s1 .ver-mas{display:block;margin:12px auto 0;min-width:220px;padding:13px 24px;border-radius:30px;border:1px solid rgba(255,233,168,.55);
+  background:rgba(255,233,168,.12);color:#FFF1DA;font:700 16px 'Baloo 2',sans-serif;cursor:pointer}
+#s1 .ver-otra{display:block;margin:10px auto 0;min-height:44px;padding:10px 20px;border:0;background:none;color:#E9DCC2;font:600 15px 'Baloo 2',sans-serif;text-decoration:underline;cursor:pointer}
+#son.son-pausa{opacity:.75}
+#son.son-pausa::after{content:'';position:absolute;left:9px;right:9px;top:50%;border-top:2px solid currentColor;transform:rotate(-35deg)}
 #son{position:absolute;top:18px;left:18px;padding:8px 13px;border:1px solid rgba(255,233,168,.3);
   border-radius:22px;background:rgba(255,233,168,.08);color:var(--c2);font-size:14px;z-index:6}
-#pista{position:absolute;top:60px;left:18px;font-size:10px;color:#9C937E;z-index:6;
+/* debajo de la 🎒 del núcleo (.rn-bot: top 62px, ~36 de alto): a 60px quedaba tapado («CANCIÓN EN PAUSA», mamá de prueba) */
+#pista{position:absolute;top:calc(106px + env(safe-area-inset-top,0px));left:18px;font-size:10px;color:#9C937E;z-index:6;
   font-family:sans-serif;letter-spacing:.1em;max-width:60%}
 /* El árbol y la vela dicen qué hacer con una pista abajo, al centro, justo
    encima del botón de compartir. El aviso de la canción, si hay nota de voz,
@@ -1177,8 +1214,10 @@ function traer(par, ok, mal) {
     function regalo(){ ver('uno'); var cofre=H.uno.querySelector('.rn-cofre');
       cofre.onclick=function(){ if(PR.abierto) return; PR.abierto=true; cofre.classList.add('abierto'); H.uno.querySelector('.rn-toca').textContent=''; tin();
         /* se despierta el reproductor DENTRO del toque: el iPhone no deja que suene después */
-        var a=elP(), t=TRAIDOS.voz; a.src=t?t.url:(!D.vozId&&D.voz?String(D.voz):SILENCIO); if(a.src!==SILENCIO) bajarM(typeof o.musica==='function'?o.musica():o.musica); try{ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){}
-        setTimeout(suVoz,750); }; }
+        despertarVoz(); setTimeout(suVoz,750); }; }
+    /* el reproductor se despierta DENTRO del toque (la caja o «Escuchar su mensaje»): el iPhone no deja que suene después */
+    function despertarVoz(){ var a=elP(), t=TRAIDOS.voz; a.src=t?t.url:(!D.vozId&&D.voz?String(D.voz):SILENCIO); if(a.src!==SILENCIO) bajarM(typeof o.musica==='function'?o.musica():o.musica);
+      try{ var p=a.play(); if(p&&p.catch) p.catch(function(){}); }catch(e){} }
     function suVoz(){ if(PR.capa!==c) return; ver('dos'); var d=H.dos, barras=''; for(var i=0;i<18;i++) barras+='<i style="animation-delay:-'+((i*37)%90/100)+'s"></i>';
       d.innerHTML='<p class="rn-kick">Su voz</p><h2>Un mensaje para ti</h2><p class="rn-sub"></p><div class="rn-orbe"><div class="rn-onda" aria-hidden="true">'+barras+'</div></div><p class="rn-pr-est"></p>'
         +'<div class="rn-fila"><button type="button" class="rn-cerrar rn-suave" id="rn-otra">⏸ Pausar</button><button type="button" class="rn-cerrar" id="rn-seguir">Seguir</button></div>';
@@ -1187,7 +1226,10 @@ function traer(par, ok, mal) {
       d.querySelector('#rn-seguir').onclick=function(){ if(PR.el) try{ PR.el.pause(); }catch(e){} subirM(); if(f) tres(); else cerrar(); };
       sonarP(o.musica); }
     function tres(){ ver('tres'); cierreP(H.tres,o,false); botonesFin(H.tres.querySelector('.rn-pr-bts')); }
-    if(conDed) dedicatoria(); else if(voz) regalo(); else tres();
+    /* o.directo (desde una bienvenida, ya dentro de un toque): la voz suena enseguida, sin la caja de regalo, que pedía un
+       toque más («Escuchar su mensaje» y después otra vez el regalito, mamá de prueba del árbol, ronda 5) */
+    function abrirVoz(){ PR.abierto=true; despertarVoz(); suVoz(); }
+    if(conDed) dedicatoria(); else if(voz){ if(o.directo) abrirVoz(); else regalo(); } else tres();
     return c; }
   /* En memoria el final no es un premio. Primero sus palabras (si la experiencia no las mostró ya),
      después la voz, que se ofrece PREGUNTANDO ("¿Quieres escucharlo ahora?"), se puede dejar para
@@ -1760,7 +1802,8 @@ function traer(par, ok, mal) {
    +'.rn-cristal .rn-cerrar.rn-suave{color:#FFF6EC;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}'
    +'.rn-cristal .rn-cerrar.rn-fant{min-height:46px;margin-top:4px;color:rgba(255,246,236,.66);background:none;box-shadow:none;font-weight:700;font-size:15px}'
    +'.rn-cristal .rn-ic{display:inline-grid;place-items:center;flex:none;width:30px;height:30px;margin-left:-8px;border-radius:50%;background:#2B1326;color:#FFE3A3}.rn-cristal .rn-suave .rn-ic{background:rgba(255,255,255,.12);color:#FFF6EC}.rn-cristal .rn-ic svg{width:15px;height:15px}'
-   +'.rn-cristal .rn-fila{display:grid;grid-template-columns:1fr 1fr;gap:10px}'
+   /* dos botones lado a lado si caben enteros; si no, uno debajo del otro («Escuchar otra vez» se partía en dos renglones) */
+   +'.rn-cristal .rn-fila{display:flex;flex-wrap:wrap;column-gap:10px}.rn-cristal .rn-fila>.rn-cerrar{flex:1 1 auto;width:auto;white-space:nowrap;padding-left:16px;padding-right:16px}'
    +'.rn-emb{position:relative;width:88px;height:88px;margin:0 auto 16px;display:grid;place-items:center}'
    +'.rn-emb i{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,var(--rn-c1,#FF8FAB),#FFE08A,var(--rn-c3,#C2476B),var(--rn-c1,#FF8FAB));-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 2.5px));animation:rnGira 7s linear infinite}'
    +'.rn-emb:before{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle at 50% 38%,rgba(255,255,255,.16),rgba(255,255,255,.03) 70%);box-shadow:0 0 42px -4px var(--rn-c1,#FF8FAB)}'
@@ -1783,7 +1826,7 @@ function traer(par, ok, mal) {
    +'.rn-orbe.suena:before{animation:rnAro 2.2s ease-out infinite}.rn-orbe.suena:after{animation:rnAro 2.2s 1.1s ease-out infinite}@keyframes rnAro{0%{opacity:.75;transform:scale(1)}100%{opacity:0;transform:scale(1.42)}}'
    +'.rn-cristal .rn-onda{gap:4px;height:70px;margin:0}.rn-cristal .rn-onda i{width:5px;border-radius:3px;background:linear-gradient(180deg,#FFE08A,var(--rn-c1,#FF8FAB))}'
    +'.rn-cristal .rn-carta{margin:14px 0 0;padding:16px;border:0;border-radius:20px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);text-align:left}.rn-cristal .rn-carta p{color:#FFF6EC;font:700 23px/1.38 "Dancing Script",Georgia,serif;text-shadow:0 0 16px rgba(255,190,110,.35)}'
-   +'.rn-cristal video{border-radius:18px!important;margin:14px 0 4px!important;box-shadow:0 0 0 1px rgba(255,255,255,.12)}'
+   +'.rn-cristal video{border-radius:18px!important;margin:14px auto 4px!important;box-shadow:0 0 0 1px rgba(255,255,255,.12)}'
    +'.rn-cristal .rn-barra{background:rgba(255,255,255,.1)}.rn-cristal .rn-barra i{background:linear-gradient(90deg,#FFE08A,#FF7A8A)}.rn-cristal p b{color:#FFE3A3}'
    +'.rn-cristal.rn-memoria .rn-hoja{background:linear-gradient(170deg,rgba(42,35,72,.84),rgba(18,14,34,.93))}'
    +'.rn-cristal.rn-memoria .rn-kick,.rn-cristal.rn-memoria .rn-mini,.rn-cristal.rn-memoria .rn-firma,.rn-cristal.rn-memoria .rn-toca{color:#E1D5FF}'
@@ -1822,7 +1865,7 @@ function traer(par, ok, mal) {
    +'.rn-dedi-cuerpo{width:min(420px,100%);margin:0 auto}'
    +'.rn-dedi-para{margin:0;font:800 11px Nunito,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#FFE3A3;min-height:13px}'
    +'.rn-dedi-tit{margin:6px 0 0;font:italic 600 15px Georgia,"Times New Roman",serif;color:#FFE3A3}.rn-dedi-tit:empty{display:none}'
-   +'.rn-dedi-txt{margin:8px 0 0;font:700 26px/1.36 "Dancing Script",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;text-shadow:0 0 18px rgba(255,190,110,.55),0 2px 4px rgba(0,0,0,.55);max-height:48vh;overflow-y:auto}'
+   +'.rn-dedi-txt{margin:8px 0 0;font:700 26px/1.36 "Dancing Script",Georgia,serif;white-space:pre-wrap;overflow-wrap:anywhere;text-wrap:pretty;text-shadow:0 0 18px rgba(255,190,110,.55),0 2px 4px rgba(0,0,0,.55);max-height:48vh;overflow-y:auto}'
    +'.rn-dedi-de{margin:10px 0 0;font:italic 17px Georgia,"Times New Roman",serif;color:#FFE3A3;opacity:0;transition:opacity .8s}.rn-dedi-de.ver{opacity:1}'
    +'.rn-dedi-pie{display:flex;justify-content:center;min-height:54px}'
    +'#rn-ded-seguir.rn-x,.rn-dedi #rn-ded-seguir{border:0;border-radius:999px;min-width:200px;min-height:54px;padding:14px 40px;font:800 17px "Baloo 2",Nunito,sans-serif;color:#2B1326;background:linear-gradient(135deg,#FFE08A 0%,#FFB067 45%,#FF7A8A 100%);box-shadow:0 14px 34px -10px rgba(255,122,138,.65),inset 0 1px 0 rgba(255,255,255,.65);cursor:pointer}'
@@ -1837,7 +1880,10 @@ function traer(par, ok, mal) {
     var ver=function(){ document.body.classList.toggle('rn-hay-capa',!!document.querySelector('body > .rn-capa')); };
     try{ new MutationObserver(ver).observe(document.body,{childList:true}); ver(); }catch(e){} }
   function esc(t){ return String(t==null?'':t).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-  function pintarBoton(){ if(cuentaEl) cuentaEl.textContent=objetos()?String(objetos()):(vistos()+'/'+totalFotos());
+  /* la 🎒 cuenta los recuerdos (vistos/total) siempre que el regalo tenga fotos: pasaba a «cosas juntadas» con la primera
+     y saltaba de 3 a 23 al ganar la carrera («los números no cuadran», chica y mamá de prueba, ronda 4). Lo juntado está
+     adentro, en la Colección; sin fotos, cuenta lo juntado. */
+  function pintarBoton(){ if(cuentaEl) cuentaEl.textContent=(totalFotos()||!objetos())?(vistos()+'/'+totalFotos()):String(objetos());
     if(paseEl){ var l=N.pase.lista(); paseEl.querySelector('span').textContent=l.filter(function(x){ return x.hecha; }).length+'/'+l.length; } }
   function latir(el){ el=el||boton; if(!el) return; el.classList.remove('late'); void el.offsetWidth; el.classList.add('late'); }
   function quitarBotones(){ if(boton){ boton.remove(); boton=null; cuentaEl=null; } if(paseEl){ paseEl.remove(); paseEl=null; } }
@@ -1854,8 +1900,11 @@ function traer(par, ok, mal) {
     pintarBoton(); return boton; };
   N.mochila=function(pestana){ if(TONO) return; estilos(); if(!P) return; if(document.getElementById('rn-mochila')) return;   /* una sola a la vez (la carrera se pausa mientras exista) */ var c=document.createElement('div'); c.className='rn-capa'; c.id='rn-mochila';
     var para=String(D.para||'').trim(), de=String(D.de||'').trim();
+    /* la Colección sale cuando hay algo juntado: en juegos donde no se junta nada (el árbol), cinco ceros
+       confundían («no entendí qué tenía que juntar ni dónde», mamá de prueba) */
+    var conCol=objetos()>0||pestana==='col';
     c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Mi mochila"><h2>🎒 Mi mochila</h2><p class="rn-sub"></p>'
-      +'<div class="rn-tabs">'+(PASE.length?'<button data-p="pase">🎟️ Pase</button>':'')+'<button data-p="rec">Recuerdos</button><button data-p="col">Colección</button><button data-p="log">Logros</button></div><div class="rn-cuerpo"></div>'
+      +'<div class="rn-tabs">'+(PASE.length?'<button data-p="pase">🎟️ Pase</button>':'')+'<button data-p="rec">Recuerdos</button>'+(conCol?'<button data-p="col">Colección</button>':'')+'<button data-p="log">Logros</button></div><div class="rn-cuerpo"></div>'
       +'<button class="rn-cerrar">Seguir</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
     c.querySelector('.rn-sub').textContent=(para?'Para '+para:'Tu regalo')+(de?' · de '+de:'')+(personaje?' · juegas con '+personaje:'');
     document.body.appendChild(c);
@@ -1880,6 +1929,7 @@ function traer(par, ok, mal) {
           if(!x.abierta){ toast('🔒','Todavía no','Termina la anterior y se abre sola'); return; }
           if(x.actual){ cerrar(); return; } N.pase.ir(x.id); }; });
       } else if(p==='col'){ var tot=objetos();
+        if(!tot){ cuerpo.innerHTML='<p style="font-size:14px;color:#5E6655;line-height:1.45">Todavía no juntas nada. Los ❤️ corazones, ⭐ estrellas, 🌸 flores, 💋 besos y 🎁 regalos que encuentres jugando se guardan aquí.</p>'; return; }
         h+='<div class="rn-items">'+Object.keys(ITEMS).map(function(k){ return '<div class="rn-it"><i>'+ITEMS[k][0]+'</i><b>'+(P.inv[k]||0)+'</b><small>'+ITEMS[k][1]+'</small></div>'; }).join('')+'</div>'
           +'<div class="rn-barra"><i style="width:'+Math.min(100,tot/20*100)+'%"></i></div><small style="color:#8A7A66">'+(tot>=20?'¡Eres coleccionista! 🧺':'Junta 20 para el logro Coleccionista ('+tot+' de 20)')+'</small>'
           +'<p style="font-size:13px;color:#5E6655">Todo lo que juntas en los juegos se guarda aquí, en todas las experiencias de este regalo.</p>';
@@ -2457,19 +2507,44 @@ for(var i=0;i<80;i++)motas.push({x:R(0,900),y:R(0,900),s:R(.6,2.1),v:R(.05,.3),o
    botón (#ver) es el que despierta el sonido y abre el universo, el árbol o la vela. La carta del
    comienzo ya no sale: la dedicatoria va al final, dentro de la escena. Sin datos queda la
    portada del conejito de siempre. */
+/* '' la primera vez; 'encendido' quien vuelve a ver su árbol; 'otra' para jugarlo entero otra vez.
+   Va antes de la portada: el núcleo puede contestar enseguida y la portada lo pone. */
+var ARBOL_VUELTA='';
 if(DATOS && DATOS.ok!==false) nucleo(function(N){ var tp=DATOS.tipo==='arbol'?'arbol':DATOS.tipo==='vela'?'vela':'universo',
     mem=tp==='vela'||!!(DATOS.extra&&DATOS.extra.publico==='memoria');
   var P={universo:{titulo:mem?'Un universo de recuerdos':'Tu universo de recuerdos',texto:mem?'Sus fotos giran como estrellas. Toca cada una, a tu ritmo.':'Sus fotos giran como estrellas alrededor de un corazón. Toca cada una para ver lo que guardaron ahí.',boton:mem?'Entrar':'Abrir tu universo'},
-    arbol:{titulo:'El árbol que se enciende',texto:mem?'Toca cada esfera y el árbol se va encendiendo con sus recuerdos.':'Es Nochebuena en la Plaza de Armas y el muki se llevó las luces. Encuéntralas y enciende el árbol.',boton:'Encender el árbol'},
+    arbol:{titulo:'El árbol que se enciende',texto:mem?'Toca cada esfera y el árbol se va encendiendo con sus recuerdos.':'Es Nochebuena en la Plaza de Armas y Don Gruñón, el muki de la mina, se llevó las esferas del árbol. Encuéntralas y enciéndelo.',boton:'Encender el árbol'},
     vela:{titulo:'La vela que no se apaga',texto:'Enciende la vela con tu dedo. En su luz pasan los recuerdos, a tu ritmo.',boton:'Encender la vela'}}[tp];
-  N.portada(document.getElementById('s1'),{titulo:P.titulo,texto:P.texto,boton:P.boton,idBoton:'ver',sinIds:true,cinta:true,prev:urlLibU('prev-'+tp+'.webp')}); });
+  /* quien ya terminó este árbol (lo sabe el núcleo): la bienvenida, no el robo otra vez */
+  var vuelve=tp==='arbol' && !mem && !!(N.estado().fin);
+  if(vuelve){ P.titulo='Tu árbol ya está encendido'; P.texto='Sus esferas brillan en la plaza, con sus fotos. Vuelve a verlo cuando quieras.'; P.boton='🎄 Ver mi árbol encendido'; ARBOL_VUELTA='encendido'; }
+  N.portada(document.getElementById('s1'),{titulo:P.titulo,texto:P.texto,boton:P.boton,idBoton:'ver',sinIds:true,cinta:true,prev:urlLibU('prev-'+tp+'.webp')});
+  if(vuelve) bienvenidaArbol(N); });
+/* los otros dos botones de la bienvenida: su mensaje (la voz; sin voz, sus palabras) enseguida, y el
+   juego entero otra vez */
+function bienvenidaArbol(N){
+  var ver=document.getElementById('ver'); if(!ver||document.getElementById('ver-voz')) return;
+  var vs=ver.querySelector('span')||ver; vs.textContent='🎄 Ver mi árbol encendido';   /* por si la escena 2D lo pintó antes */
+  var voz=document.createElement('button'); voz.type='button'; voz.id='ver-voz'; voz.className='ver-mas';
+  /* ▶ y no 🎙: sin su marca de emoji (U+FE0F) el micrófono sale como un dibujito gris chiquito («parece una manchita», mamá de prueba) */
+  voz.textContent=N.premio.hayVoz()?'▶ Escuchar su mensaje':'💌 Leer su dedicatoria';
+  var otra=document.createElement('button'); otra.type='button'; otra.id='ver-otra'; otra.className='ver-otra'; otra.textContent='Jugar otra vez';
+  ver.parentNode.insertBefore(otra,ver.nextSibling); ver.parentNode.insertBefore(voz,ver.nextSibling);
+  voz.addEventListener('click',function(){
+    /* ya la escuchó: al terminar de ver el árbol no vuelve a abrirse sola */
+    function suVoz(){ PREMIO_ABIERTO=true; N.premio.mostrar({musica:document.getElementById('audio'),final:{titulo:TITULO_FIN,compartir:compartirUniverso},dedicatoria:false}); }
+    if(N.premio.hayVoz()) suVoz(); else N.dedicatoria({titulo:TITULO_FIN,alSeguir:function(){}});
+  });
+  /* el juego entero otra vez: al terminarlo se le vuelve a abrir su mensaje, aunque ya lo haya oído aquí */
+  otra.addEventListener('click',function(){ ARBOL_VUELTA='otra'; PREMIO_ABIERTO=false; ver.click(); });
+}
 document.getElementById('abrir').addEventListener('click',function(){
   esconder(s1);ver(s2);
   setTimeout(function(){hoja.style.transform='translateY(0) scale(1)';},80);
 });
 document.getElementById('ver').addEventListener('click',function(){
   esconder(s1);esconder(s2);ver(s3);vivo=true;size();
-  if(TIPO==='arbol' && typeof jugarArbol==='function') jugarArbol();
+  if(TIPO==='arbol' && typeof jugarArbol==='function'){ var otra=ARBOL_VUELTA==='otra'; if(otra) ARBOL_VUELTA=''; jugarArbol(otra); }   /* «Jugar otra vez» vale una vez */
   if(TIPO==='universo') relatoInicio();
   nucleo(function(N){ N.boton(); });
   /* el botón aparece unos segundos después: primero que vea su universo */
@@ -2511,13 +2586,14 @@ document.getElementById('son').addEventListener('click',function(){
     return;
   }
   if(a.paused || a.src===SILENCIO){
-    SON.quiere=true;
+    SON.quiere=true; b.classList.remove('son-pausa'); b.setAttribute('aria-label','Pausar la canción');
     if(a.src===SILENCIO || !a.getAttribute('src')){ despertar(a); b.textContent='♪…'; rescatar(); return; }
     a.play().then(function(){b.textContent='♪';})
             ['catch'](function(){ if(a.error||a.readyState===0) rescatar(); });
     b.textContent='♪';
   }
-  else{ SON.quiere=false; a.pause(); b.textContent='✕'; }
+  /* en pausa: la misma ♪ tachada y lo dice (la ✕ parecía «cerrar» y la mamá de prueba no supo qué hizo) */
+  else{ SON.quiere=false; a.pause(); b.textContent='♪'; b.classList.add('son-pausa'); b.setAttribute('aria-label','Canción en pausa: toca para escucharla'); pistaDice('CANCIÓN EN PAUSA'); }
 });
 document.getElementById('volver').addEventListener('click',function(){
   vivo=false;esconder(s3);ver(s1);cerrarGlobo();
@@ -3808,7 +3884,7 @@ function escenaArbol(){
     js.forEach(function(j){ S.abiertas[j]=1; });
     var c=cuenta(); if(c.total && c.abiertas<c.total) pistaEscena('Toca las esferas para encender el árbol'+(c.abiertas?' · '+c.abiertas+' de '+c.total:''));
   }};
-  var vb=document.querySelector('#ver span')||document.getElementById('ver'); vb.textContent='Encender el árbol';
+  var vb=document.querySelector('#ver span')||document.getElementById('ver'); vb.textContent=ARBOL_VUELTA==='encendido'?'🎄 Ver mi árbol encendido':'Encender el árbol';
 }
 
 /* ---------------- la vela ---------------- */
@@ -4126,23 +4202,96 @@ function arbol2D(motivo){
   var js=Object.keys(ARBOL_HALLADAS).map(Number); vistasArbol().forEach(function(j){ if(js.indexOf(j)<0) js.push(j); });
   if(ARBOL2D) ARBOL2D.marcar(js);
   modoArbol('2d',motivo);
+  /* quien eligió a otro personaje no lo va a ver: se le dice por qué, para que no sienta que se perdió su elección */
+  if((motivo==='lento'||motivo==='carga') && ARBOL_PJ!=='ruway' && arbolQuiereElegir()) pistaEscena('Tu plaza tardó en abrir. Te dejamos el árbol sencillo; prueba de nuevo con mejor señal.');
   if(window.Nucleo && Nucleo.estado && Nucleo.estado().fin) pintarBotonCompartir();
 }
-function jugarArbol(desdeCero){
+/* ¿Con quién se juega? (nov-2026) Ruway, el de siempre, o uno de los personajes de los juegos de x.html.
+   La lista, el orden de los retratos y los créditos son los MISMOS de Experiencias.html (PJS, AV_RETRATO y
+   AV_CREDITOS): la prueba t-arbol-personaje los compara. Cuáles están despiertos lo dice el núcleo (Nucleo.desb).
+   Se guarda en el teléfono en ruway:pj:arbol (una llave aparte: no cambia con quién juegas en los otros juegos). */
+var ARBOL_PJS=[{id:'ruway',nom:'Ruway'},{id:'oso',nom:'Uku'},{id:'conejo',nom:'Puyu'},{id:'panda',nom:'Nina'},{id:'qori',nom:'Qori'},{id:'shiba',nom:'Sami'},{id:'vaca',nom:'Tika'},
+  {id:'explorador',nom:'Rumi'},{id:'nova',nom:'Chaska'},{id:'exploradora',nom:'Wayra'},{id:'paladin',nom:'Inti'},{id:'myke',nom:'Yaku'},{id:'lavender',nom:'Urpi'},
+  {id:'tensy',nom:'Kantu'},{id:'leo',nom:'Ari'},{id:'mono',nom:'Kusi'},{id:'atuq',nom:'Atuq'}];
+var ARBOL_RETRATO=['oso','panda','conejo','shiba','mono','escolar','rulitos','explorador','exploradora','myke','lavender','tensy','nova','paladin','fuego','vaca','leo','atuq','qori'];
+var ARBOL_CREDITOS='Personajes 3D de Sketchfab con licencia CC BY 4.0, aligerados y con huesos puestos por Ruway: Uku («Cute Bear», Hafiene) · Nina («Cute 3D Red Panda Cartoon Character», sanjaysinghfazilka) · Puyu («Cute Rabbit», Hafiene) · Sami («Shiba Dog», Hafiene) · Tika («Cow», Weiting Ke) · Kusi («Mr Mono», BRUNO 365) · Chaska («Sci-Fi Girl Character», RapidAssets) · Inti («Fantasy White Paladin Handpainted», UFRE Studio) · Rumi («Cartoon Adventurer Boy», Ilse Mishra) · Wayra («Explorer Woman In Green», UFRE Studio) · Yaku («Myke color 3», WOLF) · Urpi («Lavender Starlet», yeziagree) · Kantu («Tensy», sahardian0107) · Atuq («cute monster», yamada_gangle) · Qori («A Jolly Wangcore little dinosaur avatar», KhoaMinh). En La gran carrera corren también: Escolar («Arms Out in Uniform», sahardian0107) · Rulitos («T-Pose Kid», thefox.dsign) · Fuego («Fire Boy - Model Low Poly», Alex Nguyễn; textura hecha con IA) · Zorrito («Cartoon Character», MartinDL) · Pingüino («Reading Penguin», Anders Weber) · Pollito («Nerdy Chick Artist», Mila Haddad) · Tom (de «Wandering Note Fantasy», Sam Naot / Wandering Note Project). Ari: «Teenager» de Grab3D (CC0, de uso libre), con ropa urbana puesta por Ruway. Yaku, Urpi, Kantu, la Escolar y Tom se crearon con Meshy (IA), Chaska con Tripo (IA) y Wayra también con IA. El carrito del planeta: «Pony Cartoon», Slava Z. (CC BY 4.0, sin sus letreros). El otro autito de La gran carrera: «Cicada - Retro Cartoon Car», RCC Design (CC BY 4.0; descapotable y con la placa de Ruway) · «Retro car stylized», makcutka250, sobre un concepto de Quinn Querido (CC BY 4.0; solo el auto y con luz) · «Banana Car», CarlosOlivera (CC BY 4.0; aligerado) · «Modular Go-kart», Jungle Jim (CC BY 4.0; con colores lisos) · «AI inspired Toy Car», De Spirito (CC BY 4.0; sin techo y con ruedas nuevas).';
+var ARBOL_PJ='ruway';
+function arbolLibre(id){ if(id==='ruway') return true; try{ return !!(window.Nucleo&&Nucleo.desb&&Nucleo.desb.libre(id)); }catch(e){ return false; } }   /* sin núcleo, solo Ruway: nadie esquiva el candado */
+function arbolPjValido(id){ return ARBOL_PJS.some(function(p){ return p.id===id && arbolLibre(id); }); }
+/* lo último que eligió en el árbol; si no hay, ruway */
+function arbolPjGuardado(){ try{ var v=JSON.parse(localStorage.getItem('ruway:pj:arbol')||'null'); if(v && typeof v.id==='string' && arbolPjValido(v.id)) return v.id; }catch(e){} return 'ruway'; }
+/* En las pruebas automáticas (navigator.webdriver) no sale, como la intro, salvo con ?rpj=1: las otras suites siguen igual. */
+function arbolQuiereElegir(){ try{ return !(navigator.webdriver && !/[?&]rpj=1(&|$)/.test(String(location.search||''))); }catch(e){ return false; } }
+function arbolGLB(id){ return id==='ruway'||!arbolPjValido(id)?'ruway-avatar.glb':'av-'+id+'.glb'; }
+/* el retrato de un personaje (un <i> con su cuadro de la tira, o la cara de Ruway) */
+function arbolRetrato(id){
+  var im=document.createElement('i'), N=ARBOL_RETRATO.length, k=ARBOL_RETRATO.indexOf(id);
+  if(id==='ruway'){ im.style.backgroundImage='url("'+urlLibU('ruway-cara.png')+'")'; im.style.backgroundSize='100% 100%'; }
+  else if(k>=0){ im.style.backgroundImage='url("'+urlLibU('av-retratos.webp')+'")'; im.style.backgroundSize=(N*100)+'% 100%'; im.style.backgroundPosition=(N>1?k/(N-1)*100:0)+'% 0'; }
+  return im; }
+function elegirArbol(seguir){
+  var viejo=document.getElementById('aj-elige'); if(viejo&&viejo.parentNode) viejo.parentNode.removeChild(viejo);
+  var elegido=arbolPjGuardado(), c=document.createElement('div'); c.id='aj-elige'; c.setAttribute('role','dialog'); c.setAttribute('aria-modal','true'); c.setAttribute('aria-label','Quién va a buscar las esferas');
+  /* 5.ª ronda de la mamá de prueba: tantos animalitos con candado la enredaban («yo quería ver mi
+     árbol»). Viene uno ya elegido (el de la última vez, o Ruway) con «Entrar a la plaza»; la lista
+     sale solo si toca «Elegir otro personaje». */
+  c.className='plegado';
+  c.innerHTML='<h2>¿Quién va a buscar las esferas?</h2><div id="aj-elige-yo"></div><p class="aj-sub">Elige con quién recorres la plaza. Puedes cambiarlo cuando quieras.</p><div class="aj-pjs"></div><p class="aj-pista"></p>'
+    +'<button type="button" id="aj-elige-ok">Entrar a la plaza</button><button type="button" id="aj-elige-otro">Elegir otro personaje</button><details><summary>Créditos de los personajes</summary><p class="aj-cred"></p></details>';
+  c.querySelector('.aj-cred').textContent=ARBOL_CREDITOS;
+  var cont=c.querySelector('.aj-pjs'), pista=c.querySelector('.aj-pista'), dormidos=0;
+  /* primero los que ya puede usar; los dormidos (con candado) al final */
+  ARBOL_PJS.filter(function(p){ return arbolLibre(p.id); }).concat(ARBOL_PJS.filter(function(p){ return !arbolLibre(p.id); })).forEach(function(p){
+    var dormido=!arbolLibre(p.id); if(dormido) dormidos++;
+    var secreto=false; try{ secreto=dormido&&Nucleo.desb.secreto(p.id); }catch(e){}
+    var b=document.createElement('button'); b.type='button'; b.dataset.id=p.id; b.className='aj-pj'+(dormido?' bloq':'');
+    var im=arbolRetrato(p.id);
+    var sp=document.createElement('span'); sp.textContent=secreto?'???':p.nom;
+    b.appendChild(im); b.appendChild(sp);
+    if(dormido) b.setAttribute('aria-label',(secreto?'Personaje secreto':p.nom)+', todavía dormido');
+    b.onclick=function(){
+      if(dormido){ var t=''; try{ t=Nucleo.desb.pista(p.id); }catch(e){} pista.textContent='🔒 '+(t||'Todavía duerme.'); return; }
+      elegido=p.id; pista.textContent=''; marcar(); };
+    cont.appendChild(b); });
+  var yo=c.querySelector('#aj-elige-yo');
+  function marcar(){ cont.querySelectorAll('.aj-pj').forEach(function(b){ var on=b.dataset.id===elegido; b.classList.toggle('on',on); b.setAttribute('aria-pressed',on?'true':'false'); });
+    yo.textContent=''; yo.appendChild(arbolRetrato(elegido)); var q=document.createElement('span'); q.textContent='Te acompaña'; yo.appendChild(q);
+    var n=document.createElement('b'); n.textContent=(ARBOL_PJS.filter(function(p){ return p.id===elegido; })[0]||{nom:'Ruway'}).nom; yo.appendChild(n); }
+  c.querySelector('#aj-elige-otro').onclick=function(){ c.classList.remove('plegado'); try{ c.querySelector('.aj-pj.on').focus(); }catch(e){} };
+  marcar();
+  if(dormidos) pista.textContent='Los que tienen 🔒 despiertan jugando: toca uno para saber cómo.';
+  c.querySelector('#aj-elige-ok').onclick=function(){
+    ARBOL_PJ=elegido; try{ localStorage.setItem('ruway:pj:arbol',JSON.stringify({id:elegido})); }catch(e){}
+    if(c.parentNode) c.parentNode.removeChild(c); seguir(); };
+  document.body.appendChild(c);
+  try{ c.querySelector('#aj-elige-ok').focus(); }catch(e){}
+}
+function jugarArbol(desdeCero,yaElegi){
   if(AJUEGO){ AJUEGO.pausar(false); return; }               /* volvió de la carta: la plaza sigue */
   /* ya es 2D, o ya está cargando (tocó "Encender", volvió a la portada y entró otra vez antes de
      que la plaza estuviera lista): no se arma otra plaza */
   if(window.__arbolModo.modo==='2d' || window.__arbolModo.modo==='cargando') return;
   if(MEMORIA){ modoArbol('2d','memoria'); return; }
   var gl=hayWebGLU(); if(!gl){ modoArbol('2d','sin3d'); return; }
+  /* a ver su árbol: con quien eligió la última vez (si ya viene elegido, como el reintento con Ruway
+     cuando ese personaje no bajó, no se toca: si no, se reintentaba sin fin con el que no baja) */
+  if(ARBOL_VUELTA==='encendido' && !yaElegi && arbolQuiereElegir()){ ARBOL_PJ=arbolPjGuardado(); yaElegi=true; }
+  if(!yaElegi && arbolQuiereElegir()){ elegirArbol(function(){ jugarArbol(desdeCero,true); }); return; }   /* ¿con quién? y de ahí vuelve aquí */
+  if(!arbolQuiereElegir()) ARBOL_PJ='ruway';
   modoArbol('cargando');
   PAUSA_2D=true; ARBOL_EN_JUEGO=true; document.body.classList.add('aj-jugando');
   var caja=document.createElement('div'); caja.id='aj-caja';
-  var baja=document.createElement('div'); baja.id='aj-baja'; baja.textContent='Preparando la plaza…'; caja.appendChild(baja);
+  var baja=document.createElement('div'); baja.id='aj-baja';
+  /* mientras baja la plaza (puede tardar): quien eligió se ve moviéndose, para que no parezca que se colgó */
+  var bajaIn=document.createElement('div'); bajaIn.className='aj-baja-in';
+  if(arbolQuiereElegir()){ var bi=arbolRetrato(ARBOL_PJ); bi.className='aj-baja-pj'; bajaIn.appendChild(bi); }
+  var bt=document.createElement('p'); bt.textContent='Preparando la plaza…'; bajaIn.appendChild(bt);
+  var bs=document.createElement('small'); bs.textContent='Puede tardar unos segundos'; bajaIn.appendChild(bs);
+  baja.appendChild(bajaIn); caja.appendChild(baja);
   document.getElementById('s3').appendChild(caja);
   /* el sonido del juego nace en este toque (el iPhone no lo deja nacer después) */
   var ac=null; try{ var Ctx=window.AudioContext||window.webkitAudioContext; if(Ctx) ac=new Ctx(); }catch(e){}
-  var espera=(navigator.webdriver && window.__ARBOL_ESPERA) || 12000, vencido=false;
+  var espera=(navigator.webdriver && window.__ARBOL_ESPERA) || (ARBOL_PJ!=='ruway' ? 18000 : 12000), vencido=false;   /* otro personaje = otro archivo que bajar */
   var reloj=setTimeout(function(){ if(vencido) return; vencido=true; if(ac) try{ ac.close(); }catch(e){} arbol2D('lento'); },espera);
   function fallo(m){ if(vencido) return; vencido=true; clearTimeout(reloj); if(ac && !AJUEGO) try{ ac.close(); }catch(e){} arbol2D(m); }
   function armar(){
@@ -4153,7 +4302,8 @@ function jugarArbol(desdeCero){
       try{
         AJUEGO=Arbol.jugar({contenedor:caja, fotos:function(){ return fotosConSitio().slice(0,8); }, vistas:desdeCero?[]:vistasArbol(),
           para:nombrePara(), msg:String((DATOS&&DATOS.msg)||''), de:String((DATOS&&DATOS.de)||''),
-          glb:urlLibU('ruway-avatar.glb'), muki:urlLibU('ruway-muki.glb'), trineo:urlLibU('trineo-plaza.glb'), movs:urlLibU('ruway-movs.json'), gpu:gl.gpu, ac:ac,
+          encendido:ARBOL_VUELTA==='encendido' && !desdeCero,
+          glb:urlLibU(arbolGLB(ARBOL_PJ)), muki:urlLibU('ruway-muki.glb'), trineo:urlLibU('trineo-plaza.glb'), movs:urlLibU('ruway-movs.json'), gpu:gl.gpu, ac:ac,
           musica:!(DATOS && (DATOS.cancion||DATOS.cancionId)),
           tapado:function(){ return !!document.querySelector('.rn-capa') || document.getElementById('s3').classList.contains('oculto'); },
           al:{listo:function(){ clearTimeout(reloj); if(!vencido) modoArbol('3d'); },
@@ -4161,9 +4311,14 @@ function jugarArbol(desdeCero){
               encendido:function(){ ARBOL_JUGO=true; terminoArbol(); },
               /* después de la galería: la página vuelve a mostrar lo suyo y sigue el premio */
               seguir:function(){ try{ ARBOL_DEDICA=ARBOL_DEDICA||!!(AJUEGO && AJUEGO.estado().dedicatoria); }catch(e){} ARBOL_EN_JUEGO=false; pistaEscena(''); document.body.classList.remove('aj-jugando'); pintarBotonCompartir(); },
-              otraVez:function(){ var j=AJUEGO; AJUEGO=null; if(j) try{ j.cerrar(); }catch(e){} if(caja.parentNode) caja.parentNode.removeChild(caja);
+              otraVez:function(){ ARBOL_VUELTA=''; var j=AJUEGO; AJUEGO=null; if(j) try{ j.cerrar(); }catch(e){} if(caja.parentNode) caja.parentNode.removeChild(caja);
                 modoArbol('',''); jugarArbol(true); },
-              fallo:function(m){ AJUEGO=null; fallo(m==='sin3d'||m==='perdido'?m:'carga'); },
+              fallo:function(m){ AJUEGO=null;
+                if(m==='ruway' && ARBOL_PJ!=='ruway' && !vencido){            /* el personaje elegido no bajó: se juega con Ruway */
+                  vencido=true; clearTimeout(reloj); if(ac) try{ ac.close(); }catch(e){}
+                  if(caja.parentNode) caja.parentNode.removeChild(caja);
+                  ARBOL_PJ='ruway'; modoArbol('',''); PAUSA_2D=false; jugarArbol(desdeCero,true); return; }
+                fallo(m==='sin3d'||m==='perdido'?m:'carga'); },
               sonido:function(mudo){ var a=document.getElementById('audio'); if(!a||!a.getAttribute('src')||a.src===SILENCIO) return;
                 if(mudo) a.pause(); else { var p=a.play(); if(p&&p['catch']) p['catch'](function(){}); } }}});
         if(AJUEGO && AJUEGO.fallo) AJUEGO=null;             /* sin WebGL de verdad: lo avisa al.fallo */
