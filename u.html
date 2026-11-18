@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta name="ruway-version" content="v51">
+<meta name="ruway-version" content="v52">
 <!-- GENERADO POR construir.js desde Universo.html · NO EDITAR A MANO -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
@@ -845,7 +845,12 @@ function traer(par, ok, mal) {
   var ac=null;
   function tin(){ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); [784,988,1319].forEach(function(f,i){ var o=ac.createOscillator(), v=ac.createGain(), t=ac.currentTime+i*.09;
       o.type='sine'; o.frequency.value=f; v.gain.setValueAtTime(.06,t); v.gain.exponentialRampToValueAtTime(.0001,t+.35); o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t+.36); }); }catch(e){} }
-  function toast(ic,t,sub){ if(TONO) return; estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
+  /* N.avisosLuego(true): los avisos se guardan y salen después, uno tras otro, con N.avisosLuego(false). La carrera los guarda
+     desde la meta: «Coleccionista · Rumi y Chaska…» salía encima de «¡Ganaste!» (mamá de prueba, ronda 5). */
+  var AV_LUEGO=false, AV_COLA=[];
+  N.avisosLuego=function(si){ AV_LUEGO=!!si; if(si || !AV_COLA.length) return; var c=AV_COLA.splice(0);
+    c.forEach(function(a,i){ setTimeout(function(){ toast(a[0],a[1],a[2]); },400+i*3600); }); };
+  function toast(ic,t,sub){ if(TONO) return; if(AV_LUEGO){ AV_COLA.push([ic,t,sub]); return; } estilos(); var d=document.createElement('div'); d.className='rn-toast'; d.innerHTML='<i></i><div><b></b><small></small></div>';
     d.querySelector('i').textContent=ic; d.querySelector('b').textContent=t; d.querySelector('small').textContent=sub||''; document.body.appendChild(d);
     /* en los juegos con ♪ y 🔊 arriba a la izquierda, el aviso sale debajo de ellos y sin llegar a los costados (tapaba 🔊; rondas 2 y 3) */
     var so=document.querySelector('.sonidos'); if(so && !so.hidden){ var rs=so.getBoundingClientRect(); if(rs.height){ d.style.top=Math.round(rs.bottom+8)+'px'; d.style.maxWidth='calc(100vw - 150px)'; } }
@@ -1610,10 +1615,13 @@ function traer(par, ok, mal) {
   /* la hoja de "armando tu video", con la vista de cómo va quedando */
   function hojaArmandoE(cancelar){ estilos(); var c=document.createElement('div'); c.className='rn-capa rn-video rn-cristal'; c.id='rn-armando';
     c.innerHTML='<div class="rn-hoja" role="dialog" aria-label="Preparando tu video"><p class="rn-kick">Para tu estado</p><h2>Preparando tu video</h2><p class="rn-sub" id="rn-arm-txt">Preparando tus fotos</p>'
-      +'<canvas id="rn-vista" width="135" height="240" style="display:block;margin:0 auto;border-radius:12px;background:#140B26"></canvas><div class="rn-barra"><i style="width:0%"></i></div>'
+      +'<canvas id="rn-vista" width="135" height="240" style="display:block;margin:0 auto;border-radius:12px;background:#140B26"></canvas><div class="rn-barra"><i style="width:4%"></i></div>'
       +'<button type="button" class="rn-cerrar rn-fant" id="rn-arm-cancelar">Cancelar</button><div class="rn-pie">HECHO A MANO · RUWAY</div></div>';
     document.body.appendChild(c); c.querySelector('#rn-arm-cancelar').onclick=cancelar;
     var vista=c.querySelector('#rn-vista'), vg=vista.getContext('2d'), tx=c.querySelector('#rn-arm-txt'), barra=c.querySelector('.rn-barra i');
+    /* hasta el primer cuadro del video, la vista dice que ya empezó: un cuadro oscuro vacío parecía que no hacía nada (mamá, ronda 5) */
+    try{ var gr=vg.createLinearGradient(0,0,0,240); gr.addColorStop(0,'#3A2152'); gr.addColorStop(1,'#140B26'); vg.fillStyle=gr; vg.fillRect(0,0,135,240);
+      vg.textAlign='center'; vg.font='26px sans-serif'; vg.fillText('🎬',67,108); vg.fillStyle='rgba(255,241,218,.92)'; vg.font='800 13px Nunito,sans-serif'; vg.fillText('Preparando…',67,138); }catch(e){}
     return {txt:function(t){ tx.textContent=t; },pc:function(n){ barra.style.width=n+'%'; },ver:function(cv){ try{ vg.drawImage(cv,0,0,135,240); }catch(e){} },quitar:function(){ c.remove(); }}; }
   /* donde el teléfono no sabe hacer video, se explica cómo grabar la pantalla */
   function ayudaE(){ estilos(); var c=document.createElement('div'); c.className='rn-capa rn-cristal'; c.id='rn-ayuda-video';
